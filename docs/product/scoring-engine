@@ -1,0 +1,174 @@
+# Scoring Engine V1
+
+**Version :** 1.0
+**Statut :** Validé
+**Dernière mise à jour :** 23/07/2026
+
+---
+
+# Objectif
+
+Le Scoring Engine est le cœur de Kairos.
+
+Il a pour objectif d'évaluer la qualité d'une opportunité d'achat d'une montre en prenant en compte :
+
+- la rentabilité attendue ;
+- la liquidité de l'actif ;
+- l'allocation optimale du capital ;
+- l'état de la montre ;
+- le niveau de confiance dans l'estimation.
+
+Le résultat est un **Kairos Score (/100)** accompagné d'une recommandation :
+
+- Buy
+- Watch
+- Pass
+
+---
+
+# Architecture générale
+
+Le moteur fonctionne en deux étapes.
+
+## Étape 0 : Vérification des Gates
+
+Avant tout calcul, Kairos vérifie qu'une annonce est éligible.
+
+Si un Gate échoue, aucun score n'est calculé.
+
+### G1 — Authenticité
+
+Rejet immédiat si :
+
+- suspicion de contrefaçon ;
+- incohérence des références ;
+- numéros incompatibles ;
+- pièces manifestement non conformes ;
+- provenance jugée trop risquée.
+
+### G2 — Données suffisantes
+
+L'annonce doit contenir suffisamment d'informations pour être analysée.
+
+Exemples :
+
+- référence identifiable ;
+- photos exploitables ;
+- description suffisante.
+
+### G3 — Catégorie prise en charge
+
+Kairos ne traite que les montres appartenant à des marchés suffisamment documentés.
+
+---
+
+# Étape 1 : Calcul du Kairos Score
+
+Le score est composé de cinq piliers.
+
+## 1. Rentabilité (30 %)
+
+- Profit attendu (€) : 60 %
+- Rendement du capital (%) : 40 %
+
+---
+
+## 2. Liquidité (27,5 %)
+
+- Délai de revente estimé : 50 %
+- Profondeur du marché : 25 %
+- Régularité du marché : 25 %
+
+---
+
+## 3. Allocation du capital et du stock (20 %)
+
+- Impact sur la trésorerie : 40 %
+- Diversification du portefeuille : 30 %
+- Immobilisation actuelle du stock : 30 %
+
+---
+
+## 4. État de la montre (15 %)
+
+- État mécanique : 40 %
+- État cosmétique : 35 %
+- Complétude : 20 %
+
+L'authenticité n'entre pas dans ce critère.
+
+Elle est traitée dans les Gates.
+
+---
+
+## 5. Confiance dans l'estimation (7,5 %)
+
+- Qualité des données : 35 %
+- Qualité des comparables : 30 %
+- Fiabilité du vendeur : 20 %
+- Garanties de la plateforme : 15 %
+
+---
+
+# Règles de dépendance
+
+Le Kairos Score n'est pas une simple moyenne pondérée.
+
+Les critères interagissent entre eux.
+
+## D1
+
+La diversification n'apporte de valeur que si la montre présente une liquidité suffisante.
+
+---
+
+## D2
+
+Le niveau de confiance dépend directement de la profondeur du marché.
+
+---
+
+## D3
+
+Une rentabilité élevée ne peut jamais compenser une immobilisation excessive.
+
+---
+
+## D4
+
+Plus une montre mobilise une part importante du capital disponible, plus Kairos devient exigeant.
+
+---
+
+## D5
+
+Une faible confiance dans les estimations plafonne le score maximal.
+
+---
+
+## D6
+
+La réputation du vendeur et les garanties de la plateforme augmentent uniquement la confiance dans l'estimation.
+
+Elles n'améliorent jamais la rentabilité intrinsèque.
+
+---
+
+## D7
+
+Un vendeur présentant un risque majeur peut entraîner un rejet avant le calcul du score.
+
+---
+
+# Philosophie
+
+Kairos ne cherche pas à déterminer si une montre est bonne.
+
+Kairos cherche à déterminer si cette montre constitue une bonne opportunité d'investissement compte tenu :
+
+- du marché ;
+- du portefeuille de l'utilisateur ;
+- de son capital disponible ;
+- de son objectif d'investissement.
+
+Le Kairos Score est donc **personnalisé** et **contextuel**.

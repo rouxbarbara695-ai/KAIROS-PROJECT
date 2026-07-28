@@ -9,7 +9,9 @@ from app.shared.domain.errors import DomainError, ErrorCode
 from app.shared.domain.page import CursorPosition, Page, decode_cursor, encode_cursor
 from app.shared.domain.principal import Principal
 from app.shared.infrastructure.db.models.audit import AuditEvent
+from app.shared.infrastructure.db.models.market import Comparable
 from app.shared.infrastructure.db.models.opportunities import Opportunity
+from app.shared.infrastructure.db.models.watches import Watch
 
 
 async def list_opportunity_events(
@@ -55,6 +57,25 @@ async def list_opportunity_events(
             and_(
                 AuditEvent.resource_type == "seller",
                 AuditEvent.resource_id == opportunity.seller_id,
+            )
+        )
+
+    # Les comparables se rattachent à la référence, pas à l'opportunité : les
+    # exclure ou les réintégrer change pourtant la cote de ce dossier, donc ces
+    # décisions appartiennent à son historique.
+    watch = (
+        await session.execute(select(Watch).where(Watch.id == opportunity.watch_id))
+    ).scalar_one()
+
+    if watch.reference_id is not None:
+        comparable_ids = select(Comparable.id).where(
+            Comparable.portfolio_id == opportunity.portfolio_id,
+            Comparable.reference_id == watch.reference_id,
+        )
+        targets.append(
+            and_(
+                AuditEvent.resource_type == "comparable",
+                AuditEvent.resource_id.in_(comparable_ids),
             )
         )
 

@@ -109,6 +109,380 @@
         "title": "AuditEventResponse",
         "type": "object"
       },
+      "ComparableCreate": {
+        "description": "Comparable saisi manuellement.\n\n`price_kind` d\u00e9crit la nature \u00e9conomique du prix, `source_reliability` la\nqualit\u00e9 de la preuve : les deux sont obligatoires et ne se substituent pas\nl'un \u00e0 l'autre (calculation-spec.md \u00a7 2).",
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              }
+            ],
+            "title": "Amount"
+          },
+          "box": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Box"
+          },
+          "buyer_fixed_fee_eur": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buyer Fixed Fee Eur"
+          },
+          "buyer_variable_fee_eur": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buyer Variable Fee Eur"
+          },
+          "compulsory_shipping_eur": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compulsory Shipping Eur"
+          },
+          "cosmetic_condition": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cosmetic Condition"
+          },
+          "currency": {
+            "maxLength": 3,
+            "minLength": 3,
+            "title": "Currency",
+            "type": "string"
+          },
+          "ended_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ended At"
+          },
+          "listed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Listed At"
+          },
+          "market_status": {
+            "enum": [
+              "active",
+              "sold",
+              "removed",
+              "ended",
+              "unknown"
+            ],
+            "title": "Market Status",
+            "type": "string"
+          },
+          "mechanical_condition": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mechanical Condition"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "title": "Observed At",
+            "type": "string"
+          },
+          "papers": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Papers"
+          },
+          "price_kind": {
+            "enum": [
+              "asking",
+              "offer",
+              "accepted_offer",
+              "current_bid",
+              "hammer",
+              "realized",
+              "external_estimate",
+              "kairos_estimate"
+            ],
+            "title": "Price Kind",
+            "type": "string"
+          },
+          "seller_fingerprint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seller Fingerprint"
+          },
+          "source_external_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source External Id"
+          },
+          "source_name": {
+            "minLength": 1,
+            "title": "Source Name",
+            "type": "string"
+          },
+          "source_reliability": {
+            "enum": [
+              "a",
+              "b",
+              "c",
+              "d",
+              "e"
+            ],
+            "title": "Source Reliability",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_name",
+          "price_kind",
+          "amount",
+          "currency",
+          "market_status",
+          "observed_at",
+          "source_reliability"
+        ],
+        "title": "ComparableCreate",
+        "type": "object"
+      },
+      "ComparablePage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ComparableResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "title": "ComparablePage",
+        "type": "object"
+      },
+      "ComparableResponse": {
+        "properties": {
+          "amount_eur": {
+            "title": "Amount Eur",
+            "type": "string"
+          },
+          "amount_source": {
+            "title": "Amount Source",
+            "type": "string"
+          },
+          "buyer_total_price_eur": {
+            "title": "Buyer Total Price Eur",
+            "type": "string"
+          },
+          "completeness_data": {
+            "additionalProperties": true,
+            "title": "Completeness Data",
+            "type": "object"
+          },
+          "condition_data": {
+            "additionalProperties": true,
+            "title": "Condition Data",
+            "type": "object"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "ended_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ended At"
+          },
+          "excluded": {
+            "title": "Excluded",
+            "type": "boolean"
+          },
+          "exclusion_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exclusion Reason"
+          },
+          "fx_rate_at": {
+            "format": "date-time",
+            "title": "Fx Rate At",
+            "type": "string"
+          },
+          "fx_source": {
+            "title": "Fx Source",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "listed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Listed At"
+          },
+          "market_status": {
+            "title": "Market Status",
+            "type": "string"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "title": "Observed At",
+            "type": "string"
+          },
+          "price_kind": {
+            "title": "Price Kind",
+            "type": "string"
+          },
+          "rate_to_eur": {
+            "title": "Rate To Eur",
+            "type": "string"
+          },
+          "source_name": {
+            "title": "Source Name",
+            "type": "string"
+          },
+          "source_reliability": {
+            "title": "Source Reliability",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "source_name",
+          "price_kind",
+          "amount_source",
+          "currency",
+          "amount_eur",
+          "rate_to_eur",
+          "fx_source",
+          "fx_rate_at",
+          "buyer_total_price_eur",
+          "market_status",
+          "observed_at",
+          "listed_at",
+          "ended_at",
+          "source_reliability",
+          "condition_data",
+          "completeness_data",
+          "excluded",
+          "exclusion_reason"
+        ],
+        "title": "ComparableResponse",
+        "type": "object"
+      },
       "CreateOpportunityRequest": {
         "properties": {
           "portfolio_id": {
@@ -295,6 +669,109 @@
           "updated_at"
         ],
         "title": "OpportunityResponse",
+        "type": "object"
+      },
+      "OverrideCreate": {
+        "description": "Correction, exclusion ou r\u00e9int\u00e9gration d'un comparable.\n\nUne exclusion exige son propre motif en plus du motif d'audit : le premier\ndocumente la d\u00e9cision m\u00e9tier, le second la trace (sch\u00e9ma `comparable_overrides`).",
+        "properties": {
+          "corrected_data": {
+            "additionalProperties": true,
+            "title": "Corrected Data",
+            "type": "object"
+          },
+          "excluded": {
+            "title": "Excluded",
+            "type": "boolean"
+          },
+          "exclusion_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exclusion Reason"
+          },
+          "reason": {
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "excluded",
+          "reason"
+        ],
+        "title": "OverrideCreate",
+        "type": "object"
+      },
+      "OverrideResponse": {
+        "properties": {
+          "comparable_id": {
+            "format": "uuid",
+            "title": "Comparable Id",
+            "type": "string"
+          },
+          "corrected_data": {
+            "additionalProperties": true,
+            "title": "Corrected Data",
+            "type": "object"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "excluded": {
+            "title": "Excluded",
+            "type": "boolean"
+          },
+          "exclusion_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exclusion Reason"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "previous_override_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Override Id"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "comparable_id",
+          "previous_override_id",
+          "excluded",
+          "exclusion_reason",
+          "corrected_data",
+          "reason",
+          "created_at"
+        ],
+        "title": "OverrideResponse",
         "type": "object"
       },
       "PriceCreate": {
@@ -926,6 +1403,59 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/comparables/{comparable_id}/overrides": {
+      "post": {
+        "operationId": "create_override_route_api_v1_comparables__comparable_id__overrides_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "comparable_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Comparable Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OverrideCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OverrideResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Override Route",
+        "tags": [
+          "comparables"
+        ]
+      }
+    },
     "/api/v1/health": {
       "get": {
         "operationId": "health_api_v1_health_get",
@@ -1242,6 +1772,132 @@
         "summary": "Patch Opportunity Route",
         "tags": [
           "opportunities"
+        ]
+      }
+    },
+    "/api/v1/opportunities/{opportunity_id}/comparables": {
+      "get": {
+        "operationId": "list_comparables_route_api_v1_opportunities__opportunity_id__comparables_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "opportunity_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Opportunity Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Limit"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComparablePage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Comparables Route",
+        "tags": [
+          "comparables"
+        ]
+      },
+      "post": {
+        "operationId": "create_comparable_route_api_v1_opportunities__opportunity_id__comparables_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "opportunity_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Opportunity Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComparableCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComparableResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Comparable Route",
+        "tags": [
+          "comparables"
         ]
       }
     },

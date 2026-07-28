@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from decimal import Decimal
 
 from sqlalchemy import (
     CHAR,
@@ -59,7 +60,7 @@ class Watch(Base):
         nullable=False,
         server_default=text("'unconfirmed'"),
     )
-    identification_confidence: Mapped[float | None] = mapped_column(Numeric(7, 4))
+    identification_confidence: Mapped[Decimal | None] = mapped_column(Numeric(7, 4))
     reference_confirmed_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id")
     )

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from decimal import Decimal
 
 from sqlalchemy import CHAR, ForeignKey, Numeric, Text, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP, UUID
@@ -20,7 +21,7 @@ class FxRate(Base):
     quote_currency: Mapped[str] = mapped_column(
         CHAR(3), nullable=False, server_default=text("'EUR'")
     )
-    rate: Mapped[float] = mapped_column(Numeric(24, 12), nullable=False)
+    rate: Mapped[Decimal] = mapped_column(Numeric(24, 12), nullable=False)
     observed_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), nullable=False
     )

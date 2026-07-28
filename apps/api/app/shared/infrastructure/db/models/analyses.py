@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from decimal import Decimal
 
 from sqlalchemy import ForeignKey, Integer, Numeric, Text, text
 from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP, UUID
@@ -53,16 +54,16 @@ class Analysis(Base):
     )
     published_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
 
-    current_price_eur: Mapped[float | None] = mapped_column(Numeric(16, 2))
-    total_cost_eur: Mapped[float | None] = mapped_column(Numeric(16, 2))
-    expected_sale_price_eur: Mapped[float | None] = mapped_column(Numeric(16, 2))
-    raw_max_purchase_price_eur: Mapped[float | None] = mapped_column(Numeric(16, 8))
-    max_purchase_price_eur: Mapped[float | None] = mapped_column(Numeric(16, 2))
-    expected_profit_eur: Mapped[float | None] = mapped_column(Numeric(16, 2))
-    expected_roi: Mapped[float | None] = mapped_column(Numeric(18, 10))
+    current_price_eur: Mapped[Decimal | None] = mapped_column(Numeric(16, 2))
+    total_cost_eur: Mapped[Decimal | None] = mapped_column(Numeric(16, 2))
+    expected_sale_price_eur: Mapped[Decimal | None] = mapped_column(Numeric(16, 2))
+    raw_max_purchase_price_eur: Mapped[Decimal | None] = mapped_column(Numeric(16, 8))
+    max_purchase_price_eur: Mapped[Decimal | None] = mapped_column(Numeric(16, 2))
+    expected_profit_eur: Mapped[Decimal | None] = mapped_column(Numeric(16, 2))
+    expected_roi: Mapped[Decimal | None] = mapped_column(Numeric(18, 10))
     expected_days_to_sell: Mapped[int | None] = mapped_column(Integer)
-    score: Mapped[float | None] = mapped_column(Numeric(7, 4))
-    evidence_quality_score: Mapped[float | None] = mapped_column(Numeric(7, 4))
+    score: Mapped[Decimal | None] = mapped_column(Numeric(7, 4))
+    evidence_quality_score: Mapped[Decimal | None] = mapped_column(Numeric(7, 4))
     recommendation: Mapped[str] = mapped_column(
         pg_enum(Recommendation, "recommendation"), nullable=False
     )

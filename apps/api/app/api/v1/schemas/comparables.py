@@ -137,3 +137,20 @@ class ComparableImportResult(BaseModel):
 
     imported: int
     rejected: list[ComparableImportRow]
+
+
+class ValuationResponse(BaseModel):
+    """Cote figée et sa trace.
+
+    `explanation` porte les entrées, exclusions, plafonds et versions exigés
+    par la règle 6 : une cote doit pouvoir être rejouée et contestée.
+    """
+
+    id: uuid.UUID
+    opportunity_id: uuid.UUID
+    calculated_at: datetime
+    low_value_eur: DecimalString
+    central_value_eur: DecimalString
+    high_value_eur: DecimalString
+    valuation_confidence: DecimalString
+    explanation: dict[str, object]

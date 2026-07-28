@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from decimal import Decimal
 
 from sqlalchemy import CHAR, Boolean, ForeignKey, Numeric, Text, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP, UUID
@@ -114,10 +115,10 @@ class ListingObservationPrice(Base):
         UUID(as_uuid=True), ForeignKey("listing_observations.id"), nullable=False
     )
     kind: Mapped[str] = mapped_column(pg_enum(PriceKind, "price_kind"), nullable=False)
-    amount_source: Mapped[float] = mapped_column(Numeric(16, 2), nullable=False)
+    amount_source: Mapped[Decimal] = mapped_column(Numeric(16, 2), nullable=False)
     currency: Mapped[str] = mapped_column(CHAR(3), nullable=False)
-    amount_eur: Mapped[float] = mapped_column(Numeric(16, 2), nullable=False)
-    rate_to_eur: Mapped[float] = mapped_column(Numeric(24, 12), nullable=False)
+    amount_eur: Mapped[Decimal] = mapped_column(Numeric(16, 2), nullable=False)
+    rate_to_eur: Mapped[Decimal] = mapped_column(Numeric(24, 12), nullable=False)
     fx_rate_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), nullable=False
     )

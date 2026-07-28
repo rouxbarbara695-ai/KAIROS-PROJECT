@@ -18,6 +18,10 @@ class Ruleset:
 
     version: str
     config: dict[str, Any]
+    # Texte JSON d'origine. Le conserver permet de figer un instantané fidèle
+    # sans repasser par une sérialisation : `Decimal` n'est pas sérialisable en
+    # JSON, et le convertir en flottant détruirait la précision du barème.
+    raw_config: str = ""
 
     def _lookup(self, path: tuple[str, ...]) -> Any:
         current: Any = self.config

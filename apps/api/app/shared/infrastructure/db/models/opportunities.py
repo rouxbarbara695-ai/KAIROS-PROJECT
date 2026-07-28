@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from decimal import Decimal
 
 from sqlalchemy import CHAR, ForeignKey, Integer, Numeric, Text, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP, UUID
@@ -83,10 +84,10 @@ class OpportunityPriceInput(Base):
         UUID(as_uuid=True), ForeignKey("opportunities.id"), nullable=False
     )
     kind: Mapped[str] = mapped_column(pg_enum(PriceKind, "price_kind"), nullable=False)
-    amount_source: Mapped[float | None] = mapped_column(Numeric(16, 2))
+    amount_source: Mapped[Decimal | None] = mapped_column(Numeric(16, 2))
     currency: Mapped[str | None] = mapped_column(CHAR(3))
-    amount_eur: Mapped[float | None] = mapped_column(Numeric(16, 2))
-    rate_to_eur: Mapped[float | None] = mapped_column(Numeric(24, 12))
+    amount_eur: Mapped[Decimal | None] = mapped_column(Numeric(16, 2))
+    rate_to_eur: Mapped[Decimal | None] = mapped_column(Numeric(24, 12))
     fx_rate_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
     fx_source: Mapped[str | None] = mapped_column(Text)
     fx_rate_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -126,7 +127,7 @@ class ReferenceConfirmation(Base):
     reference_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("watch_references.id")
     )
-    identification_confidence: Mapped[float | None] = mapped_column(Numeric(7, 4))
+    identification_confidence: Mapped[Decimal | None] = mapped_column(Numeric(7, 4))
     actor_user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
     )

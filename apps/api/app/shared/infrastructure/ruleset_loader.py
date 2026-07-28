@@ -35,4 +35,4 @@ async def load_ruleset(session: AsyncSession, version: str) -> Ruleset:
         )
 
     config: dict[str, Any] = json.loads(row, parse_float=Decimal)
-    return Ruleset(version=version, config=config)
+    return Ruleset(version=version, config=config, raw_config=row)

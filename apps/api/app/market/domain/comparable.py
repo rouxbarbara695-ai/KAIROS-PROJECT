@@ -138,6 +138,76 @@ def recency_factor(age_days: int, ruleset: Ruleset) -> Decimal:
     return ruleset.decimal(*_RECENCY, "older")
 
 
+# Échelles ordinales servant à mesurer un écart. `unknown` en est absent :
+# c'est une absence de donnée, pas un degré intermédiaire.
+_MECHANICAL_ORDER = ("verified", "functional", "defect")
+_COSMETIC_ORDER = ("excellent", "very_good", "good", "fair", "poor")
+_COMPLETENESS_ORDER = ("full_set", "box_or_papers", "watch_only")
+
+
+def _ordinal_gap(
+    order: tuple[str, ...], left: str | None, right: str | None
+) -> int | None:
+    if left not in order or right not in order:
+        return None
+    return abs(order.index(str(left)) - order.index(str(right)))
+
+
+def condition_gap(
+    comparable_condition: dict[str, object], target_condition: dict[str, object]
+) -> str:
+    """Classe l'écart d'état entre un comparable et la montre analysée.
+
+    `calculation-spec.md` dit « état ±1 / ±2 / inconnu » sans préciser quelle
+    dimension gouverne. L'écart le plus défavorable entre mécanique et
+    cosmétique est retenu — la lecture prudente de principles.md #6 — et un
+    écart supérieur à deux niveaux retombe sur `unknown`, qui porte le
+    coefficient le plus bas. Choix signalé en Q-12.
+    """
+
+    gaps = [
+        _ordinal_gap(
+            _MECHANICAL_ORDER,
+            comparable_condition.get("mechanical"),  # type: ignore[arg-type]
+            target_condition.get("mechanical"),  # type: ignore[arg-type]
+        ),
+        _ordinal_gap(
+            _COSMETIC_ORDER,
+            comparable_condition.get("cosmetic"),  # type: ignore[arg-type]
+            target_condition.get("cosmetic"),  # type: ignore[arg-type]
+        ),
+    ]
+
+    if any(gap is None for gap in gaps):
+        return "unknown"
+
+    worst = max(gap for gap in gaps if gap is not None)
+    if worst <= 1:
+        return "one_level"
+    if worst == 2:
+        return "two_levels"
+    return "unknown"
+
+
+def completeness_gap(comparable_level: str | None, target_level: str | None) -> str:
+    """Classe l'écart de set.
+
+    Le ruleset ne prévoit que `same`, `one_level` et `unknown` : un écart de
+    deux niveaux — montre seule face à un full set — retombe donc sur `unknown`,
+    le coefficient le plus bas, plutôt que d'être assimilé à un seul niveau.
+    Choix signalé en Q-12.
+    """
+
+    gap = _ordinal_gap(_COMPLETENESS_ORDER, comparable_level, target_level)
+    if gap is None:
+        return "unknown"
+    if gap == 0:
+        return "same"
+    if gap == 1:
+        return "one_level"
+    return "unknown"
+
+
 @dataclass(frozen=True, slots=True)
 class WeightFactors:
     source_reliability: Decimal

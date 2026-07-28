@@ -194,6 +194,27 @@ export interface paths {
         patch: operations["patch_seller_profile_route_api_v1_opportunities__opportunity_id__seller_profile_patch"];
         trace?: never;
     };
+    "/api/v1/opportunities/{opportunity_id}/valuations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Valuation Route
+         * @description Recalcule la cote. Chaque appel crée une version : une valorisation
+         *     publiée n'est jamais écrasée (CLAUDE.md règle 4).
+         */
+        post: operations["create_valuation_route_api_v1_opportunities__opportunity_id__valuations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/opportunities/{opportunity_id}/watch-profile": {
         parameters: {
             query?: never;
@@ -617,6 +638,42 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /**
+         * ValuationResponse
+         * @description Cote figée et sa trace.
+         *
+         *     `explanation` porte les entrées, exclusions, plafonds et versions exigés
+         *     par la règle 6 : une cote doit pouvoir être rejouée et contestée.
+         */
+        ValuationResponse: {
+            /**
+             * Calculated At
+             * Format: date-time
+             */
+            calculated_at: string;
+            /** Central Value Eur */
+            central_value_eur: string;
+            /** Explanation */
+            explanation: {
+                [key: string]: unknown;
+            };
+            /** High Value Eur */
+            high_value_eur: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Low Value Eur */
+            low_value_eur: string;
+            /**
+             * Opportunity Id
+             * Format: uuid
+             */
+            opportunity_id: string;
+            /** Valuation Confidence */
+            valuation_confidence: string;
         };
         /** WatchCreate */
         WatchCreate: {
@@ -1123,6 +1180,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OpportunityResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_valuation_route_api_v1_opportunities__opportunity_id__valuations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                opportunity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValuationResponse"];
                 };
             };
             /** @description Validation Error */

@@ -1162,6 +1162,59 @@
         "title": "ValidationError",
         "type": "object"
       },
+      "ValuationResponse": {
+        "description": "Cote fig\u00e9e et sa trace.\n\n`explanation` porte les entr\u00e9es, exclusions, plafonds et versions exig\u00e9s\npar la r\u00e8gle 6 : une cote doit pouvoir \u00eatre rejou\u00e9e et contest\u00e9e.",
+        "properties": {
+          "calculated_at": {
+            "format": "date-time",
+            "title": "Calculated At",
+            "type": "string"
+          },
+          "central_value_eur": {
+            "title": "Central Value Eur",
+            "type": "string"
+          },
+          "explanation": {
+            "additionalProperties": true,
+            "title": "Explanation",
+            "type": "object"
+          },
+          "high_value_eur": {
+            "title": "High Value Eur",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "low_value_eur": {
+            "title": "Low Value Eur",
+            "type": "string"
+          },
+          "opportunity_id": {
+            "format": "uuid",
+            "title": "Opportunity Id",
+            "type": "string"
+          },
+          "valuation_confidence": {
+            "title": "Valuation Confidence",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "opportunity_id",
+          "calculated_at",
+          "low_value_eur",
+          "central_value_eur",
+          "high_value_eur",
+          "valuation_confidence",
+          "explanation"
+        ],
+        "title": "ValuationResponse",
+        "type": "object"
+      },
       "WatchCreate": {
         "properties": {
           "box": {
@@ -2136,6 +2189,50 @@
         "summary": "Patch Seller Profile Route",
         "tags": [
           "opportunities"
+        ]
+      }
+    },
+    "/api/v1/opportunities/{opportunity_id}/valuations": {
+      "post": {
+        "description": "Recalcule la cote. Chaque appel cr\u00e9e une version : une valorisation\npubli\u00e9e n'est jamais \u00e9cras\u00e9e (CLAUDE.md r\u00e8gle 4).",
+        "operationId": "create_valuation_route_api_v1_opportunities__opportunity_id__valuations_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "opportunity_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Opportunity Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValuationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Valuation Route",
+        "tags": [
+          "comparables"
         ]
       }
     },

@@ -59,6 +59,12 @@ class Ruleset:
             )
         return int(value)
 
+    def value(self, *path: str) -> Any:
+        """Valeur brute, pour les structures que les accesseurs typés ne
+        couvrent pas — les courbes de score, listes de paires."""
+
+        return self._lookup(path)
+
     def mapping(self, *path: str) -> dict[str, Any]:
         value = self._lookup(path)
         if not isinstance(value, dict):

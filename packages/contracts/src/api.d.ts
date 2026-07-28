@@ -91,6 +91,23 @@ export interface paths {
         patch: operations["patch_opportunity_route_api_v1_opportunities__opportunity_id__patch"];
         trace?: never;
     };
+    "/api/v1/opportunities/{opportunity_id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Opportunity Events Route */
+        get: operations["list_opportunity_events_route_api_v1_opportunities__opportunity_id__events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/opportunities/{opportunity_id}/price-inputs": {
         parameters: {
             query?: never;
@@ -180,6 +197,47 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AuditEventPage */
+        AuditEventPage: {
+            /** Items */
+            items: components["schemas"]["AuditEventResponse"][];
+            /** Next Cursor */
+            next_cursor: string | null;
+        };
+        /** AuditEventResponse */
+        AuditEventResponse: {
+            /** Action */
+            action: string;
+            /** Actor User Id */
+            actor_user_id: string | null;
+            /** After Data */
+            after_data: {
+                [key: string]: unknown;
+            } | null;
+            /** Before Data */
+            before_data: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Reason */
+            reason: string;
+            /**
+             * Resource Id
+             * Format: uuid
+             */
+            resource_id: string;
+            /** Resource Type */
+            resource_type: string;
+        };
         /** CreateOpportunityRequest */
         CreateOpportunityRequest: {
             /**
@@ -617,6 +675,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OpportunityResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_opportunity_events_route_api_v1_opportunities__opportunity_id__events_get: {
+        parameters: {
+            query?: {
+                limit?: number | null;
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                opportunity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditEventPage"];
                 };
             };
             /** @description Validation Error */

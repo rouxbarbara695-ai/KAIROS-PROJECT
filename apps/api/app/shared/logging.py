@@ -7,19 +7,7 @@ from typing import Any, cast
 import structlog
 from structlog.typing import EventDict, WrappedLogger
 
-_SENSITIVE_KEYS = {
-    "authorization",
-    "token",
-    "password",
-    "secret",
-    "serial_number",
-    "serial_number_encrypted",
-    "database_url",
-    "redis_url",
-    "cursor_secret",
-}
-
-_MASK = "***"
+from app.shared.domain.redaction import MASK, SENSITIVE_KEYS, redact
 
 
 def _mask_sensitive(
@@ -28,18 +16,8 @@ def _mask_sensitive(
     """Empêche tout secret ou numéro de série d'atteindre les logs
     (CLAUDE.md règle 11 ; PRD §6)."""
 
-    def scrub(value: Any) -> Any:
-        if isinstance(value, dict):
-            return {
-                k: (_MASK if k.lower() in _SENSITIVE_KEYS else scrub(v))
-                for k, v in value.items()
-            }
-        if isinstance(value, list):
-            return [scrub(v) for v in value]
-        return value
-
     return {
-        k: (_MASK if k.lower() in _SENSITIVE_KEYS else scrub(v))
+        k: (MASK if k.lower() in SENSITIVE_KEYS else redact(v))
         for k, v in event_dict.items()
     }
 

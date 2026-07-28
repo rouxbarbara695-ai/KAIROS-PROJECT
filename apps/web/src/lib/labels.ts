@@ -68,6 +68,30 @@ const SOURCE_MODE: Record<string, string> = {
   connector: "Collecteur",
 };
 
+const AUDIT_ACTION: Record<string, string> = {
+  correct: "Correction",
+  exclude: "Exclusion",
+  reinstate: "Réintégration",
+  create: "Création",
+};
+
+const AUDIT_RESOURCE: Record<string, string> = {
+  opportunity: "Opportunité",
+  watch: "Montre",
+  seller: "Vendeur",
+};
+
+const PRICE_KIND: Record<string, string> = {
+  asking: "Prix demandé",
+  offer: "Offre",
+  accepted_offer: "Offre acceptée",
+  current_bid: "Enchère courante",
+  hammer: "Prix marteau",
+  realized: "Prix réalisé",
+  external_estimate: "Estimation externe",
+  kairos_estimate: "Estimation KAIROS",
+};
+
 function translate(
   dictionary: Record<string, string>,
   value: string | null | undefined,
@@ -93,7 +117,33 @@ export const labels = {
     translate(SELLER_TYPE, value),
   sourceMode: (value: string | null | undefined) =>
     translate(SOURCE_MODE, value),
+  auditAction: (value: string | null | undefined) =>
+    translate(AUDIT_ACTION, value),
+  auditResource: (value: string | null | undefined) =>
+    translate(AUDIT_RESOURCE, value),
+  priceKind: (value: string | null | undefined) =>
+    translate(PRICE_KIND, value),
 };
+
+/** Types de prix saisissables manuellement (`PriceInputCreate`). */
+export const PRICE_KIND_OPTIONS = [
+  "asking",
+  "offer",
+  "accepted_offer",
+  "current_bid",
+  "hammer",
+] as const;
+
+/** Horodatage lisible, en heure locale. */
+export function formatDateTime(value: string | null | undefined): string {
+  if (!value) return "—";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return new Intl.DateTimeFormat("fr-FR", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(parsed);
+}
 
 /** Options proposées dans les formulaires, dans l'ordre du vocabulaire. */
 export const options = {

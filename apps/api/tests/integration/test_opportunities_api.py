@@ -2,6 +2,8 @@ import uuid
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 pytestmark = pytest.mark.integration
 
@@ -373,3 +375,83 @@ async def test_get_platform_rules_no_applicable_rule_returns_404(
     ).scalar_one()
     response = await client.get(f"/api/v1/platforms/{platform_code}/rules")
     assert response.status_code == 404
+
+
+async def test_events_aggregate_watch_seller_and_opportunity_corrections(
+    client: AsyncClient, default_portfolio_id: uuid.UUID
+) -> None:
+    created = await _create_longines(client, default_portfolio_id)
+    opportunity_id = created["id"]
+
+    await client.patch(
+        f"/api/v1/opportunities/{opportunity_id}/watch-profile",
+        json={"cosmetic_condition": "good", "reason": "Rayures constatées"},
+    )
+    await client.patch(
+        f"/api/v1/opportunities/{opportunity_id}/seller-profile",
+        json={"seller_type": "professional", "reason": "Boutique identifiée"},
+    )
+
+    response = await client.get(f"/api/v1/opportunities/{opportunity_id}/events")
+    assert response.status_code == 200, response.text
+    events = response.json()["items"]
+
+    # Les trois ressources d'un même dossier sont réunies dans un historique
+    # unique, du plus récent au plus ancien.
+    resource_types = [event["resource_type"] for event in events]
+    assert "watch" in resource_types
+    assert "seller" in resource_types
+
+    reasons = [event["reason"] for event in events]
+    assert "Rayures constatées" in reasons
+    assert "Boutique identifiée" in reasons
+
+    timestamps = [event["occurred_at"] for event in events]
+    assert timestamps == sorted(timestamps, reverse=True)
+
+    seller_event = next(e for e in events if e["resource_type"] == "seller")
+    assert seller_event["action"] == "correct"
+    assert seller_event["before_data"] is not None
+    assert seller_event["after_data"]["seller_type"] == "professional"
+
+
+async def test_events_of_foreign_opportunity_are_not_disclosed(
+    client: AsyncClient, default_portfolio_id: uuid.UUID
+) -> None:
+    created = await _create_longines(client, default_portfolio_id)
+    response = await client.get(
+        f"/api/v1/opportunities/{uuid.uuid4()}/events",
+    )
+    assert response.status_code == 404
+    assert created["id"] not in response.text
+
+
+async def test_events_redact_sensitive_payload_keys(
+    client: AsyncClient, db_session: AsyncSession, default_portfolio_id: uuid.UUID
+) -> None:
+    """Les charges d'audit sont du JSON libre : une clé sensible qui s'y
+    glisserait ne doit jamais ressortir par l'API (règle 11)."""
+
+    created = await _create_longines(client, default_portfolio_id)
+    opportunity_id = created["id"]
+
+    # `audit_events` étant append-only, la charge sensible est insérée telle
+    # qu'un code futur pourrait le faire, pas ajoutée après coup.
+    await db_session.execute(
+        text(
+            "insert into audit_events (portfolio_id, resource_type, resource_id,"
+            " action, reason, after_data) values (:portfolio_id, 'watch',"
+            " :resource_id, 'correct', 'Contrôle',"
+            ' \'{"serial_number": "1234567"}\'::jsonb)'
+        ),
+        {
+            "portfolio_id": str(default_portfolio_id),
+            "resource_id": created["watch"]["id"],
+        },
+    )
+    await db_session.commit()
+
+    response = await client.get(f"/api/v1/opportunities/{opportunity_id}/events")
+    assert response.status_code == 200
+    assert "1234567" not in response.text
+    assert "***" in response.text

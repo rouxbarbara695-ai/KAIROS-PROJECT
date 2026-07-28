@@ -3,9 +3,21 @@ import type { components } from "@kairos/contracts";
 export type OpportunityResponse = components["schemas"]["OpportunityResponse"];
 export type OpportunityPage = components["schemas"]["OpportunityPage"];
 export type CreateOpportunityRequest = components["schemas"]["CreateOpportunityRequest"];
+export type AuditEventResponse = components["schemas"]["AuditEventResponse"];
+export type AuditEventPage = components["schemas"]["AuditEventPage"];
+export type PriceInputCreate = components["schemas"]["PriceInputCreate"];
 
 const BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
+
+type ErrorEnvelope = {
+  error?: {
+    code?: string;
+    message?: string;
+    field?: string | null;
+    details?: Record<string, unknown>;
+  };
+};
 
 export class ApiError extends Error {
   readonly code: string;
@@ -13,14 +25,20 @@ export class ApiError extends Error {
   readonly details: Record<string, unknown>;
   readonly status: number;
 
-  constructor(status: number, body: {
-    error: { code: string; message: string; field: string | null; details: Record<string, unknown> };
-  }) {
-    super(body.error.message);
+  /**
+   * Toutes les réponses d'erreur ne suivent pas le catalogue : un 404 de
+   * routage ou une panne d'infrastructure renvoient une autre forme. Sans
+   * garde, la lecture du corps échouerait et masquerait l'erreur réelle
+   * derrière un `TypeError`.
+   */
+  constructor(status: number, body: unknown) {
+    const envelope = (body ?? {}) as ErrorEnvelope;
+    const error = envelope.error;
+    super(error?.message ?? `Erreur ${status}.`);
     this.status = status;
-    this.code = body.error.code;
-    this.field = body.error.field;
-    this.details = body.error.details;
+    this.code = error?.code ?? "UNKNOWN_ERROR";
+    this.field = error?.field ?? null;
+    this.details = error?.details ?? {};
   }
 }
 
@@ -35,7 +53,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
 
   if (!response.ok) {
-    const body = await response.json();
+    // Un corps illisible (page HTML, réponse vide) ne doit pas éclipser le
+    // statut, qui reste l'information la plus fiable.
+    const body = await response.json().catch(() => null);
     throw new ApiError(response.status, body);
   }
 
@@ -105,5 +125,27 @@ export function patchSellerProfile(
   return request<OpportunityResponse>(
     `/opportunities/${opportunityId}/seller-profile`,
     { method: "PATCH", body: JSON.stringify(body) },
+  );
+}
+
+export function listOpportunityEvents(
+  opportunityId: string,
+  params?: { cursor?: string },
+): Promise<AuditEventPage> {
+  const query = new URLSearchParams();
+  if (params?.cursor) query.set("cursor", params.cursor);
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  return request<AuditEventPage>(
+    `/opportunities/${opportunityId}/events${suffix}`,
+  );
+}
+
+export function addPriceInput(
+  opportunityId: string,
+  body: PriceInputCreate,
+): Promise<{ id: string }> {
+  return request<{ id: string }>(
+    `/opportunities/${opportunityId}/price-inputs`,
+    { method: "POST", body: JSON.stringify(body) },
   );
 }

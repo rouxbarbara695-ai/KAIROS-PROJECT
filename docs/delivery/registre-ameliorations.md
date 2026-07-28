@@ -18,6 +18,7 @@ Chaque entrée porte un identifiant stable. Priorités :
 |---|---|---|
 | POL-001 | ~~P1~~ | ~~Valeurs de vocabulaire affichées brutes.~~ **Traité** : `apps/web/src/lib/labels.ts` porte une première proposition de libellés, à corriger librement — c'est le seul endroit à modifier. |
 | POL-002 | ~~P1~~ | ~~Montants affichés tels quels.~~ **Traité** : `formatAmount` applique un formatage localisé sans arrondir ni compléter, en conservant les décimales reçues de l'API. |
+| POL-025 | P2 | L'historique d'audit n'est pas paginé dans l'interface : au-delà de la première page, les corrections anciennes ne sont pas atteignables (l'API expose pourtant un curseur). |
 | POL-003 | P1 | Aucune frontière d'erreur : une erreur serveur produit l'écran d'erreur brut de Next.js. Ajouter `error.tsx` et `not-found.tsx` cohérents avec la charte. |
 | POL-004 | P2 | Aucun état de chargement : les pages serveur bloquent sans retour visuel. Ajouter `loading.tsx` et des squelettes sur la liste et le détail. |
 | POL-005 | P2 | Les erreurs de formulaire sont un simple paragraphe. Prévoir un retour par champ et une zone `aria-live` pour les lecteurs d'écran. |
@@ -34,9 +35,9 @@ mais doivent être comblés pour que le parcours soit réellement utilisable.
 
 | ID | Priorité | Sujet |
 |---|---|---|
-| POL-020 | P1 | `PATCH /opportunities/{id}/watch-profile` et `/seller-profile` n'ont aucune interface : les corrections auditées ne sont accessibles que par l'API. |
-| POL-021 | P1 | L'ajout d'un relevé de prix (`POST .../price-inputs`) n'est pas exposé, alors que le suivi de prix est au cœur du parcours. |
-| POL-022 | P2 | Le formulaire ne couvre que le mode manuel ; la création depuis une URL d'annonce est supportée par l'API mais absente de l'interface. |
+| POL-020 | ~~P1~~ | ~~Corrections de profil sans interface.~~ **Traité (KAI-104)** : replis « Corriger l'état et le set » et « Corriger le vendeur » sur la fiche, motif obligatoire. |
+| POL-021 | ~~P1~~ | ~~Relevé de prix non exposé.~~ **Traité (KAI-104)** : repli « Ajouter un relevé de prix », avec cas du prix non communiqué. |
+| POL-022 | ~~P2~~ | ~~Mode URL absent du formulaire.~~ **Traité (KAI-104)** : sélecteur manuel / annonce en ligne. |
 | POL-023 | P2 | Le contrôle de concurrence (`If-Match` / version de ressource) n'est pas propagé par le client web : deux corrections simultanées ne sont pas arbitrées côté interface. |
 | POL-024 | P3 | La sélection de stratégie existe en base et à l'API sans écran dédié. |
 

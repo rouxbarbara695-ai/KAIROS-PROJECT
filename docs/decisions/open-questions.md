@@ -15,6 +15,8 @@ configurations, mais ne doit ni activer ni inventer une réponse.
 | Q-08 | conservation des images/pages | aucune page brute par défaut | import externe |
 | Q-09 | seuils de profit par segment | règles V1 globales | calibration bêta |
 | Q-10 | validation des primes de set | +10 % / +20 % versionnées | calibration bêta |
+| Q-11 | méthode de quantile pour `Q1`/`Q3` | charnières de Tukey | repli IQR des anomalies |
+| Q-12 | dimension d'état et écart de set gouvernant la similarité | écart le plus défavorable ; au-delà de deux niveaux, coefficient le plus bas | pondération des comparables |
 
 Une décision modifiant un calcul crée un nouveau ruleset. Une décision d’accès
 plateforme crée une nouvelle `PlatformRule`; elle ne modifie pas l’historique.

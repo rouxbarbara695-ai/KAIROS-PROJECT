@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from decimal import Decimal
 
 from sqlalchemy import CHAR, Boolean, ForeignKey, Numeric, Text, text
 from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP, UUID
@@ -37,10 +38,10 @@ class Comparable(Base):
     price_kind: Mapped[str] = mapped_column(
         pg_enum(PriceKind, "price_kind"), nullable=False
     )
-    amount_source: Mapped[float] = mapped_column(Numeric(16, 2), nullable=False)
+    amount_source: Mapped[Decimal] = mapped_column(Numeric(16, 2), nullable=False)
     currency: Mapped[str] = mapped_column(CHAR(3), nullable=False)
-    amount_eur: Mapped[float] = mapped_column(Numeric(16, 2), nullable=False)
-    rate_to_eur: Mapped[float] = mapped_column(Numeric(24, 12), nullable=False)
+    amount_eur: Mapped[Decimal] = mapped_column(Numeric(16, 2), nullable=False)
+    rate_to_eur: Mapped[Decimal] = mapped_column(Numeric(24, 12), nullable=False)
     fx_rate_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), nullable=False
     )
@@ -48,16 +49,18 @@ class Comparable(Base):
     fx_rate_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("fx_rates.id")
     )
-    buyer_variable_fee_eur: Mapped[float] = mapped_column(
+    buyer_variable_fee_eur: Mapped[Decimal] = mapped_column(
         Numeric(16, 2), nullable=False, server_default=text("0")
     )
-    buyer_fixed_fee_eur: Mapped[float] = mapped_column(
+    buyer_fixed_fee_eur: Mapped[Decimal] = mapped_column(
         Numeric(16, 2), nullable=False, server_default=text("0")
     )
-    compulsory_shipping_eur: Mapped[float] = mapped_column(
+    compulsory_shipping_eur: Mapped[Decimal] = mapped_column(
         Numeric(16, 2), nullable=False, server_default=text("0")
     )
-    buyer_total_price_eur: Mapped[float] = mapped_column(Numeric(16, 2), nullable=False)
+    buyer_total_price_eur: Mapped[Decimal] = mapped_column(
+        Numeric(16, 2), nullable=False
+    )
     market_status: Mapped[str] = mapped_column(
         pg_enum(ListingStatus, "listing_status"), nullable=False
     )
@@ -133,10 +136,10 @@ class MarketValuation(Base):
     calculated_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), nullable=False, server_default=text("now()")
     )
-    low_value_eur: Mapped[float] = mapped_column(Numeric(16, 2), nullable=False)
-    central_value_eur: Mapped[float] = mapped_column(Numeric(16, 2), nullable=False)
-    high_value_eur: Mapped[float] = mapped_column(Numeric(16, 2), nullable=False)
-    valuation_confidence: Mapped[float] = mapped_column(Numeric(7, 4), nullable=False)
+    low_value_eur: Mapped[Decimal] = mapped_column(Numeric(16, 2), nullable=False)
+    central_value_eur: Mapped[Decimal] = mapped_column(Numeric(16, 2), nullable=False)
+    high_value_eur: Mapped[Decimal] = mapped_column(Numeric(16, 2), nullable=False)
+    valuation_confidence: Mapped[Decimal] = mapped_column(Numeric(7, 4), nullable=False)
     trend: Mapped[str | None] = mapped_column(Text)
     ruleset_snapshot: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
     explanation: Mapped[dict[str, object]] = mapped_column(
@@ -153,28 +156,32 @@ class ValuationComparable(Base):
     comparable_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("comparables.id"), primary_key=True
     )
-    source_amount_snapshot: Mapped[float] = mapped_column(
+    source_amount_snapshot: Mapped[Decimal] = mapped_column(
         Numeric(16, 2), nullable=False
     )
     source_currency_snapshot: Mapped[str] = mapped_column(CHAR(3), nullable=False)
-    amount_eur_snapshot: Mapped[float] = mapped_column(Numeric(16, 2), nullable=False)
-    buyer_total_price_eur: Mapped[float] = mapped_column(Numeric(16, 2), nullable=False)
-    comparable_set_premium: Mapped[float] = mapped_column(
+    amount_eur_snapshot: Mapped[Decimal] = mapped_column(Numeric(16, 2), nullable=False)
+    buyer_total_price_eur: Mapped[Decimal] = mapped_column(
+        Numeric(16, 2), nullable=False
+    )
+    comparable_set_premium: Mapped[Decimal] = mapped_column(
         Numeric(18, 10), nullable=False
     )
-    target_set_premium: Mapped[float] = mapped_column(Numeric(18, 10), nullable=False)
-    adjusted_price_eur: Mapped[float] = mapped_column(Numeric(16, 2), nullable=False)
-    source_reliability_factor: Mapped[float] = mapped_column(
+    target_set_premium: Mapped[Decimal] = mapped_column(Numeric(18, 10), nullable=False)
+    adjusted_price_eur: Mapped[Decimal] = mapped_column(Numeric(16, 2), nullable=False)
+    source_reliability_factor: Mapped[Decimal] = mapped_column(
         Numeric(18, 12), nullable=False
     )
-    recency_factor: Mapped[float] = mapped_column(Numeric(18, 12), nullable=False)
-    reference_factor: Mapped[float] = mapped_column(Numeric(18, 12), nullable=False)
-    condition_factor: Mapped[float] = mapped_column(Numeric(18, 12), nullable=False)
-    completeness_factor: Mapped[float] = mapped_column(Numeric(18, 12), nullable=False)
-    seller_independence_factor: Mapped[float] = mapped_column(
+    recency_factor: Mapped[Decimal] = mapped_column(Numeric(18, 12), nullable=False)
+    reference_factor: Mapped[Decimal] = mapped_column(Numeric(18, 12), nullable=False)
+    condition_factor: Mapped[Decimal] = mapped_column(Numeric(18, 12), nullable=False)
+    completeness_factor: Mapped[Decimal] = mapped_column(
         Numeric(18, 12), nullable=False
     )
-    final_weight: Mapped[float] = mapped_column(Numeric(24, 16), nullable=False)
+    seller_independence_factor: Mapped[Decimal] = mapped_column(
+        Numeric(18, 12), nullable=False
+    )
+    final_weight: Mapped[Decimal] = mapped_column(Numeric(24, 16), nullable=False)
     anomaly_flag: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("false")
     )

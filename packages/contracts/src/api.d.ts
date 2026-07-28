@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/api/v1/comparables/{comparable_id}/overrides": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Override Route */
+        post: operations["create_override_route_api_v1_comparables__comparable_id__overrides_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health": {
         parameters: {
             query?: never;
@@ -91,6 +108,41 @@ export interface paths {
         patch: operations["patch_opportunity_route_api_v1_opportunities__opportunity_id__patch"];
         trace?: never;
     };
+    "/api/v1/opportunities/{opportunity_id}/comparables": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Comparables Route */
+        get: operations["list_comparables_route_api_v1_opportunities__opportunity_id__comparables_get"];
+        put?: never;
+        /** Create Comparable Route */
+        post: operations["create_comparable_route_api_v1_opportunities__opportunity_id__comparables_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/opportunities/{opportunity_id}/comparables/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Import Comparables Route */
+        post: operations["import_comparables_route_api_v1_opportunities__opportunity_id__comparables_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/opportunities/{opportunity_id}/events": {
         parameters: {
             query?: never;
@@ -157,6 +209,27 @@ export interface paths {
         head?: never;
         /** Patch Seller Profile Route */
         patch: operations["patch_seller_profile_route_api_v1_opportunities__opportunity_id__seller_profile_patch"];
+        trace?: never;
+    };
+    "/api/v1/opportunities/{opportunity_id}/valuations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Valuation Route
+         * @description Recalcule la cote. Chaque appel crée une version : une valorisation
+         *     publiée n'est jamais écrasée (CLAUDE.md règle 4).
+         */
+        post: operations["create_valuation_route_api_v1_opportunities__opportunity_id__valuations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/opportunities/{opportunity_id}/watch-profile": {
@@ -238,6 +311,155 @@ export interface components {
             /** Resource Type */
             resource_type: string;
         };
+        /**
+         * ComparableCreate
+         * @description Comparable saisi manuellement.
+         *
+         *     `price_kind` décrit la nature économique du prix, `source_reliability` la
+         *     qualité de la preuve : les deux sont obligatoires et ne se substituent pas
+         *     l'un à l'autre (calculation-spec.md § 2).
+         */
+        ComparableCreate: {
+            /** Amount */
+            amount: number | string;
+            /** Box */
+            box?: boolean | null;
+            /** Buyer Fixed Fee Eur */
+            buyer_fixed_fee_eur?: number | string | null;
+            /** Buyer Variable Fee Eur */
+            buyer_variable_fee_eur?: number | string | null;
+            /** Compulsory Shipping Eur */
+            compulsory_shipping_eur?: number | string | null;
+            /** Cosmetic Condition */
+            cosmetic_condition?: string | null;
+            /** Currency */
+            currency: string;
+            /** Ended At */
+            ended_at?: string | null;
+            /** Listed At */
+            listed_at?: string | null;
+            /**
+             * Market Status
+             * @enum {string}
+             */
+            market_status: "active" | "sold" | "removed" | "ended" | "unknown";
+            /** Mechanical Condition */
+            mechanical_condition?: string | null;
+            /**
+             * Observed At
+             * Format: date-time
+             */
+            observed_at: string;
+            /** Papers */
+            papers?: boolean | null;
+            /**
+             * Price Kind
+             * @enum {string}
+             */
+            price_kind: "asking" | "offer" | "accepted_offer" | "current_bid" | "hammer" | "realized" | "external_estimate" | "kairos_estimate";
+            /** Seller Fingerprint */
+            seller_fingerprint?: string | null;
+            /** Source External Id */
+            source_external_id?: string | null;
+            /** Source Name */
+            source_name: string;
+            /**
+             * Source Reliability
+             * @enum {string}
+             */
+            source_reliability: "a" | "b" | "c" | "d" | "e";
+        };
+        /**
+         * ComparableImportRequest
+         * @description Contenu CSV lu côté client. Éviter le multipart garde l'API homogène et
+         *     testable sans dépendance supplémentaire.
+         */
+        ComparableImportRequest: {
+            /** Content */
+            content: string;
+        };
+        /**
+         * ComparableImportResult
+         * @description Résultat d'un import CSV.
+         *
+         *     Les lignes valides sont importées et les lignes en échec rapportées avec
+         *     leur numéro : un fichier partiellement erroné ne fait pas perdre le travail
+         *     de saisie déjà correct.
+         */
+        ComparableImportResult: {
+            /** Imported */
+            imported: number;
+            /** Rejected */
+            rejected: components["schemas"]["ComparableImportRow"][];
+        };
+        /** ComparableImportRow */
+        ComparableImportRow: {
+            /** Error */
+            error: string;
+            /** Line */
+            line: number;
+        };
+        /** ComparablePage */
+        ComparablePage: {
+            /** Items */
+            items: components["schemas"]["ComparableResponse"][];
+            /** Next Cursor */
+            next_cursor: string | null;
+        };
+        /** ComparableResponse */
+        ComparableResponse: {
+            /** Amount Eur */
+            amount_eur: string;
+            /** Amount Source */
+            amount_source: string;
+            /** Buyer Total Price Eur */
+            buyer_total_price_eur: string;
+            /** Completeness Data */
+            completeness_data: {
+                [key: string]: unknown;
+            };
+            /** Condition Data */
+            condition_data: {
+                [key: string]: unknown;
+            };
+            /** Currency */
+            currency: string;
+            /** Ended At */
+            ended_at: string | null;
+            /** Excluded */
+            excluded: boolean;
+            /** Exclusion Reason */
+            exclusion_reason: string | null;
+            /**
+             * Fx Rate At
+             * Format: date-time
+             */
+            fx_rate_at: string;
+            /** Fx Source */
+            fx_source: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Listed At */
+            listed_at: string | null;
+            /** Market Status */
+            market_status: string;
+            /**
+             * Observed At
+             * Format: date-time
+             */
+            observed_at: string;
+            /** Price Kind */
+            price_kind: string;
+            /** Rate To Eur */
+            rate_to_eur: string;
+            /** Source Name */
+            source_name: string;
+            /** Source Reliability */
+            source_reliability: string;
+        };
         /** CreateOpportunityRequest */
         CreateOpportunityRequest: {
             /**
@@ -310,6 +532,55 @@ export interface components {
             /** Version */
             version: number;
             watch: components["schemas"]["WatchProfileResponse"];
+        };
+        /**
+         * OverrideCreate
+         * @description Correction, exclusion ou réintégration d'un comparable.
+         *
+         *     Une exclusion exige son propre motif en plus du motif d'audit : le premier
+         *     documente la décision métier, le second la trace (schéma `comparable_overrides`).
+         */
+        OverrideCreate: {
+            /** Corrected Data */
+            corrected_data?: {
+                [key: string]: unknown;
+            };
+            /** Excluded */
+            excluded: boolean;
+            /** Exclusion Reason */
+            exclusion_reason?: string | null;
+            /** Reason */
+            reason: string;
+        };
+        /** OverrideResponse */
+        OverrideResponse: {
+            /**
+             * Comparable Id
+             * Format: uuid
+             */
+            comparable_id: string;
+            /** Corrected Data */
+            corrected_data: {
+                [key: string]: unknown;
+            };
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Excluded */
+            excluded: boolean;
+            /** Exclusion Reason */
+            exclusion_reason: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Previous Override Id */
+            previous_override_id: string | null;
+            /** Reason */
+            reason: string;
         };
         /** PriceCreate */
         PriceCreate: {
@@ -415,6 +686,42 @@ export interface components {
             /** Error Type */
             type: string;
         };
+        /**
+         * ValuationResponse
+         * @description Cote figée et sa trace.
+         *
+         *     `explanation` porte les entrées, exclusions, plafonds et versions exigés
+         *     par la règle 6 : une cote doit pouvoir être rejouée et contestée.
+         */
+        ValuationResponse: {
+            /**
+             * Calculated At
+             * Format: date-time
+             */
+            calculated_at: string;
+            /** Central Value Eur */
+            central_value_eur: string;
+            /** Explanation */
+            explanation: {
+                [key: string]: unknown;
+            };
+            /** High Value Eur */
+            high_value_eur: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Low Value Eur */
+            low_value_eur: string;
+            /**
+             * Opportunity Id
+             * Format: uuid
+             */
+            opportunity_id: string;
+            /** Valuation Confidence */
+            valuation_confidence: string;
+        };
         /** WatchCreate */
         WatchCreate: {
             /** Box */
@@ -488,6 +795,41 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    create_override_route_api_v1_comparables__comparable_id__overrides_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                comparable_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OverrideCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OverrideResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     health_api_v1_health_get: {
         parameters: {
             query?: never;
@@ -688,6 +1030,110 @@ export interface operations {
             };
         };
     };
+    list_comparables_route_api_v1_opportunities__opportunity_id__comparables_get: {
+        parameters: {
+            query?: {
+                limit?: number | null;
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                opportunity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComparablePage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_comparable_route_api_v1_opportunities__opportunity_id__comparables_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                opportunity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ComparableCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComparableResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_comparables_route_api_v1_opportunities__opportunity_id__comparables_import_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                opportunity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ComparableImportRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComparableImportResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_opportunity_events_route_api_v1_opportunities__opportunity_id__events_get: {
         parameters: {
             query?: {
@@ -816,6 +1262,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OpportunityResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_valuation_route_api_v1_opportunities__opportunity_id__valuations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                opportunity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValuationResponse"];
                 };
             };
             /** @description Validation Error */

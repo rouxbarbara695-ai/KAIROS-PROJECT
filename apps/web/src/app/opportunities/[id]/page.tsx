@@ -10,6 +10,8 @@ import {
   SellerProfileForm,
   WatchProfileForm,
 } from "./CorrectionForms";
+import { ComparablesPanel } from "./ComparablesPanel";
+import { ValuationPanel } from "./ValuationPanel";
 import { ReferenceConfirmationForm } from "./ReferenceConfirmationForm";
 
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
@@ -168,12 +170,9 @@ export default async function OpportunityDetailPage({
 
         <Card>
           <h2 className="mb-3 text-sm font-semibold text-fg-muted">
-            Analyse
+            Cote de marché
           </h2>
-          <p className="text-sm text-fg-muted">
-            Aucune analyse : les moteurs de valorisation, pricing et score
-            arrivent avec l&rsquo;Epic 2/3.
-          </p>
+          <ValuationPanel opportunityId={opportunity.id} />
         </Card>
       </div>
 
@@ -185,6 +184,18 @@ export default async function OpportunityDetailPage({
           opportunityId={opportunity.id}
           currentStatus={opportunity.watch.reference_status}
           referenceId={opportunity.watch.reference_id ?? null}
+        />
+      </Card>
+
+      <Card>
+        <h2 className="mb-3 text-sm font-semibold text-fg-muted">
+          Comparables
+        </h2>
+        <ComparablesPanel
+          opportunityId={opportunity.id}
+          referenceConfirmed={["confirmed", "corrected"].includes(
+            opportunity.watch.reference_status,
+          )}
         />
       </Card>
 

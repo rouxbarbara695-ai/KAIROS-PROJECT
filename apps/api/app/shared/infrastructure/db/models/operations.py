@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from decimal import Decimal
 
 from sqlalchemy import CHAR, ForeignKey, Numeric, Text, text
 from sqlalchemy.dialects.postgresql import TIMESTAMP, UUID
@@ -44,23 +45,23 @@ class OpportunityCost(Base):
     )
     basis: Mapped[str | None] = mapped_column(pg_enum(CostBasis, "cost_basis"))
 
-    amount_low_source: Mapped[float | None] = mapped_column(Numeric(16, 2))
-    amount_central_source: Mapped[float | None] = mapped_column(Numeric(16, 2))
-    amount_high_source: Mapped[float | None] = mapped_column(Numeric(16, 2))
+    amount_low_source: Mapped[Decimal | None] = mapped_column(Numeric(16, 2))
+    amount_central_source: Mapped[Decimal | None] = mapped_column(Numeric(16, 2))
+    amount_high_source: Mapped[Decimal | None] = mapped_column(Numeric(16, 2))
     currency: Mapped[str | None] = mapped_column(CHAR(3))
-    amount_low_eur: Mapped[float | None] = mapped_column(Numeric(16, 2))
-    amount_central_eur: Mapped[float | None] = mapped_column(Numeric(16, 2))
-    amount_high_eur: Mapped[float | None] = mapped_column(Numeric(16, 2))
-    rate_to_eur: Mapped[float | None] = mapped_column(Numeric(24, 12))
+    amount_low_eur: Mapped[Decimal | None] = mapped_column(Numeric(16, 2))
+    amount_central_eur: Mapped[Decimal | None] = mapped_column(Numeric(16, 2))
+    amount_high_eur: Mapped[Decimal | None] = mapped_column(Numeric(16, 2))
+    rate_to_eur: Mapped[Decimal | None] = mapped_column(Numeric(24, 12))
     fx_rate_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
     fx_source: Mapped[str | None] = mapped_column(Text)
     fx_rate_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("fx_rates.id")
     )
 
-    rate_low: Mapped[float | None] = mapped_column(Numeric(18, 10))
-    rate_central: Mapped[float | None] = mapped_column(Numeric(18, 10))
-    rate_high: Mapped[float | None] = mapped_column(Numeric(18, 10))
+    rate_low: Mapped[Decimal | None] = mapped_column(Numeric(18, 10))
+    rate_central: Mapped[Decimal | None] = mapped_column(Numeric(18, 10))
+    rate_high: Mapped[Decimal | None] = mapped_column(Numeric(18, 10))
 
     incurred_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
     provenance: Mapped[str | None] = mapped_column(Text)
@@ -85,10 +86,10 @@ class Purchase(Base):
     opportunity_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("opportunities.id"), nullable=False, unique=True
     )
-    amount_source: Mapped[float] = mapped_column(Numeric(16, 2), nullable=False)
+    amount_source: Mapped[Decimal] = mapped_column(Numeric(16, 2), nullable=False)
     currency: Mapped[str] = mapped_column(CHAR(3), nullable=False)
-    amount_eur: Mapped[float] = mapped_column(Numeric(16, 2), nullable=False)
-    rate_to_eur: Mapped[float] = mapped_column(Numeric(24, 12), nullable=False)
+    amount_eur: Mapped[Decimal] = mapped_column(Numeric(16, 2), nullable=False)
+    rate_to_eur: Mapped[Decimal] = mapped_column(Numeric(24, 12), nullable=False)
     fx_rate_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), nullable=False
     )
@@ -125,10 +126,12 @@ class SaleListing(Base):
     platform_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("platforms.id")
     )
-    asking_amount_source: Mapped[float] = mapped_column(Numeric(16, 2), nullable=False)
+    asking_amount_source: Mapped[Decimal] = mapped_column(
+        Numeric(16, 2), nullable=False
+    )
     currency: Mapped[str] = mapped_column(CHAR(3), nullable=False)
-    asking_amount_eur: Mapped[float] = mapped_column(Numeric(16, 2), nullable=False)
-    rate_to_eur: Mapped[float] = mapped_column(Numeric(24, 12), nullable=False)
+    asking_amount_eur: Mapped[Decimal] = mapped_column(Numeric(16, 2), nullable=False)
+    rate_to_eur: Mapped[Decimal] = mapped_column(Numeric(24, 12), nullable=False)
     fx_rate_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), nullable=False
     )
@@ -169,12 +172,12 @@ class Sale(Base):
     sale_listing_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("sale_listings.id")
     )
-    realized_amount_source: Mapped[float] = mapped_column(
+    realized_amount_source: Mapped[Decimal] = mapped_column(
         Numeric(16, 2), nullable=False
     )
     currency: Mapped[str] = mapped_column(CHAR(3), nullable=False)
-    realized_amount_eur: Mapped[float] = mapped_column(Numeric(16, 2), nullable=False)
-    rate_to_eur: Mapped[float] = mapped_column(Numeric(24, 12), nullable=False)
+    realized_amount_eur: Mapped[Decimal] = mapped_column(Numeric(16, 2), nullable=False)
+    rate_to_eur: Mapped[Decimal] = mapped_column(Numeric(24, 12), nullable=False)
     fx_rate_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), nullable=False
     )

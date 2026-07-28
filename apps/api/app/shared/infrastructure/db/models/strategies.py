@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from decimal import Decimal
 
 from sqlalchemy import ForeignKey, Integer, Numeric, Text, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP, UUID
@@ -53,16 +54,16 @@ class StrategyVersion(Base):
     valid_from: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), nullable=False
     )
-    minimum_roi: Mapped[float] = mapped_column(
+    minimum_roi: Mapped[Decimal] = mapped_column(
         Numeric(18, 10), nullable=False, server_default=text("0.10")
     )
-    minimum_profit_eur: Mapped[float] = mapped_column(
+    minimum_profit_eur: Mapped[Decimal] = mapped_column(
         Numeric(16, 2), nullable=False, server_default=text("200")
     )
-    maximum_allocation_rate: Mapped[float] = mapped_column(
+    maximum_allocation_rate: Mapped[Decimal] = mapped_column(
         Numeric(18, 10), nullable=False, server_default=text("0.50")
     )
-    negotiation_buffer: Mapped[float] = mapped_column(
+    negotiation_buffer: Mapped[Decimal] = mapped_column(
         Numeric(18, 10), nullable=False, server_default=text("0.08")
     )
     settings: Mapped[dict[str, object]] = mapped_column(

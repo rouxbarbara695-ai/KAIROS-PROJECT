@@ -92,9 +92,22 @@ async def _engine(_test_database: None) -> AsyncIterator[object]:
 
 
 @pytest_asyncio.fixture(autouse=True)
-async def _clean_database(_engine) -> AsyncIterator[None]:
+async def _clean_database(request: pytest.FixtureRequest) -> AsyncIterator[None]:
+    """Nettoie la base après chaque test d'intégration.
+
+    Restreint aux tests marqués `integration` : les moteurs métier sont des
+    fonctions pures, écrites pour ne dépendre ni de FastAPI ni de PostgreSQL.
+    Un nettoyage inconditionnel les rendrait pourtant intestables sans base,
+    ce qui contredirait exactement ce que cette séparation cherche à garantir.
+    """
+
+    if request.node.get_closest_marker("integration") is None:
+        yield
+        return
+
+    engine = request.getfixturevalue("_engine")
     yield
-    async with _engine.begin() as conn:
+    async with engine.begin() as conn:
         await conn.execute(
             text(f"TRUNCATE TABLE {', '.join(_TRUNCATE_TABLES)} CASCADE")
         )

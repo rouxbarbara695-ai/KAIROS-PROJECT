@@ -149,3 +149,61 @@ export function addPriceInput(
     { method: "POST", body: JSON.stringify(body) },
   );
 }
+
+export type ComparableResponse = components["schemas"]["ComparableResponse"];
+export type ComparablePage = components["schemas"]["ComparablePage"];
+export type ComparableCreate = components["schemas"]["ComparableCreate"];
+export type ComparableImportResult =
+  components["schemas"]["ComparableImportResult"];
+export type ValuationResponse = components["schemas"]["ValuationResponse"];
+
+export function listComparables(
+  opportunityId: string,
+): Promise<ComparablePage> {
+  return request<ComparablePage>(
+    `/opportunities/${opportunityId}/comparables?limit=100`,
+  );
+}
+
+export function createComparable(
+  opportunityId: string,
+  body: ComparableCreate,
+): Promise<ComparableResponse> {
+  return request<ComparableResponse>(
+    `/opportunities/${opportunityId}/comparables`,
+    { method: "POST", body: JSON.stringify(body) },
+  );
+}
+
+export function importComparables(
+  opportunityId: string,
+  content: string,
+): Promise<ComparableImportResult> {
+  return request<ComparableImportResult>(
+    `/opportunities/${opportunityId}/comparables/import`,
+    { method: "POST", body: JSON.stringify({ content }) },
+  );
+}
+
+export function createOverride(
+  comparableId: string,
+  body: {
+    excluded: boolean;
+    exclusion_reason?: string;
+    reason: string;
+  },
+): Promise<unknown> {
+  return request(`/comparables/${comparableId}/overrides`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function createValuation(
+  opportunityId: string,
+): Promise<ValuationResponse> {
+  return request<ValuationResponse>(
+    `/opportunities/${opportunityId}/valuations`,
+    { method: "POST" },
+  );
+}

@@ -7,6 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.schemas.comparables import (
     ComparableCreate,
+    ComparableImportRequest,
+    ComparableImportResult,
     ComparablePage,
     ComparableResponse,
     OverrideCreate,
@@ -16,6 +18,7 @@ from app.api.v1.schemas.comparables import (
 from app.market.application.comparable_overrides import apply_override
 from app.market.application.compute_valuation import compute_valuation
 from app.market.application.create_comparable import create_comparable
+from app.market.application.import_comparables import import_comparables
 from app.market.application.list_comparables import ComparableView, list_comparables
 from app.shared.config import Settings, get_settings
 from app.shared.domain.page import clamp_limit
@@ -102,6 +105,23 @@ async def list_comparables_route(
             for view in page.items
         ],
         next_cursor=page.next_cursor,
+    )
+
+
+@router.post(
+    "/opportunities/{opportunity_id}/comparables/import",
+    status_code=status.HTTP_200_OK,
+    response_model=ComparableImportResult,
+)
+async def import_comparables_route(
+    opportunity_id: uuid.UUID,
+    body: ComparableImportRequest,
+    session: AsyncSession = Depends(get_session),
+    principal: Principal = Depends(get_current_principal),
+    settings: Settings = Depends(get_settings),
+) -> ComparableImportResult:
+    return await import_comparables(
+        session, principal, opportunity_id, body.content, settings
     )
 
 

@@ -126,6 +126,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/opportunities/{opportunity_id}/comparables/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Import Comparables Route */
+        post: operations["import_comparables_route_api_v1_opportunities__opportunity_id__comparables_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/opportunities/{opportunity_id}/events": {
         parameters: {
             query?: never;
@@ -351,6 +368,36 @@ export interface components {
              * @enum {string}
              */
             source_reliability: "a" | "b" | "c" | "d" | "e";
+        };
+        /**
+         * ComparableImportRequest
+         * @description Contenu CSV lu côté client. Éviter le multipart garde l'API homogène et
+         *     testable sans dépendance supplémentaire.
+         */
+        ComparableImportRequest: {
+            /** Content */
+            content: string;
+        };
+        /**
+         * ComparableImportResult
+         * @description Résultat d'un import CSV.
+         *
+         *     Les lignes valides sont importées et les lignes en échec rapportées avec
+         *     leur numéro : un fichier partiellement erroné ne fait pas perdre le travail
+         *     de saisie déjà correct.
+         */
+        ComparableImportResult: {
+            /** Imported */
+            imported: number;
+            /** Rejected */
+            rejected: components["schemas"]["ComparableImportRow"][];
+        };
+        /** ComparableImportRow */
+        ComparableImportRow: {
+            /** Error */
+            error: string;
+            /** Line */
+            line: number;
         };
         /** ComparablePage */
         ComparablePage: {
@@ -1039,6 +1086,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ComparableResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_comparables_route_api_v1_opportunities__opportunity_id__comparables_import_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                opportunity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ComparableImportRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComparableImportResult"];
                 };
             };
             /** @description Validation Error */

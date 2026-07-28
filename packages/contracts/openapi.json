@@ -324,6 +324,61 @@
         "title": "ComparableCreate",
         "type": "object"
       },
+      "ComparableImportRequest": {
+        "description": "Contenu CSV lu c\u00f4t\u00e9 client. \u00c9viter le multipart garde l'API homog\u00e8ne et\ntestable sans d\u00e9pendance suppl\u00e9mentaire.",
+        "properties": {
+          "content": {
+            "minLength": 1,
+            "title": "Content",
+            "type": "string"
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "title": "ComparableImportRequest",
+        "type": "object"
+      },
+      "ComparableImportResult": {
+        "description": "R\u00e9sultat d'un import CSV.\n\nLes lignes valides sont import\u00e9es et les lignes en \u00e9chec rapport\u00e9es avec\nleur num\u00e9ro : un fichier partiellement erron\u00e9 ne fait pas perdre le travail\nde saisie d\u00e9j\u00e0 correct.",
+        "properties": {
+          "imported": {
+            "title": "Imported",
+            "type": "integer"
+          },
+          "rejected": {
+            "items": {
+              "$ref": "#/components/schemas/ComparableImportRow"
+            },
+            "title": "Rejected",
+            "type": "array"
+          }
+        },
+        "required": [
+          "imported",
+          "rejected"
+        ],
+        "title": "ComparableImportResult",
+        "type": "object"
+      },
+      "ComparableImportRow": {
+        "properties": {
+          "error": {
+            "title": "Error",
+            "type": "string"
+          },
+          "line": {
+            "title": "Line",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "line",
+          "error"
+        ],
+        "title": "ComparableImportRow",
+        "type": "object"
+      },
       "ComparablePage": {
         "properties": {
           "items": {
@@ -1949,6 +2004,59 @@
           }
         },
         "summary": "Create Comparable Route",
+        "tags": [
+          "comparables"
+        ]
+      }
+    },
+    "/api/v1/opportunities/{opportunity_id}/comparables/import": {
+      "post": {
+        "operationId": "import_comparables_route_api_v1_opportunities__opportunity_id__comparables_import_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "opportunity_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Opportunity Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComparableImportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComparableImportResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Import Comparables Route",
         "tags": [
           "comparables"
         ]

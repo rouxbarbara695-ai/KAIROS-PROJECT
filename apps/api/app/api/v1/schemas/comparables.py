@@ -154,3 +154,10 @@ class ValuationResponse(BaseModel):
     high_value_eur: DecimalString
     valuation_confidence: DecimalString
     explanation: dict[str, object]
+
+
+class ComparableImportRequest(BaseModel):
+    """Contenu CSV lu côté client. Éviter le multipart garde l'API homogène et
+    testable sans dépendance supplémentaire."""
+
+    content: str = Field(min_length=1)

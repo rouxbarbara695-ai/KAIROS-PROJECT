@@ -40,6 +40,7 @@ mais doivent être comblés pour que le parcours soit réellement utilisable.
 | POL-022 | ~~P2~~ | ~~Mode URL absent du formulaire.~~ **Traité (KAI-104)** : sélecteur manuel / annonce en ligne. |
 | POL-023 | P2 | Le contrôle de concurrence (`If-Match` / version de ressource) n'est pas propagé par le client web : deux corrections simultanées ne sont pas arbitrées côté interface. |
 | POL-024 | P3 | La sélection de stratégie existe en base et à l'API sans écran dédié. |
+| POL-028 | P2 | Le pilier « capital et portefeuille » vaut 20 % du score et dépend de l'allocation, de la concentration par marque et de l'immobilisation — trois grandeurs que seul le grand livre (`KAI-502`, Epic 5) sait calculer. En attendant, elles sont fournies explicitement à l'analyse plutôt qu'inventées. À remplacer par des valeurs calculées dès que le portefeuille existe. |
 | POL-026 | P2 | La liste des comparables n'indique pas qu'un comparable a été écarté comme anomalie lors du dernier calcul : l'information n'existe que dans la trace de la valorisation, pas sur le comparable lui-même. |
 | POL-027 | P3 | L'exclusion d'un comparable demande son motif par une invite du navigateur, faute d'un composant de dialogue. |
 

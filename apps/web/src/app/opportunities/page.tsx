@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Card, EmptyState } from "@/components/Card";
 import { StatusBadge, ReferenceStatusBadge } from "@/components/Badge";
 import { listOpportunities } from "@/lib/api";
+import { formatAmount, labels } from "@/lib/labels";
 
 export default async function OpportunitiesPage({
   searchParams,
@@ -72,14 +73,16 @@ export default async function OpportunitiesPage({
                     <p className="mt-1 text-sm text-fg-muted">
                       {opportunity.source_mode === "manual"
                         ? opportunity.manual_identifier
-                        : "Annonce en ligne"}
+                        : labels.sourceMode(opportunity.source_mode)}
                     </p>
                   </div>
                   <div className="flex items-center gap-4">
                     {opportunity.latest_price?.amount ? (
                       <span className="numeric text-sm">
-                        {opportunity.latest_price.amount}{" "}
-                        {opportunity.latest_price.currency}
+                        {formatAmount(
+                          opportunity.latest_price.amount,
+                          opportunity.latest_price.currency,
+                        )}
                       </span>
                     ) : (
                       <span className="text-sm text-fg-muted">

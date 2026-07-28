@@ -1,3 +1,5 @@
+import { labels } from "@/lib/labels";
+
 const STATUS_STYLES: Record<string, string> = {
   watching: "bg-blue-500/10 text-blue-400 ring-blue-500/30",
   buy: "bg-accent/15 text-accent-strong ring-accent/30",
@@ -17,7 +19,7 @@ export function StatusBadge({ status }: { status: string }) {
     <span
       className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${style}`}
     >
-      {status.replaceAll("_", " ")}
+      {labels.opportunityStatus(status)}
     </span>
   );
 }
@@ -33,7 +35,7 @@ export function ReferenceStatusBadge({ status }: { status: string }) {
     <span
       className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset ${style}`}
     >
-      {status}
+      {labels.referenceStatus(status)}
     </span>
   );
 }

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { Card } from "@/components/Card";
 import { StatusBadge, ReferenceStatusBadge } from "@/components/Badge";
 import { ApiError, getOpportunity } from "@/lib/api";
+import { formatAmount, labels } from "@/lib/labels";
 import { ReferenceConfirmationForm } from "./ReferenceConfirmationForm";
 
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
@@ -42,8 +43,8 @@ export default async function OpportunityDetailPage({
           </div>
           <p className="mt-1 text-sm text-fg-muted">
             {opportunity.source_mode === "manual"
-              ? `Saisie manuelle — ${opportunity.manual_identifier}`
-              : "Annonce en ligne"}
+              ? `${labels.sourceMode(opportunity.source_mode)} — ${opportunity.manual_identifier}`
+              : labels.sourceMode(opportunity.source_mode)}
           </p>
         </div>
         <StatusBadge status={opportunity.status} />
@@ -58,13 +59,16 @@ export default async function OpportunityDetailPage({
             label="Prix courant"
             value={
               opportunity.latest_price?.amount
-                ? `${opportunity.latest_price.amount} ${opportunity.latest_price.currency}`
+                ? formatAmount(
+                    opportunity.latest_price.amount,
+                    opportunity.latest_price.currency,
+                  )
                 : "sur demande"
             }
           />
           <DetailRow
             label="Équivalent EUR"
-            value={opportunity.latest_price?.amount_eur ?? "—"}
+            value={formatAmount(opportunity.latest_price?.amount_eur, "EUR")}
           />
           {opportunity.latest_price?.missing_reason && (
             <p className="mt-2 text-xs text-warning">
@@ -79,15 +83,21 @@ export default async function OpportunityDetailPage({
           </h2>
           <DetailRow
             label="Mécanique"
-            value={String(opportunity.watch.condition_data.mechanical ?? "—")}
+            value={labels.mechanicalCondition(
+              opportunity.watch.condition_data.mechanical as string | undefined,
+            )}
           />
           <DetailRow
             label="Cosmétique"
-            value={String(opportunity.watch.condition_data.cosmetic ?? "—")}
+            value={labels.cosmeticCondition(
+              opportunity.watch.condition_data.cosmetic as string | undefined,
+            )}
           />
           <DetailRow
             label="Complétude"
-            value={String(opportunity.watch.completeness_data.level ?? "—")}
+            value={labels.completenessLevel(
+              opportunity.watch.completeness_data.level as string | undefined,
+            )}
           />
         </Card>
 
@@ -103,7 +113,7 @@ export default async function OpportunityDetailPage({
               />
               <DetailRow
                 label="Type"
-                value={opportunity.seller.seller_type ?? "—"}
+                value={labels.sellerType(opportunity.seller.seller_type)}
               />
             </>
           ) : (

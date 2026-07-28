@@ -4,10 +4,7 @@ import { useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/Card";
 import { ApiError, createOpportunity } from "@/lib/api";
-
-const MECHANICAL_OPTIONS = ["verified", "functional", "unknown", "defect"];
-const COSMETIC_OPTIONS = ["excellent", "very_good", "good", "fair", "poor"];
-const SELLER_TYPES = ["private", "professional", "unknown"];
+import { labels, options } from "@/lib/labels";
 
 function Field({
   label,
@@ -110,18 +107,18 @@ export function NewOpportunityForm({ portfolioId }: { portfolioId?: string }) {
         <div className="grid grid-cols-2 gap-4">
           <Field label="État mécanique">
             <select name="mechanical_condition" className={inputClass}>
-              {MECHANICAL_OPTIONS.map((option) => (
+              {options.mechanicalCondition.map((option) => (
                 <option key={option} value={option}>
-                  {option}
+                  {labels.mechanicalCondition(option)}
                 </option>
               ))}
             </select>
           </Field>
           <Field label="État cosmétique">
             <select name="cosmetic_condition" className={inputClass}>
-              {COSMETIC_OPTIONS.map((option) => (
+              {options.cosmeticCondition.map((option) => (
                 <option key={option} value={option}>
-                  {option}
+                  {labels.cosmeticCondition(option)}
                 </option>
               ))}
             </select>
@@ -155,9 +152,9 @@ export function NewOpportunityForm({ portfolioId }: { portfolioId?: string }) {
           <Field label="Type de vendeur">
             <select name="seller_type" className={inputClass} defaultValue="">
               <option value="">—</option>
-              {SELLER_TYPES.map((option) => (
+              {options.sellerType.map((option) => (
                 <option key={option} value={option}>
-                  {option}
+                  {labels.sellerType(option)}
                 </option>
               ))}
             </select>

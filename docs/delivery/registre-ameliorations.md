@@ -16,8 +16,8 @@ Chaque entrée porte un identifiant stable. Priorités :
 
 | ID | Priorité | Sujet |
 |---|---|---|
-| POL-001 | P1 | Les valeurs de vocabulaire s'affichent brutes (`verified`, `watch_only`, `unconfirmed`). Il faut une table de libellés lisibles. **Décision produit requise** : les libellés visibles font partie du discours produit, pas de la technique. |
-| POL-002 | P1 | Les montants s'affichent tels quels (`9500.00 EUR`). Formatage localisé attendu (`9 500,00 €`) côté présentation uniquement — la valeur transportée reste une chaîne décimale. |
+| POL-001 | ~~P1~~ | ~~Valeurs de vocabulaire affichées brutes.~~ **Traité** : `apps/web/src/lib/labels.ts` porte une première proposition de libellés, à corriger librement — c'est le seul endroit à modifier. |
+| POL-002 | ~~P1~~ | ~~Montants affichés tels quels.~~ **Traité** : `formatAmount` applique un formatage localisé sans arrondir ni compléter, en conservant les décimales reçues de l'API. |
 | POL-003 | P1 | Aucune frontière d'erreur : une erreur serveur produit l'écran d'erreur brut de Next.js. Ajouter `error.tsx` et `not-found.tsx` cohérents avec la charte. |
 | POL-004 | P2 | Aucun état de chargement : les pages serveur bloquent sans retour visuel. Ajouter `loading.tsx` et des squelettes sur la liste et le détail. |
 | POL-005 | P2 | Les erreurs de formulaire sont un simple paragraphe. Prévoir un retour par champ et une zone `aria-live` pour les lecteurs d'écran. |
@@ -45,7 +45,7 @@ mais doivent être comblés pour que le parcours soit réellement utilisable.
 | ID | Priorité | Sujet |
 |---|---|---|
 | POL-040 | P1 | L'authentification est un mandataire de développement créé à la volée depuis une adresse de configuration. Aucun mécanisme d'identité réel : à traiter avant toute exposition hors poste local. |
-| POL-041 | P1 | La table `fx_rates` n'est alimentée par aucun processus. Toute devise autre que l'euro produit donc systématiquement un avertissement et un prix non converti. **Décision produit requise** : source de taux, fréquence et fraîcheur acceptable. |
+| POL-041 | P3 | La table `fx_rates` n'est alimentée par aucun processus. Sujet **déprioritisé** (`Q-03`) : les plateformes permettent généralement de choisir sa devise, donc les montants arrivent le plus souvent déjà en euros. Comportement assumé en attendant : devise source conservée, avertissement, pas d'équivalent EUR inventé. |
 | POL-042 | P2 | Aucun test de bout en bout automatisé. Le parcours a été vérifié au navigateur manuellement ; il faut figer cette vérification dans la CI. |
 | POL-043 | P2 | Redis est configuré et démarré sans être utilisé. Soit un usage réel arrive avec les moteurs, soit la dépendance sort du socle. |
 | POL-044 | P2 | Les origines CORS ont une valeur par défaut en dur dans la configuration. Elles doivent devenir strictement environnementales avant tout déploiement. |

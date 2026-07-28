@@ -8,6 +8,7 @@ on:
 env:
   DATABASE_URL: postgresql+psycopg://kairos:kairos@localhost:5432/kairos
   REDIS_URL: redis://localhost:6379/0
+  CURSOR_SECRET: ci-cursor-secret-not-for-production
 
 jobs:
   api-quality:
@@ -119,6 +120,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: astral-sh/setup-uv@v3
       - working-directory: apps/api
         run: uv sync --extra dev

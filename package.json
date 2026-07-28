@@ -1,0 +1,16 @@
+{
+  "name": "kairos",
+  "private": true,
+  "version": "0.1.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "web:dev": "pnpm --filter @kairos/web dev",
+    "web:build": "pnpm --filter @kairos/web build",
+    "web:lint": "pnpm --filter @kairos/web lint",
+    "web:typecheck": "pnpm --filter @kairos/web typecheck",
+    "web:test": "pnpm --filter @kairos/web test",
+    "contracts:generate": "pnpm --filter @kairos/contracts generate"
+  }
+}

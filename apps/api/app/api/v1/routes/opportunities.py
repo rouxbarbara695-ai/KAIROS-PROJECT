@@ -5,6 +5,10 @@ import uuid
 from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.v1.schemas.events import (
+    AuditEventPage,
+    to_audit_event_response,
+)
 from app.api.v1.schemas.opportunities import (
     CreateOpportunityRequest,
     OpportunityPage,
@@ -15,6 +19,7 @@ from app.api.v1.schemas.opportunities import (
     SellerProfilePatchRequest,
     WatchProfilePatchRequest,
 )
+from app.audit.application.list_events import list_opportunity_events
 from app.identity.application.reference_confirmation import confirm_reference
 from app.identity.application.seller_profile import patch_seller_profile
 from app.identity.application.watch_profile import patch_watch_profile
@@ -181,6 +186,23 @@ async def patch_seller_profile_route(
         session, principal, opportunity_id
     )
     return to_opportunity_response(opportunity, watch, reference, seller, latest_price)
+
+
+@router.get("/opportunities/{opportunity_id}/events", response_model=AuditEventPage)
+async def list_opportunity_events_route(
+    opportunity_id: uuid.UUID,
+    limit: int | None = Query(default=None),
+    cursor: str | None = Query(default=None),
+    session: AsyncSession = Depends(get_session),
+    principal: Principal = Depends(get_current_principal),
+) -> AuditEventPage:
+    page = await list_opportunity_events(
+        session, principal, opportunity_id, clamp_limit(limit), cursor
+    )
+    return AuditEventPage(
+        items=[to_audit_event_response(event) for event in page.items],
+        next_cursor=page.next_cursor,
+    )
 
 
 @router.post(

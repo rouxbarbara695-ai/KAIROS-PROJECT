@@ -1,8 +1,15 @@
 import { notFound } from "next/navigation";
 import { Card } from "@/components/Card";
 import { StatusBadge, ReferenceStatusBadge } from "@/components/Badge";
-import { ApiError, getOpportunity } from "@/lib/api";
+import { ApiError, getOpportunity, listOpportunityEvents } from "@/lib/api";
 import { formatAmount, labels } from "@/lib/labels";
+import { Disclosure } from "@/components/Disclosure";
+import { AuditTrail } from "./AuditTrail";
+import {
+  PriceInputForm,
+  SellerProfileForm,
+  WatchProfileForm,
+} from "./CorrectionForms";
 import { ReferenceConfirmationForm } from "./ReferenceConfirmationForm";
 
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
@@ -30,6 +37,8 @@ export default async function OpportunityDetailPage({
     }
     throw error;
   }
+
+  const events = await listOpportunityEvents(id);
 
   return (
     <div className="space-y-6">
@@ -75,6 +84,11 @@ export default async function OpportunityDetailPage({
               {opportunity.latest_price.missing_reason}
             </p>
           )}
+          <div className="mt-4">
+            <Disclosure summary="Ajouter un relevé de prix">
+              <PriceInputForm opportunityId={opportunity.id} />
+            </Disclosure>
+          </div>
         </Card>
 
         <Card>
@@ -99,6 +113,24 @@ export default async function OpportunityDetailPage({
               opportunity.watch.completeness_data.level as string | undefined,
             )}
           />
+          <div className="mt-4">
+            <Disclosure summary="Corriger l'état et le set">
+              <WatchProfileForm
+                opportunityId={opportunity.id}
+                current={{
+                  mechanical: opportunity.watch.condition_data.mechanical as
+                    | string
+                    | undefined,
+                  cosmetic: opportunity.watch.condition_data.cosmetic as
+                    | string
+                    | undefined,
+                  completeness: opportunity.watch.completeness_data.level as
+                    | string
+                    | undefined,
+                }}
+              />
+            </Disclosure>
+          </div>
         </Card>
 
         <Card>
@@ -121,6 +153,17 @@ export default async function OpportunityDetailPage({
               Aucune information vendeur.
             </p>
           )}
+          <div className="mt-4">
+            <Disclosure summary="Corriger le vendeur">
+              <SellerProfileForm
+                opportunityId={opportunity.id}
+                current={{
+                  countryCode: opportunity.seller?.country_code,
+                  sellerType: opportunity.seller?.seller_type,
+                }}
+              />
+            </Disclosure>
+          </div>
         </Card>
 
         <Card>
@@ -143,6 +186,13 @@ export default async function OpportunityDetailPage({
           currentStatus={opportunity.watch.reference_status}
           referenceId={opportunity.watch.reference_id ?? null}
         />
+      </Card>
+
+      <Card>
+        <h2 className="mb-4 text-sm font-semibold text-fg-muted">
+          Historique et audit
+        </h2>
+        <AuditTrail events={events.items} />
       </Card>
     </div>
   );

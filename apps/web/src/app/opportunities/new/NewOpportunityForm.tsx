@@ -30,6 +30,7 @@ export function NewOpportunityForm({ portfolioId }: { portfolioId?: string }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [mode, setMode] = useState<"manual" | "url">("manual");
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -49,10 +50,13 @@ export function NewOpportunityForm({ portfolioId }: { portfolioId?: string }) {
       try {
         const opportunity = await createOpportunity({
           portfolio_id: portfolioId,
-          source: {
-            mode: "manual",
-            manual_identifier: String(data.get("manual_identifier")),
-          },
+          source:
+            mode === "manual"
+              ? {
+                  mode: "manual",
+                  manual_identifier: String(data.get("manual_identifier")),
+                }
+              : { mode: "url", url: String(data.get("url")) },
           watch: {
             brand: String(data.get("brand")),
             reference: String(data.get("reference")),
@@ -86,14 +90,49 @@ export function NewOpportunityForm({ portfolioId }: { portfolioId?: string }) {
   return (
     <Card>
       <form onSubmit={handleSubmit} className="space-y-5">
-        <Field label="Identifiant manuel">
-          <input
-            name="manual_identifier"
-            required
-            className={inputClass}
-            placeholder="LONGINES-2026-001"
-          />
-        </Field>
+        <div
+          role="radiogroup"
+          aria-label="Mode de saisie"
+          className="inline-flex rounded-md border border-border p-0.5"
+        >
+          {(["manual", "url"] as const).map((option) => (
+            <button
+              key={option}
+              type="button"
+              role="radio"
+              aria-checked={mode === option}
+              onClick={() => setMode(option)}
+              className={`rounded px-3 py-1.5 text-sm font-medium transition-colors ${
+                mode === option
+                  ? "bg-accent text-bg"
+                  : "text-fg-muted hover:text-fg"
+              }`}
+            >
+              {labels.sourceMode(option)}
+            </button>
+          ))}
+        </div>
+
+        {mode === "manual" ? (
+          <Field label="Identifiant manuel">
+            <input
+              name="manual_identifier"
+              required
+              className={inputClass}
+              placeholder="LONGINES-2026-001"
+            />
+          </Field>
+        ) : (
+          <Field label="URL de l'annonce">
+            <input
+              name="url"
+              type="url"
+              required
+              className={inputClass}
+              placeholder="https://exemple.com/annonce/12345"
+            />
+          </Field>
+        )}
 
         <div className="grid grid-cols-2 gap-4">
           <Field label="Marque">

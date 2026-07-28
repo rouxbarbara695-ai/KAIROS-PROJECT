@@ -1,257 +1,282 @@
 # Spécification des calculs métier
 
-Toutes les valeurs sont calculées en `Decimal`. Les taux sont exprimés en
-décimal (`0.065` = 6,5 %). Les résultats monétaires sont arrondis à 2 décimales
-uniquement en sortie, avec `ROUND_HALF_UP`.
+**Ruleset initial :** `1.0.0`. Toutes les constantes décrites ici sont chargées
+depuis un ruleset immuable. Les calculs utilisent `Decimal`, au moins 8 décimales
+en interne, `ROUND_HALF_UP` aux sorties monétaires.
 
-## 1. Normalisation d’un comparable
+## 1. Conversion monétaire
 
-### Prix rendu comparable
-
-```text
-price_eur = source_price × fx_rate_at_observation
-net_market_price =
-  price_eur
-  - seller_fee_included_if_known
-  + buyer_fee_if_not_included
-  + compulsory_shipping
-```
-
-Le prix affiché à l’utilisateur reste le prix source. `net_market_price` sert au
-calcul et doit exposer ses composants.
-
-### Facteurs de poids
+`rate_to_eur` signifie : **nombre d’EUR pour une unité de devise source**.
 
 ```text
-weight = confidence × recency × reference × condition × completeness
-         × seller_independence × source_quality
+amount_eur = source_amount × rate_to_eur
 ```
 
-| Facteur | Valeur initiale |
-|---|---:|
-| Niveau A / B / C / D / E | 1,00 / 0,85 / 0,65 / 0,40 / 0,15 |
-| âge ≤30 j / 31–90 / 91–180 / 181–365 / >365 | 1,00 / 0,90 / 0,75 / 0,55 / 0,35 |
-| même référence / variante très proche / référence différente | 1,00 / 0,60 / exclu |
-| état à ±1 niveau / ±2 / inconnu | 1,00 / 0,70 / 0,50 |
-| set identique / un élément d’écart / inconnu | 1,00 / 0,80 / 0,60 |
-| vendeur unique / doublon probable | 1,00 / 0,20 |
-| vente confirmée / marchand reconnu / annonce P2P | 1,00 / 0,85 / 0,65 |
+Le snapshot conserve montant/devise source, `amount_eur`, `rate_to_eur`,
+source du taux et `fx_rate_at`. Pour EUR, le taux est `1` et reste explicitement
+stocké. Un taux dépassant sa fraîcheur configurée bloque le recalcul.
 
-Les coefficients sont configurables et versionnés.
+## 2. Normalisation d’un comparable
 
-### Ajustement set
+### Base économique
 
-À défaut de comparables suffisants strictement identiques :
+La cote compare ce que l’acheteur doit payer pour obtenir la montre :
 
-- boîte **ou** papiers : +10 % par rapport à “watch only” ;
-- boîte **et** papiers : +20 % ;
-- ne pas cumuler au-delà de +20 % ;
-- accessoires ordinaires : 0 % par défaut ;
-- accessoire rare : ajustement manuel justifié.
+```text
+buyer_variable_fee_eur =
+  clamp(
+    base_price_eur × buyer_fee_rate,
+    buyer_fee_min_eur,
+    buyer_fee_max_eur
+  )
+buyer_total_price_eur =
+  base_price_eur
+  + buyer_variable_fee_eur
+  + buyer_fixed_fee_eur
+  + compulsory_shipping_not_included_eur
+```
 
-L’ajustement est appliqué au comparable pour le ramener au set de la montre
-cible, puis journalisé.
+`base_price` est le prix demandé, marteau ou réalisé selon `price_kind`. Les
+frais vendeur ne sont jamais retranchés d’un comparable ; ils sont utilisés
+uniquement pour calculer le produit net de la vente de l’utilisateur.
+Une borne `null` dans `clamp` signifie absence de borne. Une grille à paliers
+est évaluée depuis le snapshot JSON de la règle et sa trace détaille le palier.
+
+### Ajustement du set
+
+Prime initiale : montre seule `0`, boîte **ou** papiers `0.10`, boîte **et**
+papiers `0.20`. Pour ramener le comparable au set cible :
+
+```text
+adjusted_price_eur =
+  buyer_total_price_eur
+  / (1 + comparable_set_premium)
+  × (1 + target_set_premium)
+```
+
+Les accessoires ordinaires valent 0. Un ajustement manuel pour accessoire rare
+exige montant, motif, auteur et audit. Ne jamais cumuler automatiquement au-delà
+de 20 %.
+
+### Poids
+
+La fiabilité de source n’est comptée qu’une fois :
+
+```text
+weight =
+  source_reliability
+  × recency
+  × reference_similarity
+  × condition_similarity
+  × completeness_similarity
+  × seller_independence
+```
+
+| Facteur | Coefficients initiaux |
+|---|---|
+| fiabilité A / B / C / D / E | 1.00 / 0.85 / 0.65 / 0.40 / 0.15 |
+| âge ≤30 / 31–90 / 91–180 / 181–365 / >365 j | 1.00 / 0.90 / 0.75 / 0.55 / 0.35 |
+| même référence / variante proche / autre | 1.00 / 0.60 / exclu |
+| état ±1 / ±2 / inconnu | 1.00 / 0.70 / 0.50 |
+| set identique / un niveau / inconnu | 1.00 / 0.80 / 0.60 |
+| vendeur indépendant / doublon probable | 1.00 / 0.20 |
+
+Classes de fiabilité :
+
+- A : transaction réalisée confirmée par justificatif ou résultat public ;
+- B : donnée d’un fournisseur/marchand reconnu avec méthode et date vérifiables ;
+- C : annonce active directement observée ;
+- D : dernier prix demandé avant disparition, sans preuve de vente ;
+- E : donnée incomplète ou non vérifiée.
+
+La classe décrit la fiabilité de la preuve, tandis que `price_kind` décrit sa
+nature économique. Les deux champs sont obligatoires.
 
 ### Anomalies
 
-Calculer médiane `M` et MAD. Un comparable est signalé si
-`abs(price-M)/(1.4826×MAD) > 3.5`. Si MAD=0, utiliser IQR. Il n’est jamais
-supprimé ; il est exclu automatiquement avec motif, réintégrable manuellement.
+Avec moins de 4 comparables, ne pas exclure automatiquement pour anomalie. À
+partir de 4, utiliser les `adjusted_price_eur` :
 
-## 2. Cote de marché
+1. médiane non pondérée `M` et `MAD = median(|x-M|)` ;
+2. si `MAD>0`, signaler si `|x-M|/(1.4826×MAD)>3.5` ;
+3. si `MAD=0`, calculer `IQR=Q3-Q1` et signaler hors
+   `[Q1-1.5×IQR, Q3+1.5×IQR]` ;
+4. si `MAD=IQR=0`, ne rien exclure.
 
-Préconditions : au moins 2 comparables recevables et somme des poids > 0.
+Un signal est exclu par défaut de la valorisation, jamais supprimé. Une
+réintégration exige un motif audité.
+
+## 3. Cote de marché
+
+Préconditions : au moins 2 comparables recevables, somme des poids > 0.
+
+Pour un percentile pondéré `p`, trier par prix croissant et prendre le premier
+prix dont le poids cumulé atteint `p × poids_total`.
 
 ```text
-central = weighted_median(adjusted_price, weight)
-low     = weighted_percentile(25)
-high    = weighted_percentile(75)
+central = weighted_percentile(0.50)
+low     = weighted_percentile(0.25)
+high    = weighted_percentile(0.75)
 ```
 
-Avec moins de 5 comparables, élargir l’intervalle :
+Avec 2 à 4 comparables :
 
 ```text
 low  = min(low, central × 0.90)
 high = max(high, central × 1.10)
 ```
 
-### Confiance de valorisation /100
+### `valuation_confidence` /100
 
 ```text
-confidence =
+valuation_confidence =
   30% volume
-  + 25% source_quality
+  + 25% source_reliability
   + 20% recency
   + 15% similarity
   + 10% dispersion
 ```
 
-Barèmes :
-
 - volume : 2=30, 3=50, 4=65, 5–7=80, ≥8=100 ;
-- source : moyenne pondérée des niveaux A=100, B=85, C=65, D=40, E=15 ;
-- récence : moyenne des facteurs de récence ×100 ;
-- similarité : moyenne de `reference×condition×completeness` ×100 ;
-- dispersion : 100 si `(high-low)/central≤10 %`, 80 si ≤20 %, 60 si ≤30 %,
-  35 si ≤45 %, 10 sinon.
+- source : moyenne arithmétique A=100, B=85, C=65, D=40, E=15 ;
+- récence : moyenne arithmétique des coefficients de récence ×100 ;
+- similarité : moyenne arithmétique de
+  `reference_similarity×condition_similarity×completeness_similarity×100` ;
+- dispersion : 100 si largeur/central ≤10 %, 80 si ≤20 %, 60 si ≤30 %, 35 si
+  ≤45 %, 10 sinon.
 
-Plafonds : aucun A/B → 65 ; seulement 2 comparables → 55 ; référence non
-confirmée → 40 ; tous les vendeurs identiques → 35.
+Plafonds appliqués dans cet ordre et tous conservés : aucun A/B →65 ; seulement
+2 comparables →55 ; identité non confirmée →40 ; un seul vendeur →35.
 
-## 3. Prix de revente
+Les trois moyennes ne réutilisent pas `final_weight`, afin de ne pas recompter
+la fiabilité de source ou la récence à l’intérieur de leur propre sous-score.
 
-Scénarios par défaut :
+## 4. Prix de vente
 
 ```text
-sale_prudent = low
-sale_central = central
+sale_prudent   = low
+sale_central   = central
 sale_favorable = high
+listing_price  = min(high, central × (1 + negotiation_buffer))
 ```
 
-Le prix de mise en vente recommandé :
+`negotiation_buffer=0.08`. Une stratégie prix fort peut utiliser `0.12` pendant
+14 jours. À 14 jours sans offre qualifiée, recommander une revue vers la cote
+centrale. À 30 jours, revue de liquidité/surpaiement. Aucune baisse automatique.
+
+## 5. Coût, produit net, profit et ROI
+
+Un coût est `fixed` ou `rate`, appartient à `acquisition`, `preparation` ou
+`sale`, et possède `low|central|high`.
+
+Pour un scénario donné :
 
 ```text
-listing_price = min(high, central × (1 + negotiation_buffer))
-```
+purchase_variable_rate =
+  somme des taux appliqués au prix d’achat
 
-`negotiation_buffer` initial = 8 %. Une stratégie “prix fort” peut utiliser
-12 % pendant 14 jours. Après 14 jours sans offre qualifiée, recommander une
-baisse vers la cote centrale. Après 30 jours sans offre, déclencher une revue de
-liquidité et de surpaiement, jamais une baisse automatique.
+fixed_costs_before_sale =
+  frais fixes acheteur + transport entrant + assurance + douane
+  + taxes fixes d’acquisition + change fixe + authentification
+  + service + réparation + pile + polissage + accessoires + emballage
 
-## 4. Coût de revient
+total_cost_before_sale =
+  purchase_price × (1 + purchase_variable_rate)
+  + fixed_costs_before_sale
 
-```text
-buyer_variable_fee = hammer_or_agreed_price × buyer_fee_rate
-acquisition_cost =
-  purchase_price + buyer_variable_fee + buyer_fixed_fee
-  + inbound_shipping + insurance + customs + acquisition_tax
-  + fx_cost
+sale_variable_cost =
+  sale_price × somme des taux appliqués au prix de vente
 
-preparation_cost =
-  authentication + service + repair + battery + polishing
-  + accessories + outbound_packaging
-
-total_cost_before_sale = acquisition_cost + preparation_cost
-seller_variable_fee = sale_price × seller_fee_rate
 net_sale_proceeds =
-  sale_price - seller_variable_fee - seller_fixed_fee
-  - outbound_shipping - sale_tax
+  sale_price - sale_variable_cost - fixed_sale_costs
 
 net_profit = net_sale_proceeds - total_cost_before_sale
 roi = net_profit / total_cost_before_sale
 ```
 
-Les coûts incertains possèdent `low/central/high`. Le scénario prudent utilise
-les coûts hauts et le prix de vente bas.
+Si `total_cost_before_sale=0`, le ROI est `null` avec
+`ROI_UNDEFINED_ZERO_COST`.
 
-## 5. Prix maximal d’achat
+Scénarios :
 
-Deux contraintes s’appliquent ; retenir la plus basse.
+- prudent : vente basse, coûts hauts, taux hauts ;
+- central : vente centrale, coûts centraux ;
+- favorable : vente haute, coûts bas.
 
-### Contrainte de profit
+## 6. Prix maximal d’achat
 
-```text
-max_by_profit =
-  net_sale_proceeds
-  - non_purchase_costs
-  - minimum_net_profit
-```
+Le prix maximal utilise **uniquement le scénario prudent**. Poser :
 
-### Contrainte de ROI
-
-Si les frais acheteur sont `purchase_price×b + fixed` :
-
-```text
-max_by_roi =
-  (net_sale_proceeds - fixed_non_purchase_costs)
-  / ((1 + buyer_fee_rate) × (1 + minimum_roi))
-```
+- `N` = produit net prudent de vente ;
+- `F` = coûts fixes prudents avant vente, hors prix d’achat ;
+- `q` = somme prudente des taux appliqués au prix d’achat ;
+- `Pmin` = profit net minimum ;
+- `r` = ROI minimum.
 
 ```text
-max_purchase_price = floor_to_increment(min(max_by_profit, max_by_roi))
+max_by_profit = (N - F - Pmin) / (1 + q)
+max_by_roi    = (N / (1 + r) - F) / (1 + q)
+raw_max_purchase_price = max(0, min(max_by_profit, max_by_roi))
 ```
 
-Incrément : 10 € sous 2 000 €, 25 € de 2 000 à 5 000 €, 50 € au-dessus.
-Le prix maximal n’inclut jamais une hypothèse de négociation non obtenue.
+Ces formes fermées ne sont utilisées que si tous les coûts dépendant du prix
+d’achat sont linéaires dans la zone considérée.
 
-## 6. Score KAIROS
-
-### Rentabilité — 30 points
-
-- profit (18 pts) : 0 à 0 €, 25 à 100 €, 50 à 200 €, 75 à 350 €, 100 à 500 €
-  ou plus, interpolation linéaire ;
-- ROI (12 pts) : 0 à 0 %, 25 à 5 %, 50 à 10 %, 75 à 15 %, 100 à 20 % ou plus.
-
-Les seuils en euros devront devenir configurables par segment après validation.
-
-### Liquidité — 27,5 points
-
-- délai (13,75) : ≤14 j=100, 30=80, 60=60, 90=40, 180=15, >180=0 ;
-- profondeur (6,875) : ≥20 comps actifs/180j=100, 10=80, 5=60, 3=40, <3=15 ;
-- cohérence (6,875) : reprend le score de dispersion.
-
-### Capital et portefeuille — 20 points
-
-- impact cash (8) : achat/capital disponible ≤20 %=100, ≤35=80, ≤50=60,
-  ≤70=35, >70=0 ;
-- diversification (6) : 100 si la marque représente <25 % du stock après
-  achat, 70 si <40 %, 40 si <60 %, 10 sinon ;
-- immobilisation (6) : ratio du capital déjà immobilisé : <30 %=100, <50=75,
-  <70=45, ≥70=10.
-
-### État — 15 points
-
-- mécanique (6) : vérifié/révisé=100, fonctionnel=75, inconnu=40, défaut=10 ;
-- cosmétique (5,25) : excellent=100, très bon=85, bon=65, correct=40,
-  mauvais=10 ;
-- complétude (3) : full set=100, boîte ou papiers=70, montre seule=40 ;
-- originalité (0,75) : original=100, incertain=40, modification importante=0.
-
-### Confiance — 7,5 points
-
-Qualité annonce 35 %, comparables 30 %, vendeur 20 %, garanties 15 %. Chaque
-sous-score est documenté dans la réponse.
+Si un frais possède minimum, maximum, palier ou autre fonction, définir
+`C(P)` comme le coût total prudent avant vente pour un prix d’achat `P`, puis
+chercher le plus grand centime satisfaisant simultanément :
 
 ```text
-raw_score = sum(pillar_score × pillar_weight)
+N - C(P) >= Pmin
+(N - C(P)) / C(P) >= r
 ```
 
-Règles de dépendance :
+`C(P)` doit être monotone croissante. Utiliser une recherche binaire Decimal
+sur `[0, plafond_configuré]`, vérifier les deux contraintes sur le résultat,
+puis arrondir vers le bas à l’incrément. La trace indique
+`solver=closed_form|binary_search`, les itérations et la contrainte dominante.
 
-- confiance <40 → score plafonné à 59 et verdict au mieux Surveiller ;
-- confiance 40–59 → score plafonné à 74 ;
-- allocation >70 % → score plafonné à 54 ;
-- délai >180 j et allocation >50 % → verdict Abandonner ;
-- diversification ne peut dépasser 50/100 si liquidité <40 ;
-- profit négatif en scénario central → score rentabilité=0 et Abandonner.
+Puis arrondir **vers le bas** : pas de 10 € sous 2 000 €, 25 € entre 2 000 € et
+5 000 €, 50 € au-dessus. Conserver valeurs brutes, contrainte dominante et
+incrément. Aucune négociation supposée n’entre dans le maximum.
 
 ## 7. Délai de vente
 
-V1 déterministe :
+1. Si au moins 5 comparables `sold|ended` ont `listed_at` et `ended_at`, prendre
+   la médiane de `ended_at-listed_at`.
+2. Sinon compter les comparables `active` observés dans les 180 jours :
+   ≥20=21 j, 10–19=35, 5–9=60, 3–4=90, <3=180.
+3. Multiplier selon prix de vente : ≤low `0.85`, ≤central `1.00`,
+   ≤high `1.35`, >high `1.75`.
+4. Arrondir au jour supérieur, borner 7–365 jours.
 
-1. si ≥5 comparables avec dates début/fin connues : médiane des durées ;
-2. sinon barème de profondeur : ≥20=21 j, 10–19=35 j, 5–9=60 j, 3–4=90 j,
-   <3=180 j ;
-3. multiplier par 0,85 si prix prévu ≤ cote basse ; 1,0 à la cote centrale ;
-   1,35 entre centrale et haute ; 1,75 au-dessus de la haute ;
-4. plafonner entre 7 et 365 jours et dégrader la confiance si dates inférées.
+Les dates inférées dégradent l’explication, jamais transformées en dates
+observées.
 
-## 8. Verdict
+## 8. Score et verdict
 
-Appliquer successivement : portes → plafonds → score → comparaison du prix
-courant au prix maximal. Retourner `decision_reasons[]` trié par impact, y
-compris les conditions qui empêchent Acheter.
+Les barèmes et règles de dépendance sont définis uniquement dans
+`scoring-engine.md`. Appliquer : portes → valorisation → pricing → portefeuille
+→ score brut → caps → verdict.
 
-## 9. Exemple de fixture
+## 9. Fixtures arithmétiques
 
-Cartier achetée 950 €, revendue 1 120 €, frais de vente 27 €, aucun autre coût :
+### Cartier réalisée
 
 ```text
-net_sale_proceeds = 1 120 - 27 = 1 093 €
-net_profit = 1 093 - 950 = 143 €
-roi = 143 / 950 = 15,0526 %
+achat 950 ; vente 1120 ; frais vendeur fixes 27
+produit net = 1093
+profit = 143
+ROI = 143 / 950 = 0.1505263158
 ```
 
-Cette fixture teste le résultat réalisé ; elle ne constitue pas une preuve de
-la cote de marché de la référence.
+### Formule du maximum
+
+```text
+N=1000 ; F=100 ; q=0.05 ; Pmin=200 ; r=0.10
+max_by_profit = 700 / 1.05 = 666.66666667
+max_by_roi = (1000 / 1.10 - 100) / 1.05 = 770.56277056
+maximum brut = 666.66666667 ; arrondi = 660
+```
+
+Au maximum brut, le profit vaut exactement 200.

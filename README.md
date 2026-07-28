@@ -1,68 +1,83 @@
 # KAIROS
 
-KAIROS est un logiciel d’aide à la décision et de pilotage conçu pour
-l’achat-revente de montres.
+KAIROS est un logiciel d’aide à la décision et de pilotage pour
+l’achat-revente de montres. Il évalue une **opportunité** en estimant notamment
+la valeur de marché de la montre, les coûts, la rentabilité, la liquidité, le
+risque et l’impact sur le portefeuille.
 
-À partir d’une annonce, KAIROS doit répondre à cinq questions :
+À partir d’une annonce ou d’une saisie manuelle, KAIROS répond à cinq questions :
 
-1. La montre est-elle correctement identifiée et analysable ?
-2. Quelle est sa valeur de marché défendable ?
-3. Jusqu’à quel prix peut-on l’acheter ?
-4. Quelle rentabilité et quel délai de revente peut-on attendre ?
+1. L’objet et les données permettent-ils une analyse fiable ?
+2. Quelle est la cote de marché défendable ?
+3. Jusqu’à quel prix peut-on acheter ?
+4. Quel profit, ROI et délai peut-on attendre ?
 5. Faut-il acheter, surveiller ou abandonner ?
-
-Le produit suivra ensuite l’opération jusqu’à la vente réelle afin de comparer
-les prévisions aux résultats et d’améliorer progressivement ses recommandations.
 
 ## Statut
 
-**Spécifications V1 prêtes pour implémentation progressive.**
+**Spécifications V2 réconciliées après audit de cohérence.**
 
-Le premier parcours à construire est :
+Le premier lot est volontairement manuel : créer une opportunité, confirmer
+l’identité, corriger les données avec traçabilité et retrouver l’opportunité.
+Les moteurs financiers viennent ensuite. Aucun collecteur réel n’est nécessaire
+pour commencer.
 
-> Ajouter une annonce → l’identifier → ajouter des comparables → produire une
-> cote → calculer le prix maximal → historiser les observations → recalculer
-> l’analyse → générer une alerte.
+## Principes
 
-## Architecture cible
+- KAIROS estime la montre pour décider de l’opportunité.
+- Les règles sont déterministes, explicables et versionnées.
+- Les résultats réels permettent de capitaliser sur l’expérience ; aucun
+  apprentissage automatique n’est promis en V1.
+- « Anticiper » signifie simuler les coûts, risques, délais et scénarios avant
+  d’engager le capital, pas détecter automatiquement toutes les annonces.
 
-- application web responsive en Next.js / React ;
-- API métier Python avec FastAPI ;
-- base PostgreSQL ;
-- traitements planifiés avec une file de tâches adossée à Redis ;
-- collecteurs indépendants par plateforme ;
-- stockage objet pour les photos et documents ;
-- monolithe modulaire pour la première version.
+## Documentation complète
 
-## Documentation
+### Gouvernance et produit
+
+- [Instructions de développement](CLAUDE.md)
+- [PRD V1 réconcilié](docs/prd/kairos-v1.md)
+- [Périmètre MVP](docs/product/mvp.md)
+- [Résolution des audits](docs/decisions/audit-resolution-v2.md)
+- [Audit de cohérence V1 (historique, résolu)](docs/audit/coherence-audit-v1.md)
+- [Questions encore ouvertes](docs/decisions/open-questions.md)
+
+### Marque et positionnement
 
 - [Vision](docs/business/vision.md)
-- [Instructions pour Claude](CLAUDE.md)
-- [PRD complet V1](docs/prd/kairos-v1.md)
+- [Marque](docs/business/brand.md)
+- [Principes](docs/business/principles.md)
 - [Proposition de valeur](docs/business/value-proposition.md)
-- [Périmètre MVP](docs/product/mvp.md)
+
+### Règles métier
+
 - [Modèle métier](docs/product/domain-model.md)
-- [Calculs métier](docs/product/calculation-spec.md)
+- [Portes d’éligibilité](docs/product/gates.md)
+- [Moteur d’analyse](docs/product/opportunity-analysis-engine.md)
+- [Moteur marché](docs/product/market-engine.md)
+- [Calculs](docs/product/calculation-spec.md)
+- [Score](docs/product/scoring-engine.md)
+- [Pricing](docs/product/pricing-strategy-engine.md)
+- [Portefeuille](docs/product/portfolio-engine.md)
 - [Règles des plateformes](docs/product/platform-rules.md)
 - [Workflow et statuts](docs/product/workflow-and-states.md)
-- [Architecture technique](docs/architecture/overview.md)
-- [Contrat API](docs/architecture/api-contract.md)
 - [Sources et surveillance](docs/product/sources-and-monitoring.md)
-- [Schéma initial de la base](database/schema.sql)
-- [Sprint 1](docs/delivery/sprint-01.md)
-- [Backlog V1](docs/delivery/backlog-v1.md)
-- [Stratégie de tests](docs/quality/test-strategy.md)
-- [Décisions ouvertes](docs/decisions/open-questions.md)
 - [Roadmap](docs/product/roadmap.md)
 
-## Règle de produit
+### Implémentation
 
-KAIROS distingue toujours :
+- [Architecture](docs/architecture/overview.md)
+- [Contrat API](docs/architecture/api-contract.md)
+- [Schéma PostgreSQL](database/schema.sql)
+- [Backlog V1](docs/delivery/backlog-v1.md)
+- [Sprint 1](docs/delivery/sprint-01.md)
+- [Plan d'implémentation KAI-001 à KAI-103](docs/delivery/implementation-plan-kai-001-103.md)
+- [Stratégie de tests](docs/quality/test-strategy.md)
+- [Validation technique de la V2](docs/quality/validation-v2.md)
+- [Prompt de lancement Claude](PROMPT-CLAUDE.md)
 
-- un prix demandé ;
-- un prix réellement réalisé ;
-- une estimation externe ;
-- une estimation produite par KAIROS.
+## Règle de données
 
-Chaque donnée conserve sa provenance, sa date, sa devise et son niveau de
-confiance. Une recommandation doit rester compréhensible et vérifiable.
+Chaque prix conserve sa nature, sa provenance, sa date, sa devise source et sa
+conversion EUR. Une recommandation publiée est un instantané immuable : un
+nouveau calcul produit une nouvelle analyse, jamais une réécriture.

@@ -1,28 +1,27 @@
 # Proposition de valeur
 
-KAIROS n’estime pas uniquement la valeur d’une montre. Il estime la valeur
-d’une opportunité d’achat-revente dans le contexte réel de l’utilisateur.
+KAIROS évalue une opportunité d’achat-revente en estimant notamment la valeur
+de marché de la montre, puis en la confrontant aux coûts, au risque, à la
+liquidité et au capital de l’utilisateur.
 
-## Valeur immédiate
+## Valeur du MVP manuel
 
-En moins de cinq minutes à partir d’une annonce, un professionnel doit pouvoir :
+À partir d’une saisie structurée et de comparables fournis par l’utilisateur :
 
-- visualiser une cote basse, centrale et haute ;
-- connaître la qualité et l’ancienneté des données utilisées ;
-- calculer son coût de revient et sa marge nette ;
-- obtenir un prix maximal d’achat ;
+- obtenir une cote basse, centrale et haute ;
+- comprendre la qualité des preuves et leur ancienneté ;
+- calculer coût de revient, profit, ROI et prix maximal ;
 - estimer un prix et un délai de revente ;
-- recevoir une recommandation expliquée : **acheter, surveiller ou abandonner**.
+- recevoir un verdict expliqué : **acheter, surveiller ou abandonner** ;
+- conserver l’historique et comparer la prévision au résultat réel.
 
-## Valeur progressive
+## Progression produit
 
-KAIROS doit ensuite suivre l’annonce, actualiser l’analyse lorsque le marché ou
-le prix évolue, piloter le capital et le stock, puis confronter les prévisions
-au résultat réel de la vente.
+1. Outil interne manuel, déterministe et éprouvé sur des opérations réelles.
+2. Imports assistés et surveillance seulement pour des sources autorisées.
+3. Produit sécurisé pour revendeurs indépendants.
+4. Éventuel SaaS pour boutiques et réseaux après conception explicite des
+   comptes, organisations, droits, facturation et isolation des données.
 
-## Cible de commercialisation
-
-1. Outil interne éprouvé sur des opérations réelles.
-2. Produit pour marchands et revendeurs indépendants.
-3. Abonnement professionnel avec veille, alertes et connexions multi-plateformes.
-4. Solution de pilotage et d’intelligence marché pour boutiques et réseaux.
+Les étapes 3 et 4 sont des ambitions futures, pas des capacités de
+l’architecture MVP.

@@ -1,41 +1,39 @@
 # Sources et surveillance
 
-## Priorités
+## Modes autorisables
 
-| Source | Usage | Fréquence cible initiale | Mode de départ |
-|---|---|---:|---|
-| Chrono24 | Marché principal, annonces | 6–12 h | URL puis connecteur validé |
-| Catawiki | Enchères et résultats | 6 h, puis 1 h sur les dernières 24 h | Connecteur prioritaire |
-| Vestiaire Collective | Opportunités complémentaires | 12–24 h | URL puis expérimentation |
-| WatchCharts | Cote et historique | Quotidien ou hebdomadaire | API si justifiée |
-| Watchfinder / marchands | Comparables professionnels | 24–48 h | Collecte ciblée |
-| Données internes | Résultats économiques réels | Temps réel | Natif |
-| Taux de change | Conversion | Quotidien et à la décision | API |
+| Mode | MVP manuel | Condition |
+|---|---:|---|
+| saisie utilisateur | oui | validation des champs et audit |
+| import CSV/fichier fourni | oui | provenance conservée |
+| import URL assisté | conditionnel | contenu fourni ou accès autorisé |
+| API officielle/partenaire | conditionnel | contrat et limites documentés |
+| navigation automatisée | non par défaut | validation écrite spécifique |
 
-## Contrat commun d’un collecteur
+Les fréquences ci-dessous sont des plafonds techniques envisagés, jamais une
+autorisation :
 
-Chaque collecteur renvoie un objet normalisé comprenant au minimum :
+| Source | Usage | Fréquence maximale envisagée |
+|---|---|---:|
+| Chrono24 | annonces | toutes les 6 h |
+| Catawiki | enchères | 6 h, puis 1 h dans les dernières 24 h |
+| Vestiaire Collective | annonces/offres | 12 h |
+| fournisseur de cote licencié | estimation | selon contrat |
+| données internes | opérations réelles | événementiel |
+| taux de change | conversion | quotidien et à la décision |
 
-- plateforme et identifiant externe ;
-- URL canonique ;
-- horodatage de l’observation ;
-- prix, devise et statut ;
-- vendeur et pays lorsque disponibles ;
-- référence déclarée ;
-- état et set ;
-- données brutes minimales utiles ;
-- statut de récupération et message d’erreur ;
-- niveau de confiance.
+## Contrat d’adaptateur
 
-## Gestion des changements
+Chaque adaptateur fournit provenance, méthode d’accès, identifiant de collecte,
+plateforme, identifiant externe, URL canonique, heure d’observation, nature de
+prix, montant source, devise, conversion EUR, statut, vendeur, pays, référence,
+état, set, fiabilité de source et erreurs.
 
-Une nouvelle observation déclenche un événement si elle modifie notamment :
+Une erreur crée un résultat de collecte, jamais une observation factice. Une
+disparition reste `unknown` jusqu’à preuve distincte d’une vente.
 
-- le prix au-delà du seuil configuré ;
-- la disponibilité ;
-- la fin imminente d’une enchère ;
-- l’identification ;
-- un comparable utilisé ;
-- la cote ou le verdict.
+## Déclencheurs
 
-Les fréquences restent configurables. La fréquence maximale prévue est horaire.
+Seules les modifications significatives définies dans
+`workflow-and-states.md` créent un événement, une analyse ou une alerte. La
+déduplication et l’idempotence sont garanties par la base.

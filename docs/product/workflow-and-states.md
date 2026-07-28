@@ -1,49 +1,59 @@
 # Workflow, statuts et transitions
 
-## Statuts d’opportunité
+## Statuts
 
-| Statut | Sens | Transitions autorisées |
+| Statut | Sens | Transitions |
 |---|---|---|
-| `watching` | en veille ou analyse en cours | buy, auction, abandoned |
-| `buy` | décision d’achat, action non finalisée | purchased, watching, abandoned |
-| `auction` | enchère active | purchased, watching, abandoned |
-| `purchased` | achat confirmé, paiement dû/effectué | in_stock |
-| `in_stock` | montre reçue, non publiée | listed_for_sale |
-| `listed_for_sale` | proposée à la vente | awaiting_buyer_payment, in_stock |
-| `awaiting_buyer_payment` | acheteur engagé, paiement en cours | awaiting_payout, listed_for_sale |
-| `awaiting_payout` | remise/livraison faite, fonds retenus | sold, listed_for_sale |
-| `sold` | fonds reçus, opération clôturable | terminal |
-| `abandoned` | opportunité refusée/expirée | watching uniquement via réouverture |
+| `watching` | analyse/veille manuelle | `buy`, `auction`, `abandoned` |
+| `buy` | intention d’achat | `purchased`, `watching`, `abandoned` |
+| `auction` | enchère active | `purchased`, `watching`, `abandoned` |
+| `purchased` | achat confirmé | `in_stock` |
+| `in_stock` | reçu, non publié | `listed_for_sale` |
+| `listed_for_sale` | en vente | `awaiting_buyer_payment`, `in_stock` |
+| `awaiting_buyer_payment` | engagement acheteur | `awaiting_payout`, `listed_for_sale` |
+| `awaiting_payout` | livré/remis, fonds retenus | `sold`, `listed_for_sale` |
+| `sold` | encaissement reçu | terminal |
+| `abandoned` | refusée/expirée | `watching` via réouverture motivée |
 
-Toute transition crée un événement avec auteur, date, ancien/nouveau statut,
-motif et données financières pertinentes. Un retour en arrière n’efface rien.
+Chaque transition crée un `opportunity_event` et un `audit_event`, tous deux
+append-only.
 
 ## Invariants
 
-- `purchased` exige prix, date, devise et plateforme/canal.
-- `in_stock` exige réception confirmée.
-- `listed_for_sale` exige au moins un canal et prix demandé.
-- `awaiting_payout` exige une vente et un mode de remise/livraison.
-- `sold` exige prix réalisé, frais réels et date d’encaissement.
-- une opportunité abandonnée conserve analyses, observations et motif.
+- `purchased` : achat, devise, conversion EUR et date.
+- `in_stock` : réception confirmée.
+- `listed_for_sale` : canal et prix demandé.
+- `awaiting_payout` : vente et mode de livraison/remise.
+- `sold` : prix réalisé, coûts réels et date d’encaissement.
+- une réouverture conserve tout l’historique.
 
-## Événements déclenchant un recalcul
+## Recalcul
 
-- prix demandé modifié d’au moins 1 % ou 10 € ;
-- nouvelle règle de frais applicable à une opération non clôturée ;
-- comparable ajouté, corrigé ou exclu ;
+Déclencheurs :
+
+- prix modifié d’au moins `max(1 %, 10 €)` ;
+- comparable ajouté, corrigé, exclu ou réintégré ;
 - référence, état, set, pays ou vendeur corrigé ;
-- taux de change expiré ;
-- capital disponible ou stratégie modifiés ;
-- statut d’annonce ou fin d’enchère ;
-- recalcul manuel.
+- nouvelle version de règle choisie pour une opération ouverte ;
+- taux FX expiré ;
+- capital ou stratégie modifiés ;
+- enchère terminée ou statut changé ;
+- demande manuelle.
 
-## Politique d’alertes
+Le recalcul crée une analyse enfant. Une contrainte unique interdit deux enfants
+directs du même parent.
 
-Créer une alerte si : verdict change ; prix passe sous le prix maximal ; enchère
-se termine dans 24 h puis 3 h ; prix baisse d’au moins 5 % ; annonce disparaît ;
-confiance baisse sous 60 ; opération reste 30 jours sans offre ; paiement ou
-encaissement dépasse l’échéance.
+## Alertes
 
-Dédupliquer par `opportunity + alert_type + analysis_id`. Les collectes
-identiques ne créent rien. Regrouper les événements non critiques de même type.
+- verdict modifié ;
+- prix franchissant le maximum prudent ;
+- fin d’enchère à 24 h puis 3 h ;
+- baisse ≥5 % ;
+- disparition d’annonce ;
+- `valuation_confidence` franchissant 60 ;
+- 30 jours sans offre qualifiée ;
+- paiement/encaissement en retard.
+
+Clé de déduplication :
+`portfolio_id + opportunity_id + alert_type + coalesce(analysis_id, event_id)`.
+Une alerte ne peut être recréée avec la même clé.

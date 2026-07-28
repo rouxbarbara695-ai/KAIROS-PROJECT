@@ -1,171 +1,67 @@
-# Domain Model
-
-## Purpose
-
-The Domain Model defines the core business objects of Kairos.
-
-It establishes:
-- what exists in the system;
-- the responsibility of each object;
-- how they relate to each other.
-
-This document is the single source of truth for the business architecture of Kairos.
-
----
-
-# Architecture Principles
-
-## Single Responsibility
-
-Each object has one business responsibility.
-
-## Single Source of Truth
-
-Each piece of information has one owner.
-
-## Orchestration
-
-The Opportunity coordinates the analysis but performs no business calculations.
-
-## Independent Evolution
-
-Each business expertise can evolve independently without affecting the overall architecture.
-
----
-
-# Domain Map
-
-User owns a Portfolio and creates Opportunities.
-
-An Opportunity points to one Listing and accumulates immutable Analyses.
-
-A Listing:
-
-- belongs to one Marketplace;
-- may belong to one Seller;
-- describes one Watch;
-- accumulates Listing Observations.
-
-A Watch may be identified as one Reference.
-
-An Analysis uses one Market Valuation and produces Pricing, Scoring and a
-Recommendation. A Market Valuation is supported by weighted Comparables.
-
-Monitoring creates observations and events. Significant events trigger new
-analyses and may create Alerts.
-
----
-
-# Business Objects
-
-## User
-
-Represents the investor using Kairos.
-
----
-
-## Portfolio
-
-Represents the user's investment portfolio.
-
-Responsible for capital allocation, holdings and portfolio performance.
-
----
-
-## Opportunity
-
-Represents one investment decision.
-
-It orchestrates the complete analysis.
-
----
-
-## Listing
-
-Represents one marketplace advertisement.
-
-Contains only marketplace information.
-
----
-
-## Watch
-
-Represents the physical watch being analysed.
-
----
-
-## Reference
-
-Represents the technical knowledge associated with a watch reference.
-
----
-
-## Seller
-
-Represents the person or business selling the watch.
-
----
-
-## Marketplace
-
-Represents the platform hosting the listing.
-
----
-
-## Market
-
-Represents the aggregated market intelligence used for valuation.
-
----
-
-## Pricing
-
-Represents the pricing engine output.
-
----
-
-## Scoring
-
-Represents the scoring engine output.
-
----
-
-## Listing Observation
-
-Represents the state of a listing at a precise time. Observations are append-only
-and preserve price, currency, availability, freshness and collection status.
-
----
-
-## Comparable
-
-Represents one market data point. It explicitly distinguishes asking prices,
-realized prices and external estimates.
-
----
-
-## Market Valuation
-
-Represents a dated low, central and high market estimate together with its
-comparables, weights, confidence and calculation rules.
-
----
-
-## Analysis
-
-Represents an immutable decision snapshot. It records gates, valuation, pricing,
-score, recommendation, trigger and rules version.
-
----
-
-## Platform Rule
-
-Represents fees, logistics and conditions applicable to one marketplace during
-a defined period.
-
----
-
-## Alert
-
-Represents a meaningful decision event. Alerts are not emitted for every raw
-change.
+# Modèle métier
+
+Ce document définit les objets et leurs responsabilités. Il n’est pas une source
+de vérité isolée : la hiérarchie complète figure dans `CLAUDE.md`.
+
+## Carte du domaine
+
+- Un `Utilisateur` appartient à un `Portefeuille`.
+- Le portefeuille possède un grand livre de trésorerie et des stratégies.
+- Une `Opportunité` appartient obligatoirement à un portefeuille.
+- Elle provient soit d’une `Annonce`, soit d’une saisie manuelle.
+- Une saisie manuelle accumule des `OpportunityPriceInput` append-only.
+- Une annonce décrit une `Montre`, un vendeur et une plateforme, et accumule
+  des observations immuables.
+- La montre peut être rattachée à une `Référence`, confirmée ou inconnue.
+- Des `Comparables` alimentent une `Valorisation de marché`.
+- Une `Analyse` immuable épingle valorisation, stratégie, ruleset, règles de
+  plateforme, coûts, portes, score et verdict.
+- Les achats, coûts, mises en vente, ventes et écritures de trésorerie décrivent
+  le résultat réel.
+- Le `Journal d’audit` trace corrections, exclusions et transitions.
+
+## Responsabilités
+
+| Objet | Responsabilité |
+|---|---|
+| Portefeuille | périmètre d’accès, capital, stock et performance |
+| Opportunité | agrège le contexte d’une décision, sans calculer elle-même |
+| Annonce | identité externe, URL canonique et état courant |
+| Observation | photographie append-only d’une annonce à un instant |
+| Montre | caractéristiques physiques, état, set et statut d’identification |
+| Référence | connaissance technique normalisée d’une référence horlogère |
+| Comparable | preuve de marché typée, datée, normalisée et éventuellement exclue |
+| Valorisation | cote basse/centrale/haute et trace des comparables utilisés |
+| Ruleset | jeu immuable de seuils et coefficients |
+| Stratégie versionnée | objectifs de profit, ROI, allocation et négociation |
+| Règle de plateforme | frais, logistique, conformité et période d’application |
+| Analyse | instantané de décision reproductible |
+| Événement d’audit | trace append-only d’une mutation autorisée |
+
+## Propriété des données
+
+- L’annonce possède l’URL et l’identifiant externe.
+- L’observation possède les valeurs observées, sans réécrire l’annonce passée.
+- Le comparable source ne change pas ; une correction crée un événement et une
+  nouvelle révision logique.
+- La valorisation possède les ajustements et poids utilisés à sa date.
+- L’analyse possède les snapshots de règles nécessaires à sa reproduction.
+- Le grand livre de trésorerie possède les apports, retraits et mouvements.
+
+## Immuabilité
+
+Une analyse peut être préparée en brouillon. Dès `published_at`, toute mise à
+jour ou suppression est interdite. Observations, valorisations, traces de
+calcul, événements d’opportunité, événements d’audit et écritures de trésorerie
+sont append-only dès leur création.
+
+## Confiances distinctes
+
+| Nom | Sens |
+|---|---|
+| `identification_confidence` | probabilité que la référence proposée soit correcte |
+| `valuation_confidence` | solidité statistique et documentaire de la cote |
+| `evidence_quality_score` | pilier du score relatif à la qualité globale des preuves |
+| `source_reliability_level` | classe A à E d’un comparable |
+
+Ces valeurs ne sont jamais interchangeables.

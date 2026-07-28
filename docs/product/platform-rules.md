@@ -1,67 +1,69 @@
 # Règles propres aux plateformes
 
-Ce document définit le modèle d’adaptation. Les taux sont des données
-versionnées, pas des constantes. À la date d’analyse, KAIROS choisit la règle
-dont `valid_from ≤ date < valid_to`.
+Une `PlatformRule` est immuable et sélectionnée par plateforme, région et date :
+`valid_from ≤ analyzed_at` et (`valid_to` est `null` ou
+`analyzed_at < valid_to`). Deux règles de même portée ne peuvent se chevaucher.
 
-| Plateforme | Nature | Prix à capter | Particularités à modéliser |
-|---|---|---|---|
-| Chrono24 | annonces / transaction sécurisée | demandé, baisses, prix utilisateur réalisé | commission vendeur, Trusted Checkout, expédition/signature, statut parfois non observable |
-| Catawiki | enchères | enchère, résultat, frais acheteur | heure de fin, réserve, incréments, frais variables, enchère dans les 24 h |
-| Vestiaire Collective | annonce/offre | demandé, offre acceptée, résultat utilisateur | offre, annulation, authentification, commission, transport |
-| WatchCharts | fournisseur de cote | estimation externe | fréquence, licence/API, historique, ne jamais appeler “vente réalisée” |
-| Watchfinder / marchand | stock professionnel | demandé | garantie incluse, prime marchand, prix réalisé généralement inconnu |
-| Boutique indépendante | marchand | demandé/réalisé si documenté | TVA/marge, garantie, négociation hors plateforme |
-| Donnée utilisateur | opération interne | prix réellement payé/vendu | confiance A si justificatif ou saisie confirmée |
+Après création, seul `valid_to` peut être fixé une fois pour clôturer la période ;
+les frais, accès et autres attributs ne peuvent jamais être modifiés.
 
-## Contrat `PlatformRule`
+## Contrat
 
-- plateforme et pays/région ;
-- dates de validité ;
-- commission acheteur : taux, fixe, assiette, minimum, maximum ;
-- commission vendeur : mêmes champs ;
-- paiement et change ;
-- livraison obligatoire/facultative et responsable ;
-- authentification/garantie ;
-- fiscalité ou douane applicable/inconnue ;
-- capacité d’observer une vente réellement réalisée ;
-- méthode d’accès autorisée : manuel, API, partenaire, import assisté ;
-- fréquence minimale et maximale ;
-- provenance et date de vérification.
+| Groupe | Champs |
+|---|---|
+| Identité | plateforme, région, version, validité, source, vérifiée le |
+| Accès | `manual|assisted_import|official_api|partner`, autorisé, fréquence min/max |
+| Frais acheteur | taux, fixe, assiette, minimum, maximum, devise |
+| Frais vendeur | taux, fixe, assiette, minimum, maximum, devise |
+| Paiement/change | prestataire, frais, devise et assiette |
+| Livraison | obligatoire, responsable, incluse ou non |
+| Protection | authentification, séquestre, garantie, recours |
+| Fiscalité | profil requis, douane/TVA connue ou inconnue |
+| Observabilité | annonce active, résultat d’enchère, vente réalisée observable |
 
-## Chrono24
+Les valeurs absentes sont `null` et produisent avertissement ou blocage selon le
+scénario. Aucune valeur n’est déduite du nom de la plateforme.
 
-Dédupliquer sur l’identifiant d’annonce. Une disparition n’est pas une vente.
-La commission configurée pour l’opération utilisateur est appliquée à la date
-de la vente. Les favoris et vues sont des signaux facultatifs de liquidité,
-jamais des preuves. Une annonce d’un marchand peut inclure une prime de garantie
-et doit être distinguée d’une vente entre particuliers.
+## Sources
 
-## Catawiki
+| Source | Nature de prix à distinguer |
+|---|---|
+| Chrono24 | demandé, baisse, prix d’achat/vente interne confirmé |
+| Catawiki | enchère courante, marteau, frais acheteur, résultat |
+| Vestiaire Collective | demandé, offre, offre acceptée, achat/vente confirmé |
+| Fournisseur de cote | estimation externe, jamais vente réalisée par défaut |
+| Marchand | prix demandé, garantie, vente uniquement si documentée |
+| Donnée KAIROS | prix payé/vendu confirmé avec provenance |
+
+## Règles particulières
+
+### Chrono24
+
+Dédupliquer sur l’identifiant externe. Une disparition ne prouve pas la vente.
+Trusted Checkout, signature, livraison, vues et favoris sont des attributs
+séparés. Les vues/favoris sont des signaux de liquidité, pas des transactions.
+
+### Catawiki
 
 Conserver `current_bid`, `hammer_price`, `reserve_met`, `auction_end_at` et
-`buyer_fees` séparément. Dans les 24 dernières heures, la fréquence cible peut
-passer à une heure. Le prix maximal d’enchère est le prix marteau maximal après
-résolution inverse des frais. Si l’enchère dépasse ce maximum, statut
-`abandoned` avec motif `MAX_BID_EXCEEDED`; l’historique est conservé.
+`buyer_fees` séparément. Le prix maximal d’enchère est le prix marteau maximal
+obtenu par inversion des frais. Au-dessus, conserver l’historique et proposer
+`abandoned` avec `MAX_BID_EXCEEDED`.
 
-## Vestiaire Collective
+### Vestiaire Collective
 
-Séparer prix demandé, offre envoyée, offre acceptée et paiement. Une offre
-acceptée n’est pas une acquisition tant que l’achat n’est pas confirmé. Les
-conditions d’annulation relèvent d’un affichage informatif et ne doivent pas
-être extrapolées : elles sont stockées avec leur source et date.
+Séparer prix demandé, offre envoyée, acceptée, paiement et acquisition. Une
+offre acceptée ne suffit pas à créer un achat.
 
-## Extra-UE
+### Hors UE
 
-Si vendeur hors zone douanière de destination, les droits et taxes sont des
-entrées obligatoires ou un scénario prudent. Sans estimation exploitable,
-KAIROS bloque Acheter mais permet Surveiller. La TVA récupérable ou régime de
-marge n’est jamais supposé ; un profil fiscal explicite est requis.
+Douane et fiscalité sont des coûts explicites. Sans profil fiscal et borne
+prudente, `buy` est impossible. KAIROS ne suppose ni TVA récupérable ni régime
+de marge.
 
-## Collecte et conformité
+## Conformité
 
-Avant d’activer un connecteur : documenter autorisation, robots/CGU, API
-disponible, limites, données personnelles, conservation et mécanisme d’arrêt.
-Le MVP accepte des imports manuels/assistés. Aucun contournement de protection,
-authentification ou limite n’est autorisé.
+La seed V1 autorise uniquement `manual` et `assisted_import=false` par défaut.
+Avant tout connecteur, une décision écrite doit identifier base légale/CGU,
+méthode, données, fréquence, conservation et arrêt d’urgence. Aucun
+contournement d’authentification, de protection ou de limite n’est permis.

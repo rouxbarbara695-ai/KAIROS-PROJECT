@@ -2,79 +2,89 @@
 
 ## Décision
 
-KAIROS démarre comme un **monolithe modulaire** : une application déployable
-simplement, composée de domaines séparés et testables.
+KAIROS V1 est un monolithe modulaire horloger et mono-organisation. Les limites
+entre domaines sont explicites, mais une seule API et un seul schéma sont
+déployés.
 
-| Couche | Choix cible | Responsabilité |
+| Couche | Choix | Responsabilité |
 |---|---|---|
-| Interface | Next.js / React | Parcours utilisateur et dashboard |
-| API | FastAPI / Python | Règles métier et orchestration |
-| Données | PostgreSQL | État courant, relations et historiques |
-| Tâches | Redis + workers | Collecte, recalculs et alertes |
-| Fichiers | Stockage objet S3 | Photos et documents |
+| Web | Next.js / TypeScript | formulaires, analyse, portefeuille |
+| API | FastAPI / Python | orchestration et contrats |
+| Domaine | Python pur | règles et calculs déterministes |
+| Données | PostgreSQL | contraintes, historiques, audit |
+| Jobs | Redis + worker | imports autorisés, recalculs, alertes |
+| Fichiers | interface S3 | pièces justificatives futures |
 
 ## Modules
 
-- `identity` : références et fiabilité d’identification ;
+- `identity` : montres, références, confirmation ;
+- `opportunities` : saisie, déduplication, corrections ;
 - `market` : comparables et valorisations ;
-- `pricing` : coûts, marges et prix maximal ;
-- `scoring` : piliers, règles de dépendance et verdict ;
-- `monitoring` : collecteurs, observations et événements ;
-- `portfolio` : capital, stock, achats et ventes ;
-- `notifications` : seuils et livraison des alertes ;
-- `platforms` : règles versionnées propres aux plateformes.
+- `pricing` : coûts, scénarios et prix maximal ;
+- `scoring` : portes, piliers, caps et verdict ;
+- `portfolio` : grand livre, stock, achats et ventes ;
+- `monitoring` : observations et jobs autorisés ;
+- `platforms` : règles versionnées et garde de conformité ;
+- `audit` : événements append-only ;
+- `notifications` : alertes dédupliquées ;
+- `telemetry` : KPI produit sans données sensibles.
 
-## Flux principal
+## Flux transactionnel
 
-1. Une annonce est soumise.
-2. Un collecteur ou la saisie manuelle crée une observation normalisée.
-3. L’identification et les portes d’éligibilité sont évaluées.
-4. Les comparables produisent une valorisation versionnée.
-5. Le pricing et le scoring produisent une analyse immuable.
-6. Une nouvelle observation significative déclenche une nouvelle analyse.
-7. Une alerte est créée seulement si un seuil utile est franchi.
+1. La commande est authentifiée et filtrée par portefeuille.
+2. Le service d’application charge des snapshots immuables.
+3. Les moteurs purs calculent portes, valorisation, pricing, portefeuille,
+   score et verdict.
+4. Une transaction écrit traces et analyse brouillon.
+5. La publication fixe `published_at`; la base interdit ensuite update/delete.
+6. Les événements post-commit déclenchent métriques ou alertes.
 
-## Contraintes
+Une porte bloquante autorise une analyse publiée sans valorisation, score ou
+montants.
 
-- les calculs métier ne vivent pas uniquement dans l’interface ;
-- une analyse passée n’est jamais écrasée ;
-- chaque donnée externe conserve sa provenance et sa fraîcheur ;
-- la panne d’un collecteur ne bloque pas les autres sources ;
-- la saisie manuelle reste disponible ;
-- les secrets sont fournis par variables d’environnement et jamais versionnés.
-
-## Arborescence de code recommandée
+## Arborescence
 
 ```text
 apps/api/app/
-  identity/ market/ pricing/ scoring/ monitoring/ portfolio/ platforms/
-  shared/domain/ shared/infrastructure/
+  identity/ opportunities/ market/ pricing/ scoring/
+  portfolio/ monitoring/ platforms/ audit/ notifications/ telemetry/
+  shared/domain/ shared/application/ shared/infrastructure/
 apps/web/src/
   app/ components/ features/ lib/
 packages/contracts/
 infra/migrations/ infra/docker/
+tests/fixtures/ tests/unit/ tests/integration/ tests/contract/
 ```
 
-Chaque module API sépare `domain`, `application`, `ports` et `adapters`.
-L’orchestrateur d’analyse appelle les moteurs dans l’ordre : gates,
-valorisation, pricing, portefeuille, scoring, verdict, persistance. La
-transaction publie l’analyse complète ou rien ; les collectes restent
-asynchrones et idempotentes.
+Chaque module sépare `domain`, `application`, `ports`, `adapters`. Aucun moteur
+du domaine n’importe FastAPI, SQLAlchemy ou Redis.
 
-## Sécurité et exploitation
+## Cohérence, concurrence et idempotence
 
-- authentification requise hors environnement local ;
-- filtrage de toutes les ressources par portefeuille ;
-- validation stricte des URL et protection SSRF lors des imports ;
-- limites de taille, délais et types MIME pour les fichiers ;
-- logs JSON avec `request_id`, `job_id`, `opportunity_id`, sans token ;
-- métriques : latence, taux d’erreur, âge des données, jobs en retard ;
-- sauvegarde PostgreSQL quotidienne et test de restauration trimestriel ;
-- endpoint de santé séparant disponibilité API et dépendances.
+- `version` et `If-Match` protègent les ressources modifiables.
+- `Idempotency-Key` protège commandes financières, créations et jobs.
+- Les chaînes d’analyses et de corrections sont linéaires par contraintes
+  uniques.
+- Les règles et stratégies sont épinglées par identifiant et snapshot.
+- Les écritures append-only ne sont corrigées que par événements compensatoires.
 
-## Déploiement
+## Sécurité
 
-Trois environnements : local, staging, production. Une image API, une image web
-et la même image API lancée en worker. Les migrations sont exécutées une seule
-fois avant bascule. Aucun déploiement production si les migrations, fixtures
-financières ou contrats OpenAPI échouent.
+- authentification requise hors local ;
+- `portfolio_id` obligatoire et vérifié partout ;
+- URL validée, DNS/IP privés bloqués, redirections limitées ;
+- numéros de série chiffrés et absents des DTO généraux ;
+- secrets par environnement ;
+- logs JSON avec identifiants techniques, sans tokens ni contenu brut ;
+- télémétrie avec liste blanche de propriétés ;
+- sauvegarde quotidienne et restauration trimestrielle.
+
+## Exploitation
+
+Métriques techniques : latence, erreurs, connexions DB, jobs en retard, âge des
+FX et taux d’échec. KPI produit : durée de parcours, publication d’analyse,
+action après alerte et clôture prévision/réalisé.
+
+Environnements local, staging et production. Aucune mise en production si
+migrations base vide, fixtures financières, OpenAPI ou tests d’immuabilité
+échouent.

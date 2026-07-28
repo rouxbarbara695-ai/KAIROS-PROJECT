@@ -1,14 +1,24 @@
-# Product Requirement Documents
+# Documentation produit KAIROS
 
-Le document actif est le [PRD KAIROS V1](kairos-v1.md). Il définit utilisateurs,
-parcours, exigences, écrans, données minimales, erreurs et critères de sortie.
+Le [PRD KAIROS V1](kairos-v1.md) définit le périmètre, les utilisateurs, les
+parcours et les exigences.
 
-Les spécifications complémentaires sont :
+Compléments obligatoires :
 
-- [calculs métier](../product/calculation-spec.md) ;
+- [modèle métier](../product/domain-model.md) ;
+- [portes d’éligibilité](../product/gates.md) ;
+- [moteur d’analyse](../product/opportunity-analysis-engine.md) ;
+- [moteur marché](../product/market-engine.md) ;
+- [calculs](../product/calculation-spec.md) ;
+- [score](../product/scoring-engine.md) ;
+- [pricing](../product/pricing-strategy-engine.md) ;
+- [portefeuille](../product/portfolio-engine.md) ;
 - [plateformes](../product/platform-rules.md) ;
-- [workflow et statuts](../product/workflow-and-states.md) ;
+- [workflow](../product/workflow-and-states.md) ;
+- [sources et surveillance](../product/sources-and-monitoring.md) ;
 - [contrat API](../architecture/api-contract.md) ;
-- [backlog V1](../delivery/backlog-v1.md) ;
-- [stratégie de tests](../quality/test-strategy.md) ;
-- [décisions ouvertes](../decisions/open-questions.md).
+- [schéma SQL](../../database/schema.sql) ;
+- [backlog](../delivery/backlog-v1.md) ;
+- [tests](../quality/test-strategy.md) ;
+- [résolution des audits](../decisions/audit-resolution-v2.md) ;
+- [questions ouvertes](../decisions/open-questions.md).

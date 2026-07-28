@@ -1,51 +1,85 @@
 # Stratégie de tests
 
-## Pyramide
+## Niveaux
 
-- unitaires : moteurs purs, barèmes, arrondis, transitions ;
-- intégration : PostgreSQL, migrations, repositories, API ;
-- contrats : collecteurs à partir de réponses figées ;
-- end-to-end : parcours manuel complet ;
-- non-régression : fixtures d’opérations réelles anonymisées.
+- unitaires : moteurs purs, barèmes, arrondis, canonicalisation ;
+- intégration : PostgreSQL, migrations, contraintes, triggers, repositories ;
+- API : validation, contrats, auth, concurrence, idempotence ;
+- propriétés : invariants financiers et déterminisme ;
+- end-to-end : parcours manuel puis décision complète ;
+- contrats externes : uniquement réponses figées de modes autorisés.
 
-## Matrice minimale
+## Sprint 1
 
 | Zone | Cas obligatoires |
 |---|---|
-| Valorisation | médiane pondérée, devise, set +10/+20, outlier, 2 comps, doublon vendeur |
-| Pricing | frais fixes/variables, ROI, profit minimum, arrondi d’enchère, coûts inconnus |
-| Score | chaque seuil, interpolation, plafonds, dépendances, profit négatif |
-| Gates | échec isolé, plusieurs échecs, expertise nécessaire |
-| Pipeline | chaque transition autorisée et interdite, idempotence |
-| Monitoring | observation identique, baisse, disparition, récupération après erreur |
-| API | validation, auth, pagination, conflit, réponse explicable |
-| Portfolio | réconciliation cash/stock/encaissement, vente clôturée |
+| Création | manuel sans listing, URL sans import, EUR, devise non EUR avec FX |
+| Déduplication | manual_identifier, URL canonique, external_id, NULL distinct |
+| Identité | suggested, confirmed, corrected, unknown, auteur/date |
+| Audit | correction, exclusion future, append-only, avant/après |
+| Immuabilité | update/delete refusés sur audit, événement, ruleset |
+| Isolation | chaque lecture/écriture filtrée par portefeuille |
+| API | Decimal chaîne, curseur stable, ETag, idempotence |
 
-## Fixtures métier
+## Moteurs futurs
 
-1. **Cartier Must Vendôme 590003** : achat 950 €, vente 1 120 €, frais 27 €,
-   profit réalisé 143 €, ROI 15,0526 %.
-2. **Omega** : achat 750 €, vente 1 200 €, frais 27 €, profit 423 €, ROI 56,4 %
-   hors autres coûts.
-3. **Longines L2.257.4.57.6** : achat 950 €, mise en vente 1 800 €, pas d’offre
-   après trois semaines ; opération non vendue, marge non réalisée.
+| Zone | Cas |
+|---|---|
+| Marché | FX, coût acheteur, set dans les deux directions, poids sans double source, outlier, percentile pondéré |
+| Confiances | identification, valorisation, preuve et A–E jamais confondues |
+| Pricing | trois scénarios, frais fixes/variables/min/max, formule fermée et solveur, arrondi bas |
+| Score | 5 piliers, originalité 5 %, chaque cap et seuil non arrondi |
+| Gates | chaque code stable, plusieurs échecs, pas de score |
+| Pipeline | transitions, compensation, vente/encaissement |
+| Portefeuille | grand livre, stock, engagé, encaissement |
 
-Les fixtures ne doivent pas inventer des coûts absents. Les champs inconnus
-sont `null`.
+## Fixtures
+
+### Cartier Must Vendôme 590003
+
+```text
+achat 950,00 EUR
+vente 1 120,00 EUR
+frais vendeur fixes 27,00 EUR
+produit net 1 093,00 EUR
+profit 143,00 EUR
+ROI 0,1505263158
+```
+
+### Omega
+
+```text
+achat 750,00 EUR
+vente 1 200,00 EUR
+frais vendeur fixes 27,00 EUR
+profit 423,00 EUR
+ROI 0,5640000000
+```
+
+### Longines L2.257.4.57.6
+
+Achat 950 €, prix demandé 1 800 €, aucune offre après trois semaines. Aucune
+marge réalisée n’est calculée tant que la vente n’existe pas.
+
+### Maximum d’achat
+
+Avec `N=1000`, `F=100`, `q=0.05`, profit minimum 200 et ROI minimum 10 % :
+maximum brut `666.66666667`, maximum arrondi `660`.
 
 ## Propriétés
 
 - `low ≤ central ≤ high`.
-- augmenter un coût ne peut augmenter ni profit, ni ROI, ni prix maximal.
-- à données identiques, résultat identique.
-- une analyse publiée ne change jamais.
-- aucun verdict Acheter si prix courant > prix maximal.
-- aucun montant NaN/infini ; aucune division par zéro.
-- somme des poids de piliers = 1.
+- Augmenter un coût ne peut augmenter profit, ROI ou maximum.
+- Même snapshot + même ruleset = mêmes octets de sortie métier.
+- Analyse publiée et tables append-only refusent update/delete.
+- Aucun `buy` au-dessus du maximum prudent.
+- Aucun NaN/infini ; ROI `null` si coût nul.
+- Poids piliers et sous-poids = 1.
+- Ajouter un comparable identique et indépendant ne peut réduire le volume.
+- Conversion EUR aller-retour respecte la tolérance Decimal.
 
 ## CI
 
-À chaque PR : formatage, lint, types, tests unitaires, intégration PostgreSQL,
-vérification migrations up/down, génération OpenAPI sans diff inattendu,
-détection de secrets et audit de dépendances. Couverture minimale moteurs 90 %,
-globale 75 % ; la couverture ne remplace pas les cas métier.
+Formatage, lint, types, tests unitaires, intégration PostgreSQL réel,
+migrations depuis zéro, tests d’immutabilité, génération OpenAPI, détection de
+secrets et audit de dépendances. Couverture moteurs ≥90 %, globale ≥75 %.

@@ -1,27 +1,22 @@
-# Pricing Strategy Engine
+# Moteur de pricing
 
-Le Pricing Strategy Engine transforme une cote de marché en stratégie
-d’achat-revente.
+Le moteur transforme la cote de marché en trois scénarios d’opération.
 
-## Entrées
+| Scénario | Prix de vente | Coûts incertains |
+|---|---|---|
+| prudent | cote basse | borne haute |
+| central | cote centrale | borne centrale |
+| favorable | cote haute | borne basse |
 
-- estimation basse, centrale et haute ;
-- prix demandé ou enchère actuelle ;
-- commission d’achat et de vente ;
-- livraison, assurance, change et fiscalité applicable ;
-- travaux et contrôle prévus ;
-- marge nette ou ROI minimal ;
-- durée de détention et risque ;
-- stratégie de négociation.
+Le **prix maximal d’achat et le verdict utilisent toujours le scénario
+prudent**. Le scénario central alimente le profit, le ROI et le délai
+« attendus » affichés ; les trois scénarios restent visibles.
 
-## Sorties
+Entrées : valorisation, prix courant, coûts classés acquisition/préparation/
+vente, règles de plateforme épinglées, stratégie versionnée et capital.
 
-- coût de revient projeté ;
-- prix maximal d’achat ;
-- prix de revente recommandé ;
-- marge nette et ROI attendus ;
-- marge de négociation ;
-- scénario prudent, central et favorable.
+Sorties : coût total, produit net de vente, profit, ROI, prix maximal avant et
+après arrondi, prix de mise en vente, délai et motifs.
 
-Les frais sont versionnés par plateforme et par date. Un changement de règle ne
-doit pas modifier rétroactivement une opération clôturée.
+Les formules exactes figurent dans `calculation-spec.md`. Un changement de règle
+crée une nouvelle version et ne modifie aucune analyse publiée.

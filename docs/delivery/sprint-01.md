@@ -1,47 +1,39 @@
-# Sprint 1 — Socle décisionnel
+# Sprint 1 — Socle et opportunité manuelle
+
+## Périmètre
+
+Uniquement **KAI-001, KAI-002, KAI-003, KAI-101, KAI-102 et KAI-103**.
 
 ## Objectif
 
-Démontrer de bout en bout qu’une annonce saisie manuellement peut produire une
-analyse versionnée, explicable et recalculable.
+Créer une Longines manuellement, sans annonce ni collecteur, confirmer sa
+référence, corriger état/set/vendeur avec audit, la retrouver et détecter un
+doublon.
 
-## Livrable
+## Livrables
 
-Un parcours API minimal :
-
-> créer une opportunité → enregistrer l’annonce → identifier la référence →
-> ajouter des comparables → produire une valorisation → calculer le prix
-> maximal → calculer le score → ajouter une nouvelle observation → recalculer
-> et générer une alerte.
-
-## Backlog ordonné
-
-1. Initialiser les applications `api` et `web`, l’environnement local et la CI.
-2. Créer les migrations correspondant au schéma initial.
-3. Implémenter plateformes, références, montres, annonces et observations.
-4. Implémenter opportunités et portes d’éligibilité.
-5. Implémenter comparables et première valorisation déterministe.
-6. Implémenter coûts, prix maximal, marge et ROI.
-7. Implémenter les cinq piliers du score et le verdict.
-8. Versionner chaque analyse et son explication.
-9. Détecter un changement de prix et produire une alerte.
-10. Exposer et tester le parcours complet via l’API.
+1. Monorepo, local, CI et configuration.
+2. Migration du schéma V2 et seeds.
+3. Modèles, repositories et contrôle de portefeuille.
+4. `POST/GET /opportunities`.
+5. Confirmation de référence.
+6. Corrections dédiées, `If-Match` et événements d’audit.
+7. Déduplication des trois clés.
+8. Tests unitaires, intégration PostgreSQL et API.
 
 ## Critères d’acceptation
 
-- une analyse passée ne peut pas être écrasée ;
-- chaque comparable expose son type, sa source, sa date et sa confiance ;
-- les frais de plateforme appliqués sont datés ;
-- le prix maximal est reproductible à entrées identiques ;
-- un échec de porte empêche le calcul du score ;
-- une baisse franchissant le prix maximal peut faire évoluer le verdict ;
-- le recalcul conserve la cause du déclenchement ;
-- les tests couvrent les calculs financiers et le changement de verdict.
+- mode manuel valide sans `listing_id` ni URL ;
+- `manual_identifier` unique par portefeuille ;
+- confirmation trace auteur/date/statut ;
+- montant EUR conserve taux 1 et horodatage ;
+- correction n’écrase pas la preuve brute ;
+- audit event non modifiable ;
+- ressource d’un autre portefeuille renvoie 404 ;
+- concurrence obsolète et idempotence produisent les erreurs documentées ;
+- migration base vide et seeds sont déterministes.
 
 ## Non inclus
 
-- scraping à grande échelle ;
-- authentification commerciale ;
-- paiement ;
-- application mobile ;
-- apprentissage automatique.
+Comparables, valorisation, pricing, score, alertes, portefeuille financier,
+interface complète et tout accès automatisé.

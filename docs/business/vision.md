@@ -1,89 +1,31 @@
-# Vision de Kairos
+# Vision de KAIROS
 
-> "La technologie n'a de valeur que si elle rend le temps plus utile."
+> La technologie n’a de valeur que si elle rend le temps plus utile.
 
----
+KAIROS aide les revendeurs de montres à prendre des décisions plus rapides,
+cohérentes et documentées. Il ne remplace ni l’expertise ni le contrôle
+d’authenticité : il rend visibles les données, hypothèses, risques et compromis
+qui déterminent une opération.
 
-# Notre vision
+## Mission actuelle
 
-Nous pensons que le temps est la ressource la plus précieuse d'un investisseur.
+Construire un moteur de décision fiable pour l’achat-revente de montres. Le
+produit estime la valeur de marché de la montre, puis évalue l’opportunité dans
+le contexte réel du portefeuille.
 
-Chaque heure passée à rechercher une opportunité, comparer des annonces ou estimer un prix est une heure qui n'est pas consacrée à prendre une décision.
+## Convictions
 
-Notre vision est simple :
+- Une marge élevée n’est pas suffisante si le capital reste immobilisé.
+- Une donnée incertaine doit dégrader la confiance, pas disparaître.
+- Deux exemplaires identiques peuvent constituer deux opportunités différentes
+  selon le prix, le vendeur, les frais, le stock et le capital.
+- Les résultats réels permettent de revoir la méthode avec des preuves.
 
-**Permettre à chacun de transformer son temps en opportunités grâce à de meilleures décisions.**
+## Horizon
 
-Nous pensons que les meilleures décisions ne reposent ni sur la chance, ni uniquement sur l'expérience.
+Les autres marchés de collection constituent une ambition de long terme. La V1
+est volontairement spécifique aux montres ; son modèle de données, ses règles
+de set et ses plateformes ne prétendent pas encore être génériques.
 
-Elles reposent sur une méthode, des données fiables et un apprentissage continu.
-
-La technologie n'a pas vocation à remplacer le jugement et l'expertise humaine.
-
-Elle doit permettre de consacrer moins de temps à chercher, et davantage de temps à décider.
-
----
-
-# Notre mission
-
-Construire le meilleur moteur de décision pour les marchés de collection, en commençant par les montres vintage.
-
-Notre ambition n'est pas de remplacer les investisseurs.
-
-Notre ambition est de leur fournir les outils leur permettant de prendre des décisions plus rapides, plus cohérentes et mieux documentées.
-
-Chaque recommandation doit être compréhensible.
-
-Chaque décision doit pouvoir être justifiée.
-
-Chaque erreur doit permettre au système de progresser.
-
----
-
-# Nos convictions
-
-## Le temps
-
-Le temps est une ressource finie.
-
-Notre responsabilité est de le rendre plus utile.
-
----
-
-## Le capital
-
-Un bon investissement n'est pas uniquement celui qui génère la plus forte marge.
-
-C'est celui qui utilise le capital de la manière la plus efficace au regard du rendement attendu, du risque et du temps d'immobilisation.
-
----
-
-## La connaissance
-
-Chaque décision constitue une nouvelle donnée.
-
-Chaque opportunité analysée, achetée ou abandonnée contribue à améliorer la qualité des décisions futures.
-
-Kairos apprend autant des réussites que des erreurs.
-
----
-
-# Pourquoi Kairos ?
-
-Dans la Grèce antique, Kairos désigne le moment opportun.
-
-Celui qu'il faut savoir reconnaître et saisir.
-
-Nous pensons que ce moment n'est pas uniquement une question de chance ou d'intuition.
-
-Il peut être préparé.
-
-Il peut être identifié.
-
-Il peut être créé.
-
-Kairos est né de cette conviction.
-
-Notre rôle n'est pas de prédire l'avenir.
-
-Notre rôle est d'aider chacun à reconnaître les meilleures opportunités au bon moment, grâce à une méthode rigoureuse et à une technologie qui rend le temps plus utile.
+KAIROS ne prédit pas l’avenir. Il prépare la décision en chiffrant plusieurs
+scénarios avant que le capital ne soit engagé.

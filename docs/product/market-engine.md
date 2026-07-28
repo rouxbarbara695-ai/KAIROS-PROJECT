@@ -1,27 +1,23 @@
-# Market Engine
+# Moteur marché
 
-Le Market Engine construit une estimation défendable à partir de comparables
-normalisés.
+Le moteur marché estime le **coût total observé côté acheteur** pour des
+comparables, puis produit une cote basse, centrale et haute. Il ne retranche
+jamais les frais vendeur d’un comparable : ceux-ci concernent le produit net du
+vendeur, pas le prix payé sur le marché.
 
-## Règles essentielles
+## Pipeline
 
-- même référence en priorité ;
-- état et set comparables ;
-- vendeurs distincts afin d’éviter les doublons ;
-- distinction stricte entre prix demandé et prix réalisé ;
-- frais et devise normalisés ;
-- pondération selon récence, qualité, source et proximité du comparable ;
-- signalement des anomalies de prix plutôt que suppression silencieuse ;
-- marché principal adapté à la marque, au segment et au niveau de prix.
+1. Conserver prix source, devise, type et provenance.
+2. Convertir en EUR avec un taux daté.
+3. Ajouter les frais acheteur et la livraison obligatoire non incluse.
+4. Ajuster le set du comparable vers celui de la cible.
+5. Appliquer une seule fois la fiabilité de source, puis récence, proximité,
+   état, complétude et indépendance vendeur.
+6. Signaler les anomalies sans supprimer la donnée.
+7. Calculer médiane et percentiles pondérés selon `calculation-spec.md`.
 
 ## Sortie
 
-Chaque `MarketValuation` contient :
-
-- valeur basse, centrale et haute ;
-- date de calcul ;
-- comparables et poids utilisés ;
-- niveau de confiance ;
-- tendance ;
-- explication des exclusions ;
-- version des règles de calcul.
+La `MarketValuation` conserve cote, `valuation_confidence`, ruleset, date, liste
+des comparables, composants de prix, ajustements, facteurs, poids, exclusions et
+explication. Elle est immuable.

@@ -1,34 +1,17 @@
-# Roadmap
+# Roadmap reliée au backlog
 
-## Prototype décisionnel
+| Étape produit | Epics / stories | Condition de passage |
+|---|---|---|
+| Socle manuel | KAI-001 à KAI-104 | opportunité créée/corrigée sans collecteur, audit visible |
+| Prototype décisionnel | KAI-201 à KAI-305 | fixtures marché/pricing/score reproductibles |
+| Historique interne | KAI-401 à KAI-404 | analyses chaînées, observations et alertes simulées |
+| Pilotage portefeuille | KAI-501 à KAI-505 | cash, stock, vente et prévision/réalisé réconciliés |
+| Import autorisé | KAI-405 | validation écrite d’une méthode d’accès et tests de contrat |
+| Bêta sécurisée | stabilisation | authentification, sauvegardes, supervision, conformité |
 
-- saisie d’annonce et de comparables ;
-- première cote ;
-- calcul du prix maximal ;
-- scoring expliqué ;
-- observations successives et alerte simulée.
+## Après la V1
 
-## V1 interne
-
-- import assisté par URL ;
-- suivi automatique sur les premières sources ;
-- dashboard opportunités, capital et stock ;
-- achats, coûts, ventes et résultat réel ;
-- comparaison prévision / réalisé.
-
-## Première version commercialisable
-
-- comptes utilisateurs sécurisés ;
-- recherches surveillées ;
-- alertes configurables ;
-- connecteurs stabilisés et conformes ;
-- abonnement et limites d’usage ;
-- traçabilité et supervision des collecteurs.
-
-## Évolutions
-
-- pré-sélection automatique d’annonces ;
-- davantage de sources et de prix réalisés ;
-- modèles de liquidité et de délai enrichis ;
-- fonctions pour boutiques, équipes et réseaux ;
-- analyses prédictives uniquement lorsque les données internes le permettent.
+Recherches surveillées, connecteurs supplémentaires, comptes professionnels,
+abonnement et équipes nécessitent un cadrage propre. Pré-sélection automatique,
+autres marchés de collection et modèles prédictifs ne sont étudiés qu’après
+validation de données internes suffisantes.

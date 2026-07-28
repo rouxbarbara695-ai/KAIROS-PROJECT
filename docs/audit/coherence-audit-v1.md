@@ -1,5 +1,14 @@
 # Audit de cohérence V1 — PRD / calculs / contrat API / schéma
 
+> **Statut : résolu.** Chaque point C-01 à C-11, S-01 à S-16 et A-01 à A-09
+> listé ci-dessous a un arbitrage enregistré dans
+> `docs/decisions/audit-resolution-v2.md`, appliqué dans les spécifications V2
+> (PRD, `calculation-spec.md`, `gates.md`, `scoring-engine.md`,
+> `database/schema.sql`, `api-contract.md`). Ce document est conservé tel quel
+> comme trace historique de l'analyse ; il ne décrit plus l'état courant du
+> dépôt. Pour l'état courant, lire les documents V2 et leur registre de
+> résolution.
+
 **Date :** 27 juillet 2026
 **Périmètre audité :** `docs/prd/kairos-v1.md`, `docs/product/calculation-spec.md`,
 `docs/product/platform-rules.md`, `docs/product/gates.md`,

@@ -37,6 +37,24 @@ _SIGNS: dict[LedgerKind, Decimal] = {
 }
 
 
+# Natures qu'un utilisateur peut écrire directement.
+#
+# Les autres — paiement d'achat, paiement de coût, encaissement de vente,
+# remboursement — ont une contrepartie ailleurs : une ligne dans `purchases`,
+# `opportunity_costs` ou `sales`. Les saisir à la main laisserait le registre
+# diverger des opérations qu'il est censé refléter, et la trésorerie
+# cesserait de s'expliquer. Elles sont écrites par les parcours d'achat et de
+# vente, jamais par ce formulaire.
+TREASURY_KINDS = frozenset(
+    {
+        LedgerKind.CAPITAL_CONTRIBUTION,
+        LedgerKind.WITHDRAWAL,
+        LedgerKind.POSITIVE_ADJUSTMENT,
+        LedgerKind.NEGATIVE_ADJUSTMENT,
+    }
+)
+
+
 @dataclass(frozen=True, slots=True)
 class LedgerMovement:
     """Un mouvement déjà converti en euros.

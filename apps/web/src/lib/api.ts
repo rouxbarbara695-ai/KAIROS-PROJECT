@@ -256,3 +256,26 @@ export async function getLatestAnalysis(
     throw err;
   }
 }
+
+export type PortfolioOverview =
+  components["schemas"]["PortfolioOverviewResponse"];
+export type LedgerMovementCreate =
+  components["schemas"]["LedgerMovementCreate"];
+export type LedgerMovementResponse =
+  components["schemas"]["LedgerMovementResponse"];
+
+export function getPortfolioOverview(
+  portfolioId: string,
+): Promise<PortfolioOverview> {
+  return request<PortfolioOverview>(`/portfolios/${portfolioId}/overview`);
+}
+
+export function createLedgerEntry(
+  portfolioId: string,
+  body: LedgerMovementCreate,
+): Promise<LedgerMovementResponse> {
+  return request<LedgerMovementResponse>(
+    `/portfolios/${portfolioId}/ledger-entries`,
+    { method: "POST", body: JSON.stringify(body) },
+  );
+}

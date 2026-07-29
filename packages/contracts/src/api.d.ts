@@ -327,6 +327,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/portfolios/{portfolio_id}/ledger-entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Ledger Entry Route
+         * @description Ajoute un mouvement de trésorerie.
+         *
+         *     Le registre est append-only : on ne corrige pas une écriture, on en passe
+         *     une autre en sens inverse. C'est ce qui permet à la trésorerie de
+         *     s'expliquer ligne à ligne.
+         */
+        post: operations["create_ledger_entry_route_api_v1_portfolios__portfolio_id__ledger_entries_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portfolios/{portfolio_id}/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Portfolio Overview Route */
+        get: operations["get_portfolio_overview_route_api_v1_portfolios__portfolio_id__overview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -634,6 +675,93 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** HoldingResponse */
+        HoldingResponse: {
+            /** Brand */
+            brand?: string | null;
+            /** Cost Eur */
+            cost_eur: string;
+            /**
+             * Opportunity Id
+             * Format: uuid
+             */
+            opportunity_id: string;
+            /**
+             * Purchased At
+             * Format: date-time
+             */
+            purchased_at: string;
+            /** Reference */
+            reference?: string | null;
+        };
+        /**
+         * LedgerMovementCreate
+         * @description Mouvement de trésorerie saisi par l'utilisateur.
+         *
+         *     Seules les natures sans contrepartie ailleurs sont acceptées. Un paiement
+         *     d'achat ou un encaissement de vente a sa ligne dans `purchases` ou
+         *     `sales` : le saisir ici ferait diverger le registre des opérations qu'il
+         *     reflète.
+         *
+         *     Le montant est toujours positif — c'est la nature qui porte le sens, comme
+         *     dans le registre lui-même.
+         */
+        LedgerMovementCreate: {
+            /** Amount */
+            amount: number | string;
+            /** Currency */
+            currency: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "capital_contribution" | "withdrawal" | "positive_adjustment" | "negative_adjustment";
+            /** Notes */
+            notes?: string | null;
+            /** Occurred At */
+            occurred_at?: string | null;
+        };
+        /**
+         * LedgerMovementResponse
+         * @description Une écriture du registre, avec la traçabilité de change qu'exige la
+         *     règle 3 : devise source, montant EUR, taux, source et horodatage.
+         */
+        LedgerMovementResponse: {
+            /** Amount Eur */
+            amount_eur: string;
+            /** Amount Source */
+            amount_source: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Currency */
+            currency: string;
+            /**
+             * Fx Rate At
+             * Format: date-time
+             */
+            fx_rate_at: string;
+            /** Fx Source */
+            fx_source: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Notes */
+            notes?: string | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Rate To Eur */
+            rate_to_eur: string;
+        };
         /** OpportunityPage */
         OpportunityPage: {
             /** Items */
@@ -732,6 +860,31 @@ export interface components {
             previous_override_id: string | null;
             /** Reason */
             reason: string;
+        };
+        /**
+         * PortfolioOverviewResponse
+         * @description Trésorerie, stock et détail.
+         *
+         *     Le stock est détaillé plutôt que résumé : annoncer un taux
+         *     d'immobilisation sans dire quelles montres immobilisent le capital ne dit
+         *     pas quoi vendre.
+         */
+        PortfolioOverviewResponse: {
+            /** Available Cash Eur */
+            available_cash_eur: string;
+            /** Holdings */
+            holdings: components["schemas"]["HoldingResponse"][];
+            /** Movements */
+            movements: components["schemas"]["LedgerMovementResponse"][];
+            /**
+             * Portfolio Id
+             * Format: uuid
+             */
+            portfolio_id: string;
+            /** Stock At Cost Eur */
+            stock_at_cost_eur: string;
+            /** Total Capital Eur */
+            total_capital_eur: string;
         };
         /** PriceCreate */
         PriceCreate: {
@@ -1608,6 +1761,72 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_ledger_entry_route_api_v1_portfolios__portfolio_id__ledger_entries_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                portfolio_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LedgerMovementCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LedgerMovementResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_portfolio_overview_route_api_v1_portfolios__portfolio_id__overview_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                portfolio_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortfolioOverviewResponse"];
                 };
             };
             /** @description Validation Error */

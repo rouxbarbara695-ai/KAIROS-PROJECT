@@ -2680,6 +2680,50 @@
         ]
       }
     },
+    "/api/v1/opportunities/{opportunity_id}/valuations/latest": {
+      "get": {
+        "description": "Derni\u00e8re cote calcul\u00e9e.\n\nSans elle, l'\u00e9cran repartirait de z\u00e9ro \u00e0 chaque ouverture et pr\u00e9tendrait\nqu'aucune cote n'existe alors que l'analyse vient de s'appuyer dessus.",
+        "operationId": "get_latest_valuation_route_api_v1_opportunities__opportunity_id__valuations_latest_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "opportunity_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Opportunity Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValuationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Latest Valuation Route",
+        "tags": [
+          "comparables"
+        ]
+      }
+    },
     "/api/v1/opportunities/{opportunity_id}/watch-profile": {
       "patch": {
         "operationId": "patch_watch_profile_route_api_v1_opportunities__opportunity_id__watch_profile_patch",

@@ -225,3 +225,33 @@ async def test_valuation_of_foreign_opportunity_is_not_disclosed(
 ) -> None:
     response = await client.post(f"/api/v1/opportunities/{uuid.uuid4()}/valuations")
     assert response.status_code == 404
+
+
+async def test_the_latest_valuation_can_be_read_back(
+    client: AsyncClient, default_portfolio_id: uuid.UUID
+) -> None:
+    """Sans relecture, l'écran repartirait de zéro à chaque ouverture et
+    prétendrait qu'aucune cote n'existe."""
+
+    opportunity = await _opportunity(client, default_portfolio_id, "VAL-100")
+    await _add(client, opportunity["id"], "3000.00", seller="s1")
+    await _add(client, opportunity["id"], "3100.00", seller="s2")
+
+    absent = await client.get(
+        f"/api/v1/opportunities/{opportunity['id']}/valuations/latest"
+    )
+    assert absent.status_code == 404
+
+    created = (
+        await client.post(f"/api/v1/opportunities/{opportunity['id']}/valuations")
+    ).json()
+    second = (
+        await client.post(f"/api/v1/opportunities/{opportunity['id']}/valuations")
+    ).json()
+
+    latest = await client.get(
+        f"/api/v1/opportunities/{opportunity['id']}/valuations/latest"
+    )
+    assert latest.status_code == 200
+    assert latest.json()["id"] == second["id"]
+    assert latest.json()["id"] != created["id"]

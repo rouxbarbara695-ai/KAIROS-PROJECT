@@ -199,6 +199,25 @@ export function createOverride(
   });
 }
 
+/**
+ * Dernière cote, ou `null` s'il n'y en a aucune.
+ *
+ * L'absence de cote est l'état initial de tout dossier : la traiter comme
+ * une erreur ferait clignoter un échec à l'ouverture de chaque fiche.
+ */
+export async function getLatestValuation(
+  opportunityId: string,
+): Promise<ValuationResponse | null> {
+  try {
+    return await request<ValuationResponse>(
+      `/opportunities/${opportunityId}/valuations/latest`,
+    );
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return null;
+    throw err;
+  }
+}
+
 export function createValuation(
   opportunityId: string,
 ): Promise<ValuationResponse> {
@@ -206,4 +225,34 @@ export function createValuation(
     `/opportunities/${opportunityId}/valuations`,
     { method: "POST" },
   );
+}
+
+export type AnalysisResponse = components["schemas"]["AnalysisResponse"];
+
+export function createAnalysis(
+  opportunityId: string,
+): Promise<AnalysisResponse> {
+  return request<AnalysisResponse>(`/opportunities/${opportunityId}/analyses`, {
+    method: "POST",
+  });
+}
+
+/**
+ * Dernière analyse, ou `null` s'il n'y en a aucune.
+ *
+ * L'absence d'analyse est l'état initial de tout dossier, pas une erreur :
+ * la traiter comme telle ferait clignoter un message d'échec à l'ouverture
+ * de chaque fiche.
+ */
+export async function getLatestAnalysis(
+  opportunityId: string,
+): Promise<AnalysisResponse | null> {
+  try {
+    return await request<AnalysisResponse>(
+      `/opportunities/${opportunityId}/analyses/latest`,
+    );
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return null;
+    throw err;
+  }
 }

@@ -1,7 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { ApiError, createValuation, type ValuationResponse } from "@/lib/api";
+import { useEffect, useState, useTransition } from "react";
+import {
+  ApiError,
+  createValuation,
+  getLatestValuation,
+  type ValuationResponse,
+} from "@/lib/api";
 import { formatAmount, formatDateTime } from "@/lib/labels";
 
 const CAP_LABELS: Record<string, string> = {
@@ -36,6 +41,26 @@ export function ValuationPanel({ opportunityId }: { opportunityId: string }) {
   const [isPending, startTransition] = useTransition();
   const [valuation, setValuation] = useState<ValuationResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  // Relire la dernière cote à l'ouverture : sans cela, l'écran annoncerait
+  // qu'aucune cote n'existe alors que l'analyse vient de s'appuyer dessus.
+  useEffect(() => {
+    let cancelled = false;
+    getLatestValuation(opportunityId)
+      .then((latest) => {
+        if (!cancelled) setValuation(latest);
+      })
+      .catch(() => {
+        // Un échec de relecture ne doit pas empêcher de lancer un calcul.
+      })
+      .finally(() => {
+        if (!cancelled) setLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [opportunityId]);
 
   function compute() {
     setError(null);
@@ -168,10 +193,12 @@ export function ValuationPanel({ opportunityId }: { opportunityId: string }) {
           </p>
         </>
       ) : (
-        <p className="text-sm text-fg-muted">
-          Aucune cote calculée. Ajoutez au moins deux comparables recevables,
-          puis lancez le calcul.
-        </p>
+        loaded && (
+          <p className="text-sm text-fg-muted">
+            Aucune cote calculée. Ajoutez au moins deux comparables recevables,
+            puis lancez le calcul.
+          </p>
+        )
       )}
 
       {error && <p className="text-sm text-danger">{error}</p>}

@@ -3,6 +3,7 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, Query, Request, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.schemas.comparables import (
@@ -21,9 +22,11 @@ from app.market.application.create_comparable import create_comparable
 from app.market.application.import_comparables import import_comparables
 from app.market.application.list_comparables import ComparableView, list_comparables
 from app.shared.config import Settings, get_settings
+from app.shared.domain.errors import DomainError, ErrorCode
 from app.shared.domain.page import clamp_limit
 from app.shared.domain.principal import Principal
-from app.shared.infrastructure.db.models.market import Comparable
+from app.shared.infrastructure.db.models.market import Comparable, MarketValuation
+from app.shared.infrastructure.db.models.opportunities import Opportunity
 from app.shared.infrastructure.db.session import get_session
 from app.shared.infrastructure.principal_provider import get_current_principal
 
@@ -175,6 +178,51 @@ async def create_valuation_route(
     valuation = await compute_valuation(
         session, principal, opportunity_id, settings, list(page.items)
     )
+
+    return ValuationResponse(
+        id=valuation.id,
+        opportunity_id=valuation.opportunity_id,
+        calculated_at=valuation.calculated_at,
+        low_value_eur=valuation.low_value_eur,
+        central_value_eur=valuation.central_value_eur,
+        high_value_eur=valuation.high_value_eur,
+        valuation_confidence=valuation.valuation_confidence,
+        explanation=valuation.explanation,
+    )
+
+
+@router.get(
+    "/opportunities/{opportunity_id}/valuations/latest",
+    response_model=ValuationResponse,
+)
+async def get_latest_valuation_route(
+    opportunity_id: uuid.UUID,
+    session: AsyncSession = Depends(get_session),
+    principal: Principal = Depends(get_current_principal),
+) -> ValuationResponse:
+    """Dernière cote calculée.
+
+    Sans elle, l'écran repartirait de zéro à chaque ouverture et prétendrait
+    qu'aucune cote n'existe alors que l'analyse vient de s'appuyer dessus.
+    """
+
+    valuation = (
+        await session.execute(
+            select(MarketValuation)
+            .join(Opportunity, Opportunity.id == MarketValuation.opportunity_id)
+            .where(
+                MarketValuation.opportunity_id == opportunity_id,
+                # Filtrer par portefeuille : une cote d'un autre portefeuille
+                # doit être indiscernable d'une cote inexistante.
+                Opportunity.portfolio_id.in_(principal.portfolio_ids),
+            )
+            .order_by(MarketValuation.calculated_at.desc(), MarketValuation.id.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+
+    if valuation is None:
+        raise DomainError(ErrorCode.NOT_FOUND, "Aucune cote pour cette opportunité.")
 
     return ValuationResponse(
         id=valuation.id,

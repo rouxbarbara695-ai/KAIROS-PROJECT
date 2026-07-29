@@ -79,22 +79,59 @@ class TransactionCosts:
     la liste des coûts déjà agrégés, ils seraient comptés deux fois et le
     maximum sortirait trop bas. Composer les deux ici, plutôt que de laisser
     l'appelant fournir une liste déjà fusionnée, rend cette erreur impossible.
+
+    Achat et revente ont chacun leur grille. On achète où l'annonce se trouve
+    et on revend où l'on a décidé de revendre, et ce n'est pas forcément le
+    même endroit : appliquer les frais vendeur de la plateforme d'achat
+    reviendrait à supposer une revente qu'on n'a jamais choisie.
     """
 
-    platform_fees: PlatformFees
-    platform_label: str
+    purchase_fees: PlatformFees
+    purchase_label: str
+    resale_fees: PlatformFees
+    resale_label: str
     inbound_shipping_eur: Decimal = Decimal("0")
     outbound_shipping_eur: Decimal = Decimal("0")
     operational: tuple[Cost, ...] = ()
+
+    @property
+    def buyer_side(self) -> PlatformFees:
+        """La grille d'achat, amputée de son côté vendeur.
+
+        Sans cela, acheter et revendre sur la même plateforme compterait sa
+        commission de vente deux fois.
+        """
+
+        return PlatformFees(
+            buyer_fee_rate=self.purchase_fees.buyer_fee_rate,
+            buyer_fee_fixed=self.purchase_fees.buyer_fee_fixed,
+            buyer_fee_min=self.purchase_fees.buyer_fee_min,
+            buyer_fee_max=self.purchase_fees.buyer_fee_max,
+        )
+
+    @property
+    def seller_side(self) -> PlatformFees:
+        """La grille de revente, amputée de son côté acheteur."""
+
+        return PlatformFees(
+            seller_fee_rate=self.resale_fees.seller_fee_rate,
+            seller_fee_fixed=self.resale_fees.seller_fee_fixed,
+            seller_fee_min=self.resale_fees.seller_fee_min,
+            seller_fee_max=self.resale_fees.seller_fee_max,
+        )
 
     def all_costs(self) -> list[Cost]:
         """Tous les coûts, prêts pour l'évaluation des scénarios."""
 
         return [
             *costs_from_platform(
-                self.platform_fees,
-                label=self.platform_label,
+                self.buyer_side,
+                label=self.purchase_label,
                 inbound_shipping_eur=self.inbound_shipping_eur,
+            ),
+            *costs_from_platform(
+                self.seller_side,
+                label=self.resale_label,
                 outbound_shipping_eur=self.outbound_shipping_eur,
             ),
             *self.operational,
@@ -206,7 +243,7 @@ def analyse(
         minimum_roi=terms.minimum_roi,
         ruleset=ruleset,
         cost_of_purchase=buyer_cost_function(
-            transaction_costs.platform_fees,
+            transaction_costs.buyer_side,
             transaction_costs.acquisition_costs_outside_platform_fees_eur,
         ),
     )

@@ -40,9 +40,20 @@ mais doivent être comblés pour que le parcours soit réellement utilisable.
 | POL-022 | ~~P2~~ | ~~Mode URL absent du formulaire.~~ **Traité (KAI-104)** : sélecteur manuel / annonce en ligne. |
 | POL-023 | P2 | Le contrôle de concurrence (`If-Match` / version de ressource) n'est pas propagé par le client web : deux corrections simultanées ne sont pas arbitrées côté interface. |
 | POL-024 | P3 | La sélection de stratégie existe en base et à l'API sans écran dédié. |
-| POL-028 | P2 | Le pilier « capital et portefeuille » vaut 20 % du score et dépend de l'allocation, de la concentration par marque et de l'immobilisation — trois grandeurs que seul le grand livre (`KAI-502`, Epic 5) sait calculer. En attendant, elles sont fournies explicitement à l'analyse plutôt qu'inventées. À remplacer par des valeurs calculées dès que le portefeuille existe. |
+| POL-028 | — | **Traité.** Le pilier portefeuille est calculé depuis le registre : trésorerie reconstruite des mouvements, stock au coût d'acquisition. Une tranche minimale de `KAI-502` a été avancée plutôt que d'alimenter le score par des valeurs saisies. |
 | POL-026 | P2 | La liste des comparables n'indique pas qu'un comparable a été écarté comme anomalie lors du dernier calcul : l'information n'existe que dans la trace de la valorisation, pas sur le comparable lui-même. |
 | POL-027 | P3 | L'exclusion d'un comparable demande son motif par une invite du navigateur, faute d'un composant de dialogue. |
+
+## Décision et analyse
+
+| ID | Priorité | Sujet |
+|---|---|---|
+| POL-050 | P1 | Aucune interface d'alimentation du registre : apports de capital, achats et ventes s'écrivent en SQL. Tant que ce n'est pas fait, le pilier portefeuille ne bouge pas depuis l'application, alors que c'est lui qui bloque le plus souvent le verdict. Suite de `KAI-502`. |
+| POL-051 | P2 | La fiabilité du vendeur, son niveau de risque et les protections de la transaction ne sont jamais saisis : ils retombent sur « inconnu », ce qui coûte des points au pilier des preuves et déclenche une réserve sur la porte vendeur. Le formulaire doit les demander. |
+| POL-052 | P2 | Les coûts opérationnels — révision, polissage, transport — n'ont pas d'interface de saisie. Ils sont exceptionnels (« on achète et on revend, on ne révise pas »), mais quand ils existent ils changent le profit et le prix maximal. |
+| POL-053 | P2 | Aucune plateforme n'est rattachée à une opportunité manuelle, donc aucun frais d'achat ni de vente n'entre dans les scénarios. Le profit affiché est celui d'une vente de particulier à particulier ; sur Catawiki ou Chrono24 il serait sensiblement plus bas. |
+| POL-054 | P3 | Le prix affiché du scénario est calculé mais l'analyse n'expose pas les coûts ligne à ligne, seulement leur total. La règle 6 demande le détail. |
+| POL-055 | P3 | L'analyse ne montre pas ce qui a changé depuis la version précédente. Un recalcul après correction devrait pouvoir se lire comme un écart, pas comme un nouveau tableau. |
 
 ## Socle technique
 
@@ -62,7 +73,6 @@ mais doivent être comblés pour que le parcours soit réellement utilisable.
 
 Ces manques ne sont pas de la dette : ils appartiennent aux lots suivants.
 
-- Pricing, portes, score et verdict — Epic 3.
-- Portefeuille financier, historique et notifications.
+- Portefeuille financier complet, historique et notifications — Epic 5.
 - Surveillance automatisée `KAI-405`, conditionnelle et soumise à validation
   écrite du mode d'accès.

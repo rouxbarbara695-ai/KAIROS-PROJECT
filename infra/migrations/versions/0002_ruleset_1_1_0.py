@@ -66,5 +66,13 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # 1.0.0 n'est pas touché : il n'y a rien à restaurer, seulement à retirer.
-    op.execute("delete from rulesets where version = '1.1.0';")
+    """Ne retire rien : `rulesets` est append-only par contrat.
+
+    Supprimer un barème publié est précisément ce que le déclencheur
+    d'immuabilité empêche, et à raison — toute analyse qui le référence
+    perdrait le barème qui l'a produite (CLAUDE.md règles 4 et 10). Un barème
+    inutilisé ne coûte rien ; une analyse orpheline serait irréparable.
+
+    La descente reste donc possible sans erreur, et `0001` fait table rase de
+    toute façon si l'on descend jusqu'à la base.
+    """

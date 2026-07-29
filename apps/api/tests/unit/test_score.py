@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import json
 from decimal import Decimal
 from pathlib import Path
@@ -282,3 +283,122 @@ def test_every_cap_is_kept_in_the_trace(ruleset: Ruleset) -> None:
 
 def test_trace_carries_the_ruleset_version(ruleset: Ruleset) -> None:
     assert _score(ruleset).ruleset_version == "1.0.0"
+
+
+# --- Dérogation au plafond d'immobilisation (Q-13) ------------------------
+
+
+def _ruleset_with_relief(ruleset: Ruleset, **overrides: object) -> Ruleset:
+    """Ruleset 1.1.0 tel que produit par la migration 0002."""
+
+    relief = {
+        "cap": Decimal("79"),
+        "minimum_liquidity": Decimal("75"),
+        "minimum_roi": Decimal("0.25"),
+        "minimum_profit_eur": Decimal("400"),
+        "minimum_valuation_confidence": Decimal("70"),
+        "minimum_evidence_quality": Decimal("65"),
+    }
+    relief.update(overrides)
+    # Copie profonde sans passer par JSON : un aller-retour convertirait les
+    # Decimal du barème en chaînes.
+    config = copy.deepcopy(ruleset.config)
+    config["scoring"]["exceptional_deal_relief"] = relief
+    return Ruleset(version="1.1.0", config=config)
+
+
+_STRAINED = {
+    # Position tendue : immobilisation au-delà de 70 % et allocation au-delà
+    # de 35 %, exactement le cas que le plafond vise. L'affaire, elle, tient
+    # les quatre conditions de la dérogation — c'est tout l'objet du scénario.
+    "capital_immobilization_rate": Decimal("0.73"),
+    "allocation_rate": Decimal("0.45"),
+    "maximum_allocation_rate": Decimal("0.80"),
+    "central_roi": Decimal("0.30"),
+    "central_profit_eur": Decimal("500"),
+}
+
+
+def test_without_the_relief_a_strained_position_is_capped(ruleset: Ruleset) -> None:
+    """Le ruleset 1.0.0 ne connaît pas la dérogation : elle ne peut pas
+    s'activer rétroactivement sur un barème antérieur."""
+
+    result = _score(ruleset, **_STRAINED)
+    assert result.final_score == Decimal("54.00")
+    assert "immobilization_and_allocation" in [c.name for c in result.applied_caps]
+    assert result.verdict is Verdict.PASS
+
+
+def test_an_exceptional_deal_lifts_the_cap(ruleset: Ruleset) -> None:
+    relieved = _ruleset_with_relief(ruleset)
+    result = _score(relieved, **_STRAINED)
+
+    names = [cap.name for cap in result.applied_caps]
+    assert "immobilization_relieved_exceptional_deal" in names
+    assert "immobilization_and_allocation" not in names
+    assert result.final_score == Decimal("79.00")
+    assert result.verdict is Verdict.BUY
+
+
+def test_the_relief_raises_the_cap_but_never_removes_it(ruleset: Ruleset) -> None:
+    """Une position immobilisée reste tendue : le score ne peut pas atteindre
+    l'excellence même sur une affaire exceptionnelle."""
+
+    relieved = _ruleset_with_relief(ruleset)
+    result = _score(relieved, **_STRAINED)
+    # Le score brut reste inférieur à 100 : la position tendue pénalise déjà le
+    # pilier portefeuille. Le plafond relevé mord malgré tout par-dessus.
+    assert result.final_score == Decimal("79.00")
+    assert result.final_score < result.raw_score
+
+
+def test_margin_alone_does_not_trigger_the_relief(ruleset: Ruleset) -> None:
+    """Une forte marge sur une pièce illiquide aggrave l'immobilisation au
+    lieu d'y répondre : la dérogation doit refuser de s'appliquer."""
+
+    relieved = _ruleset_with_relief(ruleset)
+    result = _score(
+        relieved,
+        **_STRAINED,
+        sale_delay_days=300,
+        active_comparable_depth=2,
+        dispersion_subscore=Decimal("10"),
+    )
+    names = [cap.name for cap in result.applied_caps]
+    assert "immobilization_relieved_exceptional_deal" not in names
+    assert "immobilization_and_allocation" in names
+
+
+def test_weak_evidence_does_not_trigger_the_relief(ruleset: Ruleset) -> None:
+    """Une affaire en apparence exceptionnelle sur une preuve faible n'en est
+    pas une."""
+
+    relieved = _ruleset_with_relief(ruleset)
+    result = _score(relieved, **_STRAINED, valuation_confidence=Decimal("65"))
+    names = [cap.name for cap in result.applied_caps]
+    assert "immobilization_relieved_exceptional_deal" not in names
+
+
+def test_each_condition_is_necessary(ruleset: Ruleset) -> None:
+    relieved = _ruleset_with_relief(ruleset)
+    for override in (
+        {"central_roi": Decimal("0.24")},
+        {"central_profit_eur": Decimal("399")},
+        {"valuation_confidence": Decimal("69")},
+    ):
+        result = _score(relieved, **{**_STRAINED, **override})
+        names = [cap.name for cap in result.applied_caps]
+        assert "immobilization_relieved_exceptional_deal" not in names, override
+
+
+def test_the_relief_is_never_silent(ruleset: Ruleset) -> None:
+    relieved = _ruleset_with_relief(ruleset)
+    result = _score(relieved, **_STRAINED)
+    cap = next(
+        c
+        for c in result.applied_caps
+        if c.name == "immobilization_relieved_exceptional_deal"
+    )
+    assert "liquidité" in cap.reason
+    assert "ROI" in cap.reason
+    assert "profit" in cap.reason

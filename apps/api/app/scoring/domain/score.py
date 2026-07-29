@@ -6,6 +6,7 @@ from enum import StrEnum
 
 from app.scoring.domain.curves import curve, interpolate
 from app.scoring.domain.gates import GateCode, GateReport, GateStatus
+from app.shared.domain.errors import DomainError
 from app.shared.rules.ruleset import Ruleset
 
 _SUBSCORE = Decimal("0.0001")
@@ -257,7 +258,7 @@ def compute_score(
         + evidence_quality * ruleset.decimal(*_WEIGHTS, "evidence_quality")
     )
 
-    caps.extend(_score_caps(inputs, evidence_quality, ruleset))
+    caps.extend(_score_caps(inputs, evidence_quality, liquidity, ruleset))
 
     final = raw
     for cap in caps:
@@ -292,7 +293,10 @@ def compute_score(
 
 
 def _score_caps(
-    inputs: ScoreInputs, evidence_quality: Decimal, ruleset: Ruleset
+    inputs: ScoreInputs,
+    evidence_quality: Decimal,
+    liquidity: Decimal,
+    ruleset: Ruleset,
 ) -> list[AppliedCap]:
     """Plafonds de score, tous conservés. Le plus contraignant l'emporte, mais
     chacun reste visible : savoir *pourquoi* un score est bridé importe autant
@@ -342,8 +346,10 @@ def _score_caps(
         inputs.capital_immobilization_rate >= immobilization_threshold
         and inputs.allocation_rate > strict_start
     ):
+        relief = _exceptional_deal_relief(inputs, evidence_quality, liquidity, ruleset)
         caps.append(
-            AppliedCap(
+            relief
+            or AppliedCap(
                 "immobilization_and_allocation",
                 ruleset.decimal(*_CAPS, "immobilization_and_allocation"),
                 "Capital immobilisé et allocation élevée simultanément.",
@@ -351,6 +357,60 @@ def _score_caps(
         )
 
     return caps
+
+
+def _exceptional_deal_relief(
+    inputs: ScoreInputs,
+    evidence_quality: Decimal,
+    liquidity: Decimal,
+    ruleset: Ruleset,
+) -> AppliedCap | None:
+    """Dérogation au plafond d'immobilisation pour une affaire exceptionnelle.
+
+    Conditionnée d'abord à la liquidité : le plafond existe parce qu'un capital
+    bloqué le reste longtemps, or une pièce qui se revend vite ne prolonge pas
+    ce blocage. Une forte marge sur une pièce illiquide aggraverait au
+    contraire la situation, d'où le refus de la déclencher sur le seul profit.
+
+    Le plafond est relevé, jamais supprimé : une position immobilisée reste
+    tendue. Absente du ruleset, la dérogation n'existe simplement pas — elle ne
+    peut donc pas s'activer par défaut sur un barème antérieur (Q-13).
+    """
+
+    try:
+        rule = ruleset.mapping("scoring", "exceptional_deal_relief")
+    except DomainError:
+        return None
+
+    conditions = {
+        "liquidité": (liquidity, Decimal(str(rule["minimum_liquidity"]))),
+        "ROI": (
+            inputs.central_roi if inputs.central_roi is not None else Decimal("-1"),
+            Decimal(str(rule["minimum_roi"])),
+        ),
+        "profit": (inputs.central_profit_eur, Decimal(str(rule["minimum_profit_eur"]))),
+        "confiance": (
+            inputs.valuation_confidence,
+            Decimal(str(rule["minimum_valuation_confidence"])),
+        ),
+        "preuves": (
+            evidence_quality,
+            Decimal(str(rule["minimum_evidence_quality"])),
+        ),
+    }
+
+    if any(observed < required for observed, required in conditions.values()):
+        return None
+
+    detail = ", ".join(
+        f"{name} {observed} ≥ {required}"
+        for name, (observed, required) in conditions.items()
+    )
+    return AppliedCap(
+        "immobilization_relieved_exceptional_deal",
+        Decimal(str(rule["cap"])),
+        f"Dérogation, affaire exceptionnelle : {detail}.",
+    )
 
 
 def _decide(

@@ -143,8 +143,12 @@ def _binary_search(
             return False
         return (net - total_cost) / total_cost >= minimum_roi
 
-    low = Decimal("0")
+    # La sonde de faisabilité se fait au centime, pas à zéro : un prix nul sans
+    # frais fixes donne un coût nul, donc un ROI indéfini, et un problème
+    # parfaitement soluble serait déclaré infaisable. Le centime est aussi le
+    # plus petit prix qui ait un sens monétaire.
     high = ruleset.decimal(*_PRICING, "maximum_solver_ceiling_eur")
+    low = _SOLVER_PRECISION
 
     if not satisfies(low):
         increment = _rounding_increment(Decimal("0"), ruleset)

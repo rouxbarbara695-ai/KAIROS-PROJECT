@@ -249,6 +249,31 @@ def test_binary_search_handles_a_non_linear_fee(ruleset: Ruleset) -> None:
     assert result.value_eur <= result.raw_value_eur
 
 
+def test_a_problem_without_fixed_costs_is_not_declared_infeasible(
+    ruleset: Ruleset,
+) -> None:
+    """La sonde de faisabilité ne peut pas se faire à prix nul : sans frais
+    fixes, le coût y est nul, donc le ROI indéfini, et un problème parfaitement
+    soluble serait rejeté."""
+
+    def cost_of_purchase(price: Decimal) -> Decimal:
+        return price + min(price * Decimal("0.05"), Decimal("10000"))
+
+    result = max_purchase_price(
+        net_sale_proceeds_eur=Decimal("3000.00"),
+        prudent_costs=[],
+        minimum_profit_eur=Decimal("300.00"),
+        minimum_roi=Decimal("0.20"),
+        ruleset=ruleset,
+        cost_of_purchase=cost_of_purchase,
+    )
+
+    assert result.binding_constraint != "infeasible"
+    assert result.value_eur > Decimal("0")
+    # 3000 / 1,20 = 2500 de coût total, soit 2380,95 avant 5 % de commission.
+    assert result.raw_value_eur == Decimal("2380.95")
+
+
 def test_binary_search_reports_infeasibility(ruleset: Ruleset) -> None:
     def cost_of_purchase(price: Decimal) -> Decimal:
         return price + Decimal("5000")

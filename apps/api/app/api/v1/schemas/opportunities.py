@@ -35,8 +35,20 @@ class WatchCreate(BaseModel):
 
 
 class SellerCreate(BaseModel):
+    """Profil du vendeur tel qu'on le constate.
+
+    Fiabilité, risque et protections ne sont pas des jugements de valeur :
+    ce sont des faits que la porte « risque vendeur » et le pilier « qualité
+    des preuves » consomment tels quels. Les laisser vides est légitime — ils
+    retombent alors sur « inconnu », qui a sa propre note, jamais sur une
+    valeur favorable.
+    """
+
     country_code: str | None = Field(default=None, min_length=2, max_length=2)
     seller_type: str | None = None
+    reliability: str | None = None
+    risk_level: str | None = None
+    transaction_protections: str | None = None
 
 
 class PriceCreate(BaseModel):
@@ -91,6 +103,9 @@ class SellerProfileResponse(BaseModel):
     id: uuid.UUID
     country_code: str | None
     seller_type: str | None
+    reliability: str | None = None
+    risk_level: str | None = None
+    transaction_protections: str | None = None
 
 
 class PriceResponse(BaseModel):
@@ -127,6 +142,9 @@ class WatchProfilePatchRequest(BaseModel):
 class SellerProfilePatchRequest(BaseModel):
     country_code: str | None = Field(default=None, min_length=2, max_length=2)
     seller_type: str | None = None
+    reliability: str | None = None
+    risk_level: str | None = None
+    transaction_protections: str | None = None
     reason: str = Field(min_length=1)
 
 

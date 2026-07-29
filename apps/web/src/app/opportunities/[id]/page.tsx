@@ -163,6 +163,10 @@ export default async function OpportunityDetailPage({
                 current={{
                   countryCode: opportunity.seller?.country_code,
                   sellerType: opportunity.seller?.seller_type,
+                  reliability: opportunity.seller?.reliability,
+                  riskLevel: opportunity.seller?.risk_level,
+                  transactionProtections:
+                    opportunity.seller?.transaction_protections,
                 }}
               />
             </Disclosure>

@@ -279,3 +279,20 @@ export function createLedgerEntry(
     { method: "POST", body: JSON.stringify(body) },
   );
 }
+
+export type PlatformResponse = components["schemas"]["PlatformResponse"];
+export type PlatformRuleCreate = components["schemas"]["PlatformRuleCreate"];
+
+export function listPlatforms(): Promise<PlatformResponse[]> {
+  return request<PlatformResponse[]>("/platforms");
+}
+
+export function createPlatformRule(
+  code: string,
+  body: PlatformRuleCreate,
+): Promise<unknown> {
+  return request(`/platforms/${code}/rules`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}

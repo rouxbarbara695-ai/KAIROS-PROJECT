@@ -34,6 +34,12 @@ export default function RootLayout({
                 Portefeuille
               </Link>
               <Link
+                href="/plateformes"
+                className="transition-colors hover:text-fg"
+              >
+                Plateformes
+              </Link>
+              <Link
                 href="/opportunities/new"
                 className="rounded-md bg-accent px-3 py-1.5 font-medium text-bg transition-opacity hover:opacity-90"
               >

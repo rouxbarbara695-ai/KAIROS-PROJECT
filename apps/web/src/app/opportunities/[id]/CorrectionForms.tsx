@@ -182,7 +182,13 @@ export function SellerProfileForm({
   current,
 }: {
   opportunityId: string;
-  current: { countryCode?: string | null; sellerType?: string | null };
+  current: {
+    countryCode?: string | null;
+    sellerType?: string | null;
+    reliability?: string | null;
+    riskLevel?: string | null;
+    transactionProtections?: string | null;
+  };
 }) {
   const router = useRouter();
   const { isPending, error, submit } = useCorrection(() => router.refresh());
@@ -196,6 +202,9 @@ export function SellerProfileForm({
       await patchSellerProfile(opportunityId, {
         ...(countryCode ? { country_code: countryCode } : {}),
         seller_type: String(data.get("seller_type")),
+        reliability: String(data.get("reliability")),
+        risk_level: String(data.get("risk_level")),
+        transaction_protections: String(data.get("transaction_protections")),
         reason: String(data.get("reason")),
       });
       form.reset();
@@ -223,6 +232,51 @@ export function SellerProfileForm({
             {options.sellerType.map((option) => (
               <option key={option} value={option}>
                 {labels.sellerType(option)}
+              </option>
+            ))}
+          </select>
+        </Field>
+      </div>
+      {/* Fiabilité, risque et protections nourrissent la porte « risque
+          vendeur » et le pilier « qualité des preuves ». Laissés à
+          « inconnu », ils coûtent des points — ce qui est correct : un
+          dossier muet ne vaut pas un dossier rassurant. */}
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Field label="Fiabilité">
+          <select
+            name="reliability"
+            className={inputClass}
+            defaultValue={current.reliability ?? "unknown"}
+          >
+            {options.sellerReliability.map((option) => (
+              <option key={option} value={option}>
+                {labels.sellerReliability(option)}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Niveau de risque">
+          <select
+            name="risk_level"
+            className={inputClass}
+            defaultValue={current.riskLevel ?? "unknown"}
+          >
+            {options.sellerRisk.map((option) => (
+              <option key={option} value={option}>
+                {labels.sellerRisk(option)}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Protections">
+          <select
+            name="transaction_protections"
+            className={inputClass}
+            defaultValue={current.transactionProtections ?? "none"}
+          >
+            {options.transactionProtections.map((option) => (
+              <option key={option} value={option}>
+                {labels.transactionProtections(option)}
               </option>
             ))}
           </select>

@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.schemas.opportunities import CreateOpportunityRequest
 from app.identity.domain import vocabularies as vocab
+from app.identity.domain.seller import reliability_data
 from app.opportunities.domain.canonical_url import canonicalize_url
 from app.platforms.application.detect_platform import detect_platform_code
 from app.shared.config import Settings
@@ -102,9 +103,15 @@ async def create_opportunity(
     await session.flush()
 
     seller: Seller | None = None
-    if (
-        request.seller.country_code is not None
-        or request.seller.seller_type is not None
+    if any(
+        value is not None
+        for value in (
+            request.seller.country_code,
+            request.seller.seller_type,
+            request.seller.reliability,
+            request.seller.risk_level,
+            request.seller.transaction_protections,
+        )
     ):
         seller_type = vocab.normalize(
             request.seller.seller_type, vocab.SELLER_TYPES, vocab.SELLER_TYPE_FALLBACK
@@ -113,6 +120,11 @@ async def create_opportunity(
             portfolio_id=request.portfolio_id,
             country_code=request.seller.country_code,
             seller_type=seller_type,
+            reliability_data=reliability_data(
+                reliability=request.seller.reliability,
+                risk_level=request.seller.risk_level,
+                transaction_protections=request.seller.transaction_protections,
+            ),
         )
         session.add(seller)
         await session.flush()

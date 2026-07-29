@@ -28,12 +28,14 @@ def to_opportunity_response(
     reference: WatchReference | None,
     seller: Seller | None,
     latest_price: OpportunityPriceInput | None,
+    purchase_platform_code: str | None = None,
 ) -> OpportunityResponse:
     return OpportunityResponse(
         id=opportunity.id,
         portfolio_id=opportunity.portfolio_id,
         source_mode=opportunity.source_mode,
         manual_identifier=opportunity.manual_identifier,
+        purchase_platform_code=purchase_platform_code,
         status=opportunity.status,
         version=opportunity.version,
         watch=WatchProfileResponse(

@@ -852,6 +852,8 @@ export interface components {
              * Format: uuid
              */
             portfolio_id: string;
+            /** Purchase Platform Code */
+            purchase_platform_code?: string | null;
             seller: components["schemas"]["SellerProfileResponse"] | null;
             /** Source Mode */
             source_mode: string;
@@ -1150,6 +1152,8 @@ export interface components {
              * @enum {string}
              */
             mode: "manual" | "url";
+            /** Platform Code */
+            platform_code?: string | null;
             /** Url */
             url?: string | null;
         };

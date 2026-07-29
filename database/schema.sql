@@ -302,6 +302,11 @@ create table opportunities (
   watch_id uuid not null references watches(id),
   seller_id uuid references sellers(id),
   strategy_id uuid references strategies(id),
+  -- Plateforme d'achat quand l'opportunité n'a pas d'annonce. Une saisie
+  -- manuelle peut parfaitement venir de Catawiki sans qu'on ait collé l'URL,
+  -- et ses frais d'achat existent quand même. Redondant avec la plateforme de
+  -- l'annonce lorsqu'il y en a une : c'est alors l'annonce qui fait foi.
+  purchase_platform_id uuid references platforms(id),
   status opportunity_status not null default 'watching',
   version integer not null default 1 check (version > 0),
   created_at timestamptz not null default now(),

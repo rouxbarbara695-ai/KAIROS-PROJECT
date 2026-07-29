@@ -1113,6 +1113,17 @@
             "title": "Portfolio Id",
             "type": "string"
           },
+          "purchase_platform_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Purchase Platform Code"
+          },
           "seller": {
             "anyOf": [
               {
@@ -2074,6 +2085,17 @@
             ],
             "title": "Mode",
             "type": "string"
+          },
+          "platform_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Platform Code"
           },
           "url": {
             "anyOf": [

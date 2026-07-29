@@ -17,6 +17,7 @@ configurations, mais ne doit ni activer ni inventer une réponse.
 | Q-10 | validation des primes de set | +10 % / +20 % versionnées | calibration bêta |
 | Q-11 | méthode de quantile pour `Q1`/`Q3` | charnières de Tukey | repli IQR des anomalies |
 | Q-12 | dimension d'état et écart de set gouvernant la similarité | écart le plus défavorable ; au-delà de deux niveaux, coefficient le plus bas | pondération des comparables |
+| Q-13 | dérogation au plafond d'immobilisation pour une affaire exceptionnelle | seuils provisoires ci-dessous, ruleset 1.1.0 | calibration fondateur |
 
 Une décision modifiant un calcul crée un nouveau ruleset. Une décision d’accès
 plateforme crée une nouvelle `PlatformRule`; elle ne modifie pas l’historique.
@@ -44,3 +45,35 @@ quotidiens de la Banque centrale européenne, qui sont publics, documentés,
 horodatés, et pivotés sur l’euro — ce qui correspond exactement à la devise de
 référence de KAIROS. Reste à confirmer, ainsi que la fraîcheur acceptable
 (`fx_max_age_hours`, aujourd’hui 24 h par configuration).
+
+
+## Q-13 — dérogation au plafond d'immobilisation
+
+**Demande du fondateur** : pouvoir déroger au plafond lorsque l'affaire est
+excellente, avec une liquidité et une marge très supérieures aux minimums.
+
+L'intention est légitime et le raisonnement tient : le plafond d'immobilisation
+existe parce qu'un capital déjà bloqué le reste longtemps. Si la pièce achetée
+se revend vite, ce risque précis disparaît en grande partie. La dérogation est
+donc conditionnée d'abord à la liquidité, et non au seul profit.
+
+**Seuils provisoires retenus**, tous simultanés :
+
+| Condition | Seuil | Raison |
+|---|---|---|
+| Pilier liquidité | ≥ 75 | la pièce se revend vite : l'immobilisation est courte |
+| ROI central | ≥ 25 % | très au-dessus du minimum de stratégie (10 %) |
+| Profit central | ≥ 400 € | très au-dessus du minimum de stratégie (200 €) |
+| `valuation_confidence` | ≥ 70 | une affaire en apparence excellente sur une preuve faible n'en est pas une |
+
+**Effet** : le plafond passe de 54 à 79. Il n'est pas supprimé — une position
+déjà immobilisée à plus de 70 % reste une position tendue, et le verdict
+`buy` redevient possible sans que le score puisse atteindre l'excellence.
+
+La dérogation apparaît dans la trace comme telle, avec ses quatre conditions et
+leurs valeurs constatées : elle doit être visible, jamais silencieuse.
+
+**Ces quatre seuils sont des valeurs provisoires à calibrer.** Ils vivent dans
+le ruleset `1.1.0`, versionné et immuable comme les autres : modifier un calcul
+crée un nouveau ruleset, il ne réécrit pas l'ancien. Les analyses déjà publiées
+sous `1.0.0` restent rejouables à l'identique.

@@ -77,3 +77,35 @@ leurs valeurs constatées : elle doit être visible, jamais silencieuse.
 le ruleset `1.1.0`, versionné et immuable comme les autres : modifier un calcul
 crée un nouveau ruleset, il ne réécrit pas l'ancien. Les analyses déjà publiées
 sous `1.0.0` restent rejouables à l'identique.
+
+
+## Q-14 — quels champs comptent dans la qualité de la fiche
+
+`scoring-engine.md` définit la qualité de la fiche comme « champs utiles
+renseignés / champs applicables » sans énumérer les champs. Le rapport est donc
+parfaitement spécifié, mais son dénominateur ne l'est pas.
+
+**Liste provisoire retenue**, celle du parcours manuel actuel : marque,
+référence, statut de la référence, état mécanique, état cosmétique,
+originalité, boîte, papiers, prix, pays du vendeur, type de vendeur,
+plateforme.
+
+Deux points à trancher :
+
+1. **Le périmètre.** Faut-il compter des champs que le parcours manuel ne
+   demande pas encore — photos, description d'origine, numéro de série ? Les
+   ajouter ferait mécaniquement baisser la note de toutes les fiches
+   existantes, ce qui est acceptable pour une note relative mais doit être
+   décidé, pas subi.
+2. **La pondération.** La spécification décrit un rapport simple, sans poids.
+   Une référence manquante et un type de vendeur manquant pèsent donc
+   identiquement, alors que le premier empêche presque toute comparaison et
+   que le second n'est qu'un confort.
+
+Un champ sans objet pour le dossier — la plateforme pour une vente de
+particulier à particulier — n'entre ni au numérateur ni au dénominateur.
+Le pénaliser reviendrait à noter un dossier complet comme incomplet.
+
+**Cette liste est provisoire.** Elle vit dans le ruleset `1.2.0`, versionné et
+immuable : l'allonger crée un nouveau ruleset et laisse les analyses déjà
+publiées rejouables à l'identique.

@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from decimal import Decimal
 
+from app.market.domain.sale_delay import SaleDelay, estimated_sale_delay
 from app.portfolio.domain.exposure import PortfolioPosition, exposure_rates
 from app.pricing.domain.costs import (
     Cost,
@@ -57,7 +58,7 @@ class MarketFacts:
     total_weight: Decimal
     active_comparable_depth: int
     dispersion_subscore: Decimal
-    sale_delay_days: int
+    dated_comparables: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -130,6 +131,7 @@ class AnalysisOutcome:
     scenarios: dict[Scenario, ScenarioResult]
     max_purchase: MaxPurchasePrice
     listing_price_eur: Decimal
+    sale_delay: SaleDelay
     allocation_rate: Decimal
     brand_concentration_rate: Decimal
     capital_immobilization_rate: Decimal
@@ -211,11 +213,24 @@ def analyse(
 
     rates = exposure_rates(position, purchase_price_eur)
 
+    # Le délai dépend du prix qu'on vise, pas seulement du marché : viser haut
+    # dans la cote se paie en temps. Il se calcule donc après le prix affiché,
+    # jamais avant.
+    listing_price = _listing_price(market, terms)
+    sale_delay = estimated_sale_delay(
+        dated_comparables=market.dated_comparables,
+        intended_sale_price_eur=listing_price,
+        low_eur=market.low_eur,
+        central_eur=market.central_eur,
+        high_eur=market.high_eur,
+        ruleset=ruleset,
+    )
+
     score = compute_score(
         ScoreInputs(
             central_profit_eur=central.net_profit_eur,
             central_roi=central.roi,
-            sale_delay_days=market.sale_delay_days,
+            sale_delay_days=sale_delay.days,
             active_comparable_depth=market.active_comparable_depth,
             dispersion_subscore=market.dispersion_subscore,
             allocation_rate=rates.allocation_rate,
@@ -240,7 +255,8 @@ def analyse(
         score=score,
         scenarios=scenarios,
         max_purchase=max_purchase,
-        listing_price_eur=_listing_price(market, terms),
+        listing_price_eur=listing_price,
+        sale_delay=sale_delay,
         allocation_rate=rates.allocation_rate,
         brand_concentration_rate=rates.brand_concentration_rate,
         capital_immobilization_rate=rates.capital_immobilization_rate,

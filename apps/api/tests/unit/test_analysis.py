@@ -62,7 +62,7 @@ def _market(**overrides: object) -> MarketFacts:
         "total_weight": Decimal("6"),
         "active_comparable_depth": 20,
         "dispersion_subscore": Decimal("85"),
-        "sale_delay_days": 21,
+        "dated_comparables": 8,
     }
     base.update(overrides)
     return MarketFacts(**base)  # type: ignore[arg-type]

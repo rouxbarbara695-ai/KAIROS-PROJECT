@@ -8,6 +8,8 @@ from httpx import AsyncClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.shared.config import get_settings
+
 pytestmark = pytest.mark.integration
 
 
@@ -97,7 +99,10 @@ async def test_valuation_is_computed_and_traced(
     assert low <= central <= high
 
     explanation = body["explanation"]
-    assert explanation["ruleset_version"] == "1.0.0"
+    # Rattaché au barème actif, pas à une version en dur : figer « 1.0.0 » ici
+    # ferait échouer le test à chaque nouveau ruleset alors que le
+    # comportement vérifié — la cote porte sa version — n'a pas changé.
+    assert explanation["ruleset_version"] == get_settings().active_ruleset_version
     assert explanation["comparables_used"] == 4
     assert explanation["target_completeness"] == "full_set"
     assert "confidence" in explanation

@@ -272,3 +272,110 @@ async def test_the_total_capital_is_cash_plus_stock_at_cost(
     await _movement(client, default_portfolio_id, "capital_contribution", "2000.00")
     body = await _overview(client, default_portfolio_id)
     assert body["total_capital_eur"] == "2000.00"
+
+
+# --- Stratégie -----------------------------------------------------------
+
+
+async def test_the_default_strategy_has_no_resale_platform(
+    client: AsyncClient, default_portfolio_id: uuid.UUID
+) -> None:
+    """Aucune plateforme de revente supposée : où l'on revend est une décision
+    qu'on n'a pas encore prise."""
+
+    response = await client.get(f"/api/v1/portfolios/{default_portfolio_id}/strategy")
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["version"] == 1
+    assert body["resale_platform_code"] is None
+    assert body["minimum_roi"] == "0.1000000000"
+
+
+async def test_setting_the_resale_platform_opens_a_new_version(
+    client: AsyncClient, default_portfolio_id: uuid.UUID
+) -> None:
+    """Une version n'est jamais réécrite : une analyse figée référence celle
+    qui l'a produite."""
+
+    first = (
+        await client.get(f"/api/v1/portfolios/{default_portfolio_id}/strategy")
+    ).json()
+
+    created = await client.post(
+        f"/api/v1/portfolios/{default_portfolio_id}/strategy",
+        json={"resale_platform_code": "chrono24"},
+    )
+    assert created.status_code == 201, created.text
+    body = created.json()
+
+    assert body["version"] == first["version"] + 1
+    assert body["id"] != first["id"]
+    assert body["resale_platform_code"] == "chrono24"
+
+
+async def test_unmentioned_terms_are_carried_over(
+    client: AsyncClient, default_portfolio_id: uuid.UUID
+) -> None:
+    """Corriger un paramètre ne doit pas obliger à retaper les autres :
+    exiger la saisie complète inviterait à la faute de recopie."""
+
+    before = (
+        await client.get(f"/api/v1/portfolios/{default_portfolio_id}/strategy")
+    ).json()
+
+    after = (
+        await client.post(
+            f"/api/v1/portfolios/{default_portfolio_id}/strategy",
+            json={"minimum_roi": "0.25"},
+        )
+    ).json()
+
+    assert after["minimum_roi"] == "0.2500000000"
+    assert after["minimum_profit_eur"] == before["minimum_profit_eur"]
+    assert after["negotiation_buffer"] == before["negotiation_buffer"]
+
+
+async def test_the_resale_platform_can_be_removed_explicitly(
+    client: AsyncClient, default_portfolio_id: uuid.UUID
+) -> None:
+    """Un champ vide ne saurait exprimer « retire-la » sans ambiguïté : il se
+    confondrait avec « n'y touche pas »."""
+
+    await client.post(
+        f"/api/v1/portfolios/{default_portfolio_id}/strategy",
+        json={"resale_platform_code": "catawiki"},
+    )
+    cleared = (
+        await client.post(
+            f"/api/v1/portfolios/{default_portfolio_id}/strategy",
+            json={"clear_resale_platform": True},
+        )
+    ).json()
+    assert cleared["resale_platform_code"] is None
+
+
+async def test_an_unknown_resale_platform_is_refused(
+    client: AsyncClient, default_portfolio_id: uuid.UUID
+) -> None:
+    response = await client.post(
+        f"/api/v1/portfolios/{default_portfolio_id}/strategy",
+        json={"resale_platform_code": "brocante-du-coin"},
+    )
+    assert response.status_code == 404
+
+
+async def test_a_strategy_version_cannot_be_modified(
+    client: AsyncClient, db_session: AsyncSession, default_portfolio_id: uuid.UUID
+) -> None:
+    body = (
+        await client.get(f"/api/v1/portfolios/{default_portfolio_id}/strategy")
+    ).json()
+
+    with pytest.raises(Exception) as excinfo:
+        await db_session.execute(
+            text("update strategy_versions set minimum_roi = 0.9 where id = :id"),
+            {"id": body["id"]},
+        )
+        await db_session.commit()
+    assert "IMMUTABLE_RESOURCE" in str(excinfo.value)
+    await db_session.rollback()

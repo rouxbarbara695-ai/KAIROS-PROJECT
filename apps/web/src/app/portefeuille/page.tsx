@@ -1,8 +1,14 @@
 import Link from "next/link";
 import { Card, EmptyState } from "@/components/Card";
-import { getMe, getPortfolioOverview } from "@/lib/api";
+import {
+  getMe,
+  getPortfolioOverview,
+  getStrategy,
+  listPlatforms,
+} from "@/lib/api";
 import { formatAmount, formatDateTime, labels } from "@/lib/labels";
 import { MovementForm } from "./MovementForm";
+import { StrategyForm } from "./StrategyForm";
 
 // Le registre change à chaque saisie : une page mise en cache afficherait une
 // trésorerie périmée, c'est-à-dire exactement le défaut qu'on cherche à éviter
@@ -41,7 +47,11 @@ export default async function PortfolioPage() {
     );
   }
 
-  const overview = await getPortfolioOverview(portfolioId);
+  const [overview, strategy, platforms] = await Promise.all([
+    getPortfolioOverview(portfolioId),
+    getStrategy(portfolioId),
+    listPlatforms(),
+  ]);
 
   const immobilization = share(
     overview.stock_at_cost_eur,
@@ -81,6 +91,31 @@ export default async function PortfolioPage() {
           </p>
         </Card>
       </div>
+
+      {/* La stratégie décide où l'on revend et à quelles conditions : elle
+          gouverne le prix maximal et le verdict, elle vient donc avant le
+          détail des mouvements. */}
+      <Card>
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-sm font-semibold text-fg-muted">Stratégie</h2>
+          <span className="text-xs text-fg-muted">version {strategy.version}</span>
+        </div>
+        <StrategyForm
+          portfolioId={portfolioId}
+          platforms={platforms.map((platform) => ({
+            code: platform.code,
+            name: platform.name,
+            hasRule: platform.has_active_rule,
+          }))}
+          current={{
+            minimumRoi: strategy.minimum_roi,
+            minimumProfitEur: strategy.minimum_profit_eur,
+            maximumAllocationRate: strategy.maximum_allocation_rate,
+            negotiationBuffer: strategy.negotiation_buffer,
+            resalePlatformCode: strategy.resale_platform_code ?? null,
+          }}
+        />
+      </Card>
 
       <Card>
         <h2 className="mb-3 text-sm font-semibold text-fg-muted">

@@ -3,6 +3,7 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.schemas.portfolio import (
@@ -10,13 +11,23 @@ from app.api.v1.schemas.portfolio import (
     LedgerMovementCreate,
     LedgerMovementResponse,
     PortfolioOverviewResponse,
+    StrategyResponse,
+    StrategyUpdate,
 )
 from app.portfolio.application.position import overview
 from app.portfolio.application.record_movement import record_movement
+from app.scoring.application.strategy import (
+    RESALE_PLATFORM,
+    active_strategy_version,
+    record_strategy_version,
+)
 from app.shared.config import Settings, get_settings
 from app.shared.domain.errors import DomainError, ErrorCode
 from app.shared.domain.principal import Principal
+from app.shared.infrastructure.db.models.platforms import Platform
 from app.shared.infrastructure.db.models.portfolio_ledger import PortfolioLedgerEntry
+from app.shared.infrastructure.db.models.reference_data import Ruleset as RulesetRow
+from app.shared.infrastructure.db.models.strategies import StrategyVersion
 from app.shared.infrastructure.db.session import get_session
 from app.shared.infrastructure.principal_provider import get_current_principal
 
@@ -102,3 +113,96 @@ async def create_ledger_entry_route(
         settings=settings,
     )
     return _movement(entry)
+
+
+def _strategy(version: StrategyVersion) -> StrategyResponse:
+    code = version.settings.get(RESALE_PLATFORM)
+    return StrategyResponse(
+        id=version.id,
+        version=version.version,
+        valid_from=version.valid_from,
+        minimum_roi=version.minimum_roi,
+        minimum_profit_eur=version.minimum_profit_eur,
+        maximum_allocation_rate=version.maximum_allocation_rate,
+        negotiation_buffer=version.negotiation_buffer,
+        resale_platform_code=None if code is None else str(code),
+    )
+
+
+async def _ruleset_id(session: AsyncSession, version: str) -> uuid.UUID:
+    row = (
+        await session.execute(
+            select(RulesetRow.id).where(RulesetRow.version == version)
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        raise DomainError(ErrorCode.RULESET_MISSING, f"Ruleset {version} introuvable.")
+    return row
+
+
+@router.get("/portfolios/{portfolio_id}/strategy", response_model=StrategyResponse)
+async def get_strategy_route(
+    portfolio_id: uuid.UUID,
+    session: AsyncSession = Depends(get_session),
+    principal: Principal = Depends(get_current_principal),
+    settings: Settings = Depends(get_settings),
+) -> StrategyResponse:
+    if not principal.owns_portfolio(portfolio_id):
+        raise DomainError(ErrorCode.NOT_FOUND, "Portefeuille introuvable.")
+
+    ruleset_id = await _ruleset_id(session, settings.active_ruleset_version)
+    version = await active_strategy_version(
+        session, portfolio_id, ruleset_id, principal.user_id
+    )
+    await session.commit()
+    return _strategy(version)
+
+
+@router.post(
+    "/portfolios/{portfolio_id}/strategy",
+    status_code=status.HTTP_201_CREATED,
+    response_model=StrategyResponse,
+)
+async def update_strategy_route(
+    portfolio_id: uuid.UUID,
+    body: StrategyUpdate,
+    session: AsyncSession = Depends(get_session),
+    principal: Principal = Depends(get_current_principal),
+    settings: Settings = Depends(get_settings),
+) -> StrategyResponse:
+    """Ouvre une nouvelle version de la stratégie.
+
+    Une version n'est jamais réécrite : une analyse figée référence celle qui
+    l'a produite, et la modifier rendrait ce verdict inexplicable après coup.
+    """
+
+    if not principal.owns_portfolio(portfolio_id):
+        raise DomainError(ErrorCode.NOT_FOUND, "Portefeuille introuvable.")
+
+    if body.resale_platform_code is not None:
+        exists = (
+            await session.execute(
+                select(Platform.id).where(Platform.code == body.resale_platform_code)
+            )
+        ).scalar_one_or_none()
+        if exists is None:
+            raise DomainError(
+                ErrorCode.NOT_FOUND,
+                "Plateforme de revente inconnue.",
+                field="resale_platform_code",
+            )
+
+    ruleset_id = await _ruleset_id(session, settings.active_ruleset_version)
+    version = await record_strategy_version(
+        session,
+        portfolio_id,
+        ruleset_id,
+        principal.user_id,
+        minimum_roi=body.minimum_roi,
+        minimum_profit_eur=body.minimum_profit_eur,
+        maximum_allocation_rate=body.maximum_allocation_rate,
+        negotiation_buffer=body.negotiation_buffer,
+        resale_platform_code=body.resale_platform_code,
+        clear_resale_platform=body.clear_resale_platform,
+    )
+    return _strategy(version)

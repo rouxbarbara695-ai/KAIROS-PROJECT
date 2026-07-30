@@ -296,3 +296,20 @@ export function createPlatformRule(
     body: JSON.stringify(body),
   });
 }
+
+export type StrategyResponse = components["schemas"]["StrategyResponse"];
+export type StrategyUpdate = components["schemas"]["StrategyUpdate"];
+
+export function getStrategy(portfolioId: string): Promise<StrategyResponse> {
+  return request<StrategyResponse>(`/portfolios/${portfolioId}/strategy`);
+}
+
+export function updateStrategy(
+  portfolioId: string,
+  body: StrategyUpdate,
+): Promise<StrategyResponse> {
+  return request<StrategyResponse>(`/portfolios/${portfolioId}/strategy`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}

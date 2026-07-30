@@ -398,6 +398,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/portfolios/{portfolio_id}/strategy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Strategy Route */
+        get: operations["get_strategy_route_api_v1_portfolios__portfolio_id__strategy_get"];
+        put?: never;
+        /**
+         * Update Strategy Route
+         * @description Ouvre une nouvelle version de la stratégie.
+         *
+         *     Une version n'est jamais réécrite : une analyse figée référence celle qui
+         *     l'a produite, et la modifier rendrait ce verdict inexplicable après coup.
+         */
+        post: operations["update_strategy_route_api_v1_portfolios__portfolio_id__strategy_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1128,6 +1152,61 @@ export interface components {
             mode: "manual" | "url";
             /** Url */
             url?: string | null;
+        };
+        /** StrategyResponse */
+        StrategyResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Maximum Allocation Rate */
+            maximum_allocation_rate: string;
+            /** Minimum Profit Eur */
+            minimum_profit_eur: string;
+            /** Minimum Roi */
+            minimum_roi: string;
+            /** Negotiation Buffer */
+            negotiation_buffer: string;
+            /** Resale Platform Code */
+            resale_platform_code?: string | null;
+            /**
+             * Valid From
+             * Format: date-time
+             */
+            valid_from: string;
+            /** Version */
+            version: number;
+        };
+        /**
+         * StrategyUpdate
+         * @description Ajustement de la stratégie.
+         *
+         *     Chaque champ est facultatif : ceux qu'on ne mentionne pas sont repris de
+         *     la version courante. Une stratégie se corrige d'un paramètre à la fois ;
+         *     exiger la saisie complète inviterait à la faute de recopie.
+         *
+         *     `resale_platform_code` est la plateforme où l'on compte revendre — une
+         *     décision, pas une propriété de l'annonce achetée. `clear_resale_platform`
+         *     la retire explicitement, ce qu'un champ vide ne saurait exprimer sans
+         *     ambiguïté.
+         */
+        StrategyUpdate: {
+            /**
+             * Clear Resale Platform
+             * @default false
+             */
+            clear_resale_platform: boolean;
+            /** Maximum Allocation Rate */
+            maximum_allocation_rate?: number | string | null;
+            /** Minimum Profit Eur */
+            minimum_profit_eur?: number | string | null;
+            /** Minimum Roi */
+            minimum_roi?: number | string | null;
+            /** Negotiation Buffer */
+            negotiation_buffer?: number | string | null;
+            /** Resale Platform Code */
+            resale_platform_code?: string | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -2034,6 +2113,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PortfolioOverviewResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_strategy_route_api_v1_portfolios__portfolio_id__strategy_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                portfolio_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StrategyResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_strategy_route_api_v1_portfolios__portfolio_id__strategy_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                portfolio_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StrategyUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StrategyResponse"];
                 };
             };
             /** @description Validation Error */

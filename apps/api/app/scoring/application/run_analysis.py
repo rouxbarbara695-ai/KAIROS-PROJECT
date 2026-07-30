@@ -21,7 +21,7 @@ from app.scoring.application.analysis_inputs import (
     WatchFacts,
     analyse,
 )
-from app.scoring.application.strategy import active_strategy_version
+from app.scoring.application.strategy import RESALE_PLATFORM, active_strategy_version
 from app.scoring.domain.record import RecordCompleteness, record_completeness
 from app.shared.config import Settings
 from app.shared.domain.errors import DomainError, ErrorCode
@@ -34,7 +34,7 @@ from app.shared.infrastructure.db.models.market import (
     ValuationComparable,
 )
 from app.shared.infrastructure.db.models.operations import OpportunityCost
-from app.shared.infrastructure.db.models.platforms import PlatformRule
+from app.shared.infrastructure.db.models.platforms import Platform, PlatformRule
 from app.shared.infrastructure.db.models.reference_data import Ruleset as RulesetRow
 from app.shared.infrastructure.db.models.strategies import StrategyVersion
 from app.shared.infrastructure.db.models.watches import Seller, Watch, WatchReference
@@ -187,17 +187,14 @@ def _record(
     )
 
 
-async def _platform_fees(
-    session: AsyncSession, listing: Listing | None, at: datetime
-) -> tuple[PlatformFees, uuid.UUID | None, str]:
-    if listing is None:
-        return PlatformFees(), None, "Hors plateforme"
-
-    rule = (
+async def _rule_for_platform(
+    session: AsyncSession, platform_id: uuid.UUID, at: datetime
+) -> PlatformRule | None:
+    return (
         await session.execute(
             select(PlatformRule)
             .where(
-                PlatformRule.platform_id == listing.platform_id,
+                PlatformRule.platform_id == platform_id,
                 PlatformRule.valid_from <= at,
                 or_(PlatformRule.valid_to.is_(None), PlatformRule.valid_to > at),
             )
@@ -206,16 +203,9 @@ async def _platform_fees(
         )
     ).scalar_one_or_none()
 
-    if rule is None:
-        # Rester muet ferait passer une plateforme à 20 % de commission pour
-        # une plateforme gratuite : mieux vaut refuser l'analyse.
-        raise DomainError(
-            ErrorCode.NOT_FOUND,
-            "Aucune règle de frais applicable pour la plateforme de cette "
-            "annonce : les coûts d'achat ne peuvent pas être établis.",
-        )
 
-    fees = PlatformFees(
+def _fees(rule: PlatformRule) -> PlatformFees:
+    return PlatformFees(
         buyer_fee_rate=rule.buyer_fee_rate,
         buyer_fee_fixed=rule.buyer_fee_fixed,
         buyer_fee_min=rule.buyer_fee_min,
@@ -225,7 +215,65 @@ async def _platform_fees(
         seller_fee_min=rule.seller_fee_min,
         seller_fee_max=rule.seller_fee_max,
     )
-    return fees, rule.id, f"Plateforme (règle v{rule.version})"
+
+
+async def _purchase_side(
+    session: AsyncSession, listing: Listing | None, at: datetime
+) -> tuple[PlatformFees, uuid.UUID | None, str]:
+    """Frais d'achat : ceux de la plateforme où l'annonce se trouve.
+
+    Une opportunité sans annonce n'a pas de plateforme d'achat — un achat de
+    particulier à particulier ne coûte pas de commission, et c'est un constat,
+    pas une lacune.
+    """
+
+    if listing is None:
+        return PlatformFees(), None, "Achat hors plateforme"
+
+    rule = await _rule_for_platform(session, listing.platform_id, at)
+    if rule is None:
+        # Rester muet ferait passer une plateforme à 20 % de commission pour
+        # une plateforme gratuite : mieux vaut refuser l'analyse.
+        raise DomainError(
+            ErrorCode.NOT_FOUND,
+            "Aucune règle de frais applicable pour la plateforme de cette "
+            "annonce : les coûts d'achat ne peuvent pas être établis.",
+        )
+    return _fees(rule), rule.id, f"Achat — grille v{rule.version}"
+
+
+async def _resale_side(
+    session: AsyncSession, strategy_version: StrategyVersion, at: datetime
+) -> tuple[PlatformFees, str]:
+    """Frais de revente : ceux de la plateforme choisie par la stratégie.
+
+    Où l'on revend est une décision, pas une propriété de l'annonce achetée.
+    Reprendre la plateforme d'achat reviendrait à supposer une revente au même
+    endroit — faux dès qu'on achète en enchère pour revendre en vitrine, et
+    faux dans les deux sens puisque les commissions diffèrent.
+    """
+
+    code = strategy_version.settings.get(RESALE_PLATFORM)
+    if code is None:
+        return PlatformFees(), "Revente hors plateforme"
+
+    platform = (
+        await session.execute(select(Platform).where(Platform.code == str(code)))
+    ).scalar_one_or_none()
+    if platform is None:
+        raise DomainError(
+            ErrorCode.NOT_FOUND,
+            f"La plateforme de revente de la stratégie est inconnue : {code}.",
+        )
+
+    rule = await _rule_for_platform(session, platform.id, at)
+    if rule is None:
+        raise DomainError(
+            ErrorCode.NOT_FOUND,
+            f"Aucune grille de frais pour {platform.name}, plateforme de "
+            "revente de la stratégie : le produit net ne peut pas être établi.",
+        )
+    return _fees(rule), f"Revente {platform.name} — grille v{rule.version}"
 
 
 async def run_analysis(
@@ -291,7 +339,10 @@ async def run_analysis(
         ).scalar_one_or_none()
 
     now = datetime.now(UTC)
-    fees, platform_rule_id, platform_label = await _platform_fees(session, listing, now)
+    purchase_fees, platform_rule_id, purchase_label = await _purchase_side(
+        session, listing, now
+    )
+    resale_fees, resale_label = await _resale_side(session, strategy_version, now)
 
     cost_rows = list(
         (
@@ -349,8 +400,10 @@ async def run_analysis(
         ),
         position=position,
         transaction_costs=TransactionCosts(
-            platform_fees=fees,
-            platform_label=platform_label,
+            purchase_fees=purchase_fees,
+            purchase_label=purchase_label,
+            resale_fees=resale_fees,
+            resale_label=resale_label,
             operational=_operational_costs(cost_rows),
         ),
         listing_quality_score=record.score,

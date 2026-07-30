@@ -2093,6 +2093,145 @@
         "title": "SourceCreate",
         "type": "object"
       },
+      "StrategyResponse": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "maximum_allocation_rate": {
+            "title": "Maximum Allocation Rate",
+            "type": "string"
+          },
+          "minimum_profit_eur": {
+            "title": "Minimum Profit Eur",
+            "type": "string"
+          },
+          "minimum_roi": {
+            "title": "Minimum Roi",
+            "type": "string"
+          },
+          "negotiation_buffer": {
+            "title": "Negotiation Buffer",
+            "type": "string"
+          },
+          "resale_platform_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resale Platform Code"
+          },
+          "valid_from": {
+            "format": "date-time",
+            "title": "Valid From",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "valid_from",
+          "minimum_roi",
+          "minimum_profit_eur",
+          "maximum_allocation_rate",
+          "negotiation_buffer"
+        ],
+        "title": "StrategyResponse",
+        "type": "object"
+      },
+      "StrategyUpdate": {
+        "description": "Ajustement de la strat\u00e9gie.\n\nChaque champ est facultatif : ceux qu'on ne mentionne pas sont repris de\nla version courante. Une strat\u00e9gie se corrige d'un param\u00e8tre \u00e0 la fois ;\nexiger la saisie compl\u00e8te inviterait \u00e0 la faute de recopie.\n\n`resale_platform_code` est la plateforme o\u00f9 l'on compte revendre \u2014 une\nd\u00e9cision, pas une propri\u00e9t\u00e9 de l'annonce achet\u00e9e. `clear_resale_platform`\nla retire explicitement, ce qu'un champ vide ne saurait exprimer sans\nambigu\u00eft\u00e9.",
+        "properties": {
+          "clear_resale_platform": {
+            "default": false,
+            "title": "Clear Resale Platform",
+            "type": "boolean"
+          },
+          "maximum_allocation_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maximum Allocation Rate"
+          },
+          "minimum_profit_eur": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minimum Profit Eur"
+          },
+          "minimum_roi": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minimum Roi"
+          },
+          "negotiation_buffer": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Negotiation Buffer"
+          },
+          "resale_platform_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resale Platform Code"
+          }
+        },
+        "title": "StrategyUpdate",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -3684,6 +3823,101 @@
           }
         },
         "summary": "Get Portfolio Overview Route",
+        "tags": [
+          "portfolio"
+        ]
+      }
+    },
+    "/api/v1/portfolios/{portfolio_id}/strategy": {
+      "get": {
+        "operationId": "get_strategy_route_api_v1_portfolios__portfolio_id__strategy_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "portfolio_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Portfolio Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StrategyResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Strategy Route",
+        "tags": [
+          "portfolio"
+        ]
+      },
+      "post": {
+        "description": "Ouvre une nouvelle version de la strat\u00e9gie.\n\nUne version n'est jamais r\u00e9\u00e9crite : une analyse fig\u00e9e r\u00e9f\u00e9rence celle qui\nl'a produite, et la modifier rendrait ce verdict inexplicable apr\u00e8s coup.",
+        "operationId": "update_strategy_route_api_v1_portfolios__portfolio_id__strategy_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "portfolio_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Portfolio Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StrategyUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StrategyResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Strategy Route",
         "tags": [
           "portfolio"
         ]

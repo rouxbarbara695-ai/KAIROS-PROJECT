@@ -72,3 +72,35 @@ class PortfolioOverviewResponse(BaseModel):
     total_capital_eur: DecimalString
     holdings: list[HoldingResponse]
     movements: list[LedgerMovementResponse]
+
+
+class StrategyUpdate(BaseModel):
+    """Ajustement de la stratégie.
+
+    Chaque champ est facultatif : ceux qu'on ne mentionne pas sont repris de
+    la version courante. Une stratégie se corrige d'un paramètre à la fois ;
+    exiger la saisie complète inviterait à la faute de recopie.
+
+    `resale_platform_code` est la plateforme où l'on compte revendre — une
+    décision, pas une propriété de l'annonce achetée. `clear_resale_platform`
+    la retire explicitement, ce qu'un champ vide ne saurait exprimer sans
+    ambiguïté.
+    """
+
+    minimum_roi: DecimalString | None = None
+    minimum_profit_eur: DecimalString | None = None
+    maximum_allocation_rate: DecimalString | None = None
+    negotiation_buffer: DecimalString | None = None
+    resale_platform_code: str | None = None
+    clear_resale_platform: bool = False
+
+
+class StrategyResponse(BaseModel):
+    id: uuid.UUID
+    version: int
+    valid_from: datetime
+    minimum_roi: DecimalString
+    minimum_profit_eur: DecimalString
+    maximum_allocation_rate: DecimalString
+    negotiation_buffer: DecimalString
+    resale_platform_code: str | None = None

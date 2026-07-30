@@ -3,6 +3,7 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, Query, Request, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.schemas.events import (
@@ -35,10 +36,28 @@ from app.opportunities.application.presenters import to_opportunity_response
 from app.shared.config import Settings, get_settings
 from app.shared.domain.page import clamp_limit
 from app.shared.domain.principal import Principal
+from app.shared.infrastructure.db.models.opportunities import Opportunity
+from app.shared.infrastructure.db.models.platforms import Platform
 from app.shared.infrastructure.db.session import get_session
 from app.shared.infrastructure.principal_provider import get_current_principal
 
 router = APIRouter(tags=["opportunities"])
+
+
+async def _platform_code(session: AsyncSession, opportunity: Opportunity) -> str | None:
+    """Code de la plateforme d'achat déclarée, s'il y en a une.
+
+    Résolu ici plutôt que dans le présentateur : celui-ci reste une fonction
+    pure, sans session ni requête.
+    """
+
+    if opportunity.purchase_platform_id is None:
+        return None
+    return (
+        await session.execute(
+            select(Platform.code).where(Platform.id == opportunity.purchase_platform_id)
+        )
+    ).scalar_one_or_none()
 
 
 def _request_id(request: Request) -> uuid.UUID | None:
@@ -67,6 +86,7 @@ async def create_opportunity_route(
         result.reference,
         result.seller,
         result.price_input,
+        await _platform_code(session, result.opportunity),
     )
 
 
@@ -110,7 +130,14 @@ async def get_opportunity_route(
     opportunity, watch, reference, seller, latest_price = await get_opportunity(
         session, principal, opportunity_id
     )
-    return to_opportunity_response(opportunity, watch, reference, seller, latest_price)
+    return to_opportunity_response(
+        opportunity,
+        watch,
+        reference,
+        seller,
+        latest_price,
+        await _platform_code(session, opportunity),
+    )
 
 
 @router.patch("/opportunities/{opportunity_id}", response_model=OpportunityResponse)
@@ -127,7 +154,14 @@ async def patch_opportunity_route(
     opportunity, watch, reference, seller, latest_price = await get_opportunity(
         session, principal, opportunity_id
     )
-    return to_opportunity_response(opportunity, watch, reference, seller, latest_price)
+    return to_opportunity_response(
+        opportunity,
+        watch,
+        reference,
+        seller,
+        latest_price,
+        await _platform_code(session, opportunity),
+    )
 
 
 @router.post(
@@ -147,7 +181,14 @@ async def confirm_reference_route(
     opportunity, watch, reference, seller, latest_price = await get_opportunity(
         session, principal, opportunity_id
     )
-    return to_opportunity_response(opportunity, watch, reference, seller, latest_price)
+    return to_opportunity_response(
+        opportunity,
+        watch,
+        reference,
+        seller,
+        latest_price,
+        await _platform_code(session, opportunity),
+    )
 
 
 @router.patch(
@@ -166,7 +207,14 @@ async def patch_watch_profile_route(
     opportunity, watch, reference, seller, latest_price = await get_opportunity(
         session, principal, opportunity_id
     )
-    return to_opportunity_response(opportunity, watch, reference, seller, latest_price)
+    return to_opportunity_response(
+        opportunity,
+        watch,
+        reference,
+        seller,
+        latest_price,
+        await _platform_code(session, opportunity),
+    )
 
 
 @router.patch(
@@ -185,7 +233,14 @@ async def patch_seller_profile_route(
     opportunity, watch, reference, seller, latest_price = await get_opportunity(
         session, principal, opportunity_id
     )
-    return to_opportunity_response(opportunity, watch, reference, seller, latest_price)
+    return to_opportunity_response(
+        opportunity,
+        watch,
+        reference,
+        seller,
+        latest_price,
+        await _platform_code(session, opportunity),
+    )
 
 
 @router.get("/opportunities/{opportunity_id}/events", response_model=AuditEventPage)

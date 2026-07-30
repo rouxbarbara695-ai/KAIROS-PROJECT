@@ -26,7 +26,13 @@ function Field({
 const inputClass =
   "w-full rounded-md border border-border bg-bg px-3 py-2 text-sm outline-none focus:border-accent";
 
-export function NewOpportunityForm({ portfolioId }: { portfolioId?: string }) {
+export function NewOpportunityForm({
+  portfolioId,
+  platforms = [],
+}: {
+  portfolioId?: string;
+  platforms?: { code: string; name: string; hasRule: boolean }[];
+}) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -55,6 +61,11 @@ export function NewOpportunityForm({ portfolioId }: { portfolioId?: string }) {
               ? {
                   mode: "manual",
                   manual_identifier: String(data.get("manual_identifier")),
+                  // Sans plateforme déclarée, l'analyse traiterait l'achat
+                  // comme une vente de particulier à particulier et
+                  // oublierait la commission.
+                  platform_code:
+                    String(data.get("platform_code") ?? "") || null,
                 }
               : { mode: "url", url: String(data.get("url")) },
           watch: {
@@ -114,14 +125,29 @@ export function NewOpportunityForm({ portfolioId }: { portfolioId?: string }) {
         </div>
 
         {mode === "manual" ? (
-          <Field label="Identifiant manuel">
-            <input
-              name="manual_identifier"
-              required
-              className={inputClass}
-              placeholder="LONGINES-2026-001"
-            />
-          </Field>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Identifiant manuel">
+              <input
+                name="manual_identifier"
+                required
+                className={inputClass}
+                placeholder="LONGINES-2026-001"
+              />
+            </Field>
+            <Field label="Plateforme d'achat">
+              <select name="platform_code" className={inputClass}>
+                <option value="">
+                  Aucune — achat de particulier à particulier
+                </option>
+                {platforms.map((platform) => (
+                  <option key={platform.code} value={platform.code}>
+                    {platform.name}
+                    {platform.hasRule ? "" : " (grille de frais manquante)"}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
         ) : (
           <Field label="URL de l'annonce">
             <input

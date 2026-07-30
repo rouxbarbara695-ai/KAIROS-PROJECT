@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass, field
 
 from sqlalchemy import select
@@ -199,8 +200,26 @@ async def create_opportunity(
         session.add(listing)
         await session.flush()
 
+    # La plateforme d'achat ne se déclare que faute d'annonce : quand il y en a
+    # une, c'est elle qui porte la plateforme, et deux sources de vérité
+    # finiraient par diverger.
+    purchase_platform_id: uuid.UUID | None = None
+    if listing is None and request.source.platform_code is not None:
+        purchase_platform_id = (
+            await session.execute(
+                select(Platform.id).where(Platform.code == request.source.platform_code)
+            )
+        ).scalar_one_or_none()
+        if purchase_platform_id is None:
+            raise DomainError(
+                ErrorCode.NOT_FOUND,
+                "Plateforme d'achat inconnue.",
+                field="source.platform_code",
+            )
+
     opportunity = Opportunity(
         portfolio_id=request.portfolio_id,
+        purchase_platform_id=purchase_platform_id,
         created_by_user_id=principal.user_id,
         source_mode=request.source.mode,
         manual_identifier=(

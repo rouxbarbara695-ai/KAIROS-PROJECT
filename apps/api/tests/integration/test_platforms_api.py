@@ -206,3 +206,113 @@ async def test_fees_reach_the_scenarios(
     # sont ceux d'une vente entre particuliers.
     central = analysis["scenario_results"]["central"]
     assert central["total_cost_before_sale_eur"] == "2400.00"
+
+
+async def test_a_manual_opportunity_can_declare_its_purchase_platform(
+    client: AsyncClient, db_session: AsyncSession, default_portfolio_id: uuid.UUID
+) -> None:
+    """Une saisie manuelle peut venir de Catawiki sans qu'on ait collé l'URL.
+    Sans cette déclaration, l'achat passerait pour une vente de particulier à
+    particulier et sa commission disparaîtrait du calcul."""
+
+    await _create(client)  # grille Catawiki : 9 % à l'achat
+
+    await db_session.execute(
+        text(
+            """
+            insert into portfolio_ledger_entries (portfolio_id, kind,
+              amount_source, currency, amount_eur, rate_to_eur, fx_rate_at,
+              fx_source, occurred_at, actor_user_id)
+            select :pf, 'capital_contribution', 30000, 'EUR', 30000, 1, now(),
+                   'saisie manuelle', now(), id from users limit 1
+            """
+        ),
+        {"pf": default_portfolio_id},
+    )
+    await db_session.commit()
+
+    created = await client.post(
+        "/api/v1/opportunities",
+        json={
+            "portfolio_id": str(default_portfolio_id),
+            "source": {
+                "mode": "manual",
+                "manual_identifier": "PLT-MANUEL",
+                "platform_code": "catawiki",
+            },
+            "watch": {
+                "brand": "Tudor",
+                "reference": "79030N",
+                "mechanical_condition": "verified",
+                "cosmetic_condition": "excellent",
+                "box": True,
+                "papers": True,
+            },
+            "seller": {"country_code": "FR", "seller_type": "private"},
+            "price": {"amount": "2400.00", "currency": "EUR"},
+        },
+    )
+    assert created.status_code == 201, created.text
+    opportunity = created.json()
+    assert opportunity["purchase_platform_code"] == "catawiki"
+
+    confirmed = await client.post(
+        f"/api/v1/opportunities/{opportunity['id']}/reference-confirmations",
+        json={
+            "status": "confirmed",
+            "reference_id": opportunity["watch"]["reference_id"],
+            "reason": "Référence vérifiée.",
+        },
+    )
+    assert confirmed.status_code == 200, confirmed.text
+
+    for index, amount in enumerate(
+        ["3500.00", "3550.00", "3600.00", "3620.00", "3680.00", "3700.00"]
+    ):
+        await client.post(
+            f"/api/v1/opportunities/{opportunity['id']}/comparables",
+            json={
+                "source_name": "Chrono24",
+                "seller_fingerprint": f"m{index}",
+                "price_kind": "asking",
+                "amount": amount,
+                "currency": "EUR",
+                "market_status": "active",
+                "observed_at": "2026-07-20T10:00:00Z",
+                "source_reliability": "a",
+                "mechanical_condition": "verified",
+                "cosmetic_condition": "excellent",
+                "box": True,
+                "papers": True,
+            },
+        )
+    await client.post(f"/api/v1/opportunities/{opportunity['id']}/valuations")
+
+    analysis = (
+        await client.post(f"/api/v1/opportunities/{opportunity['id']}/analyses")
+    ).json()
+
+    # 2 400 € + 9 % de commission d'achat : la plateforme déclarée s'applique
+    # bien, alors qu'aucune annonce n'existe.
+    central = analysis["scenario_results"]["central"]
+    assert central["total_cost_before_sale_eur"] == "2616.00"
+
+
+async def test_an_unknown_purchase_platform_is_refused(
+    client: AsyncClient, default_portfolio_id: uuid.UUID
+) -> None:
+    response = await client.post(
+        "/api/v1/opportunities",
+        json={
+            "portfolio_id": str(default_portfolio_id),
+            "source": {
+                "mode": "manual",
+                "manual_identifier": "PLT-INCONNU",
+                "platform_code": "brocante-du-coin",
+            },
+            "watch": {"brand": "Tudor", "reference": "79030N"},
+            "seller": {},
+            "price": {"amount": "100.00", "currency": "EUR"},
+        },
+    )
+    assert response.status_code == 404

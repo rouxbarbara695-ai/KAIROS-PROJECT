@@ -13,6 +13,11 @@ class SourceCreate(BaseModel):
     mode: Literal["manual", "url"]
     manual_identifier: str | None = None
     url: str | None = None
+    # En mode manuel, la plateforme d'achat n'est déductible d'aucune URL : sans
+    # elle, l'analyse traiterait l'achat comme une vente de particulier à
+    # particulier et ignorerait la commission. En mode URL elle est superflue —
+    # c'est l'annonce qui fait foi.
+    platform_code: str | None = None
 
     @model_validator(mode="after")
     def _check_required_field(self) -> SourceCreate:
@@ -78,6 +83,7 @@ class OpportunityResponse(BaseModel):
     portfolio_id: uuid.UUID
     source_mode: str
     manual_identifier: str | None
+    purchase_platform_code: str | None = None
     status: str
     version: int
     watch: WatchProfileResponse

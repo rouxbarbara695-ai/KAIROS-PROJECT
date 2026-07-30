@@ -51,7 +51,7 @@ mais doivent être comblés pour que le parcours soit réellement utilisable.
 | POL-050 | P2 | **Partiellement traité.** Apports, retraits et ajustements se saisissent désormais depuis l'écran portefeuille. Restent les achats et les ventes, qui appartiennent aux parcours d'opération (Epic 4) : leurs écritures de trésorerie en découlent et ne doivent pas se saisir à la main. |
 | POL-051 | — | **Traité.** Fiabilité, niveau de risque et protections sont saisis à la création et corrigibles avec motif. |
 | POL-052 | P2 | Les coûts opérationnels — révision, polissage, transport — n'ont pas d'interface de saisie. Ils sont exceptionnels (« on achète et on revend, on ne révise pas »), mais quand ils existent ils changent le profit et le prix maximal. |
-| POL-053 | P2 | **Partiellement traité.** Les grilles de frais se saisissent depuis l'écran plateformes, et une opportunité issue d'une annonce en ligne les applique. Une opportunité **manuelle** reste sans plateforme : ses scénarios sont ceux d'une vente entre particuliers. Il manque un moyen de dire « achetée sur Catawiki » sans coller d'URL. |
+| POL-053 | — | **Traité.** Une saisie manuelle déclare sa plateforme d'achat, et l'analyse en applique les frais. « Aucune » reste possible et signifie un achat de particulier à particulier — un constat, pas un oubli. |
 | POL-056 | P2 | Les grilles de frais réelles ne sont pas renseignées : celles saisies en vérification sont des valeurs d'illustration. Tant qu'elles ne le sont pas, tout profit affiché sur une annonce en ligne est faux — ou l'analyse refuse de se faire. À remplir depuis les pages tarifs officielles. |
 | POL-057 | — | **Traité.** La plateforme de revente est un paramètre de stratégie, versionné comme le reste. Les frais acheteur viennent de l'annonce, les frais vendeur de la revente choisie : acheter et revendre au même endroit ne compte plus qu'une fois chaque commission. |
 | POL-054 | P3 | Le prix affiché du scénario est calculé mais l'analyse n'expose pas les coûts ligne à ligne, seulement leur total. La règle 6 demande le détail. |
@@ -67,7 +67,7 @@ mais doivent être comblés pour que le parcours soit réellement utilisable.
 | POL-043 | P2 | Redis est configuré et démarré sans être utilisé. Soit un usage réel arrive avec les moteurs, soit la dépendance sort du socle. |
 | POL-044 | P2 | Les origines CORS ont une valeur par défaut en dur dans la configuration. Elles doivent devenir strictement environnementales avant tout déploiement. |
 | POL-045 | P2 | Aucune limitation de débit sur l'API. |
-| POL-046 | P3 | La migration initiale rejoue `database/schema.sql` d'un bloc. Les migrations suivantes devront être incrémentales et écrites à la main : documenter cette bascule. |
+| POL-046 | — | **Traité.** La bascule est faite : `0004` est la première migration incrémentale. Elle utilise `add column if not exists` parce que `0001` rejoue `schema.sql` d'un bloc — sur une base neuve la colonne existe déjà, sur une base existante non. |
 | POL-047 | P3 | Couverture à 93 %. Les zones non couvertes sont la résolution de change, la fabrique de session et les opérations arithmétiques de `Money` en cas d'erreur. |
 | POL-048 | P3 | Les actions GitHub utilisées ciblent Node 20, déprécié par les exécuteurs. À relever lors d'une passe d'entretien de la CI. |
 

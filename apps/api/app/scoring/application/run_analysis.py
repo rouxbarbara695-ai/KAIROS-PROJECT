@@ -157,7 +157,7 @@ def _record(
     watch: Watch,
     reference: WatchReference | None,
     seller: Seller | None,
-    listing: Listing | None,
+    has_platform: bool,
     price_eur: Decimal | None,
     ruleset: Ruleset,
 ) -> RecordCompleteness:
@@ -179,9 +179,10 @@ def _record(
             "seller_country": seller is not None and seller.country_code is not None,
             "seller_type": seller is not None
             and seller.seller_type not in (None, "unknown"),
-            # Sans annonce, il n'y a pas de plateforme à renseigner : le champ
-            # est sans objet, pas manquant.
-            "platform": True if listing is not None else None,
+            # Un achat de particulier à particulier n'a pas de plateforme à
+            # renseigner : le champ est sans objet, pas manquant. Le distinguer
+            # d'un oubli évite de pénaliser un dossier complet.
+            "platform": True if has_platform else None,
         },
         ruleset,
     )
@@ -218,26 +219,31 @@ def _fees(rule: PlatformRule) -> PlatformFees:
 
 
 async def _purchase_side(
-    session: AsyncSession, listing: Listing | None, at: datetime
+    session: AsyncSession,
+    listing: Listing | None,
+    declared_platform_id: uuid.UUID | None,
+    at: datetime,
 ) -> tuple[PlatformFees, uuid.UUID | None, str]:
-    """Frais d'achat : ceux de la plateforme où l'annonce se trouve.
+    """Frais d'achat : ceux de la plateforme où l'on achète.
 
-    Une opportunité sans annonce n'a pas de plateforme d'achat — un achat de
-    particulier à particulier ne coûte pas de commission, et c'est un constat,
+    Elle vient de l'annonce quand il y en a une, sinon de ce que l'utilisateur
+    a déclaré sur la saisie manuelle. Faute des deux, l'achat est bien de
+    particulier à particulier et ne coûte aucune commission — c'est un constat,
     pas une lacune.
     """
 
-    if listing is None:
+    platform_id = listing.platform_id if listing is not None else declared_platform_id
+    if platform_id is None:
         return PlatformFees(), None, "Achat hors plateforme"
 
-    rule = await _rule_for_platform(session, listing.platform_id, at)
+    rule = await _rule_for_platform(session, platform_id, at)
     if rule is None:
         # Rester muet ferait passer une plateforme à 20 % de commission pour
         # une plateforme gratuite : mieux vaut refuser l'analyse.
         raise DomainError(
             ErrorCode.NOT_FOUND,
-            "Aucune règle de frais applicable pour la plateforme de cette "
-            "annonce : les coûts d'achat ne peuvent pas être établis.",
+            "Aucune règle de frais applicable pour la plateforme d'achat : "
+            "les coûts d'achat ne peuvent pas être établis.",
         )
     return _fees(rule), rule.id, f"Achat — grille v{rule.version}"
 
@@ -340,7 +346,7 @@ async def run_analysis(
 
     now = datetime.now(UTC)
     purchase_fees, platform_rule_id, purchase_label = await _purchase_side(
-        session, listing, now
+        session, listing, opportunity.purchase_platform_id, now
     )
     resale_fees, resale_label = await _resale_side(session, strategy_version, now)
 
@@ -361,7 +367,15 @@ async def run_analysis(
         brand=reference.brand if reference is not None else None,
     )
 
-    record = _record(watch, reference, seller, listing, price_eur, ruleset)
+    record = _record(
+        watch,
+        reference,
+        seller,
+        has_platform=listing is not None
+        or opportunity.purchase_platform_id is not None,
+        price_eur=price_eur,
+        ruleset=ruleset,
+    )
     risk_level, reliability, protections, country = _seller_facts(seller)
     condition = watch.condition_data
 

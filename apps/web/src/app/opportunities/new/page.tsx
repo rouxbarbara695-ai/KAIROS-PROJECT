@@ -1,8 +1,8 @@
-import { getMe } from "@/lib/api";
+import { getMe, listPlatforms } from "@/lib/api";
 import { NewOpportunityForm } from "./NewOpportunityForm";
 
 export default async function NewOpportunityPage() {
-  const me = await getMe();
+  const [me, platforms] = await Promise.all([getMe(), listPlatforms()]);
   const portfolioId = me.portfolio_ids[0];
 
   return (
@@ -15,7 +15,14 @@ export default async function NewOpportunityPage() {
           Saisie manuelle, sans collecteur externe.
         </p>
       </div>
-      <NewOpportunityForm portfolioId={portfolioId} />
+      <NewOpportunityForm
+        portfolioId={portfolioId}
+        platforms={platforms.map((platform) => ({
+          code: platform.code,
+          name: platform.name,
+          hasRule: platform.has_active_rule,
+        }))}
+      />
     </div>
   );
 }

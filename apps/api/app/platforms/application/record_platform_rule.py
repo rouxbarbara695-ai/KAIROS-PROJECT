@@ -26,6 +26,9 @@ async def record_platform_rule(
     seller_fee_fixed: Decimal | None,
     seller_fee_min: Decimal | None,
     seller_fee_max: Decimal | None,
+    buyer_fee_vat_rate: Decimal | None,
+    seller_fee_vat_rate: Decimal | None,
+    payment_fee_rate: Decimal | None,
     currency: str,
     provenance_url: str,
 ) -> PlatformRule:
@@ -102,6 +105,9 @@ async def record_platform_rule(
         seller_fee_currency=currency.upper() if seller_fee_fixed is not None else None,
         seller_fee_min=seller_fee_min,
         seller_fee_max=seller_fee_max,
+        buyer_fee_vat_rate=buyer_fee_vat_rate,
+        seller_fee_vat_rate=seller_fee_vat_rate,
+        payment_fee_rate=payment_fee_rate,
         provenance_url=provenance_url,
         created_by_user_id=principal.user_id,
     )

@@ -109,3 +109,37 @@ Le pénaliser reviendrait à noter un dossier complet comme incomplet.
 **Cette liste est provisoire.** Elle vit dans le ruleset `1.2.0`, versionné et
 immuable : l'allonger crée un nouveau ruleset et laisse les analyses déjà
 publiées rejouables à l'identique.
+
+## Q-15 — statut fiscal du revendeur et TVA sur les commissions
+
+Une plateforme peut annoncer ses frais hors taxe et ajouter la TVA à sa
+facture. Catawiki l'écrit explicitement pour son côté vendeur ; côté acheteur,
+ses frais sont annoncés taxe comprise. Chrono24 ne le précise pas.
+
+Que cette TVA soit un coût dépend du statut du revendeur :
+
+- **vendeur particulier** — la taxe n'est pas récupérable, elle sort du
+  profit ; une commission de 12,5 % coûte réellement 15 % ;
+- **entreprise assujettie** — la taxe est déductible, la commission reste à
+  12,5 % dans le calcul de marge, et la TVA collectée sur la vente relève d'un
+  sujet distinct que KAIROS ne traite pas.
+
+**Position retenue pour le MVP** : vendeur particulier, TVA non récupérable.
+C'est l'hypothèse la plus prudente — elle ne surestime jamais le profit — et
+c'est le statut déclaré par l'utilisateur du MVP.
+
+**Ce n'est pas codé en dur.** Le taux est saisi par grille de plateforme
+(`buyer_fee_vat_rate`, `seller_fee_vat_rate`), versionné avec elle, et un taux
+absent n'ajoute rien plutôt que de supposer une valeur. Passer en société
+assujettie consiste à enregistrer de nouvelles grilles à 0, pas à modifier du
+code.
+
+Deux points restent à trancher :
+
+1. **Le taux applicable.** 20 % suppose une facturation en France. Une
+   plateforme établie hors de France peut facturer sans TVA, ou avec le taux de
+   son pays selon les règles d'autoliquidation. Le taux est donc saisi par
+   grille et non déduit d'une constante nationale.
+2. **La TVA sur la vente elle-même.** Hors périmètre : un particulier qui
+   revend un bien d'occasion ne collecte pas de TVA. Si le statut change, c'est
+   une story à part entière, distincte de la TVA sur commission.

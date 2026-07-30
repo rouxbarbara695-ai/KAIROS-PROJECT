@@ -9,10 +9,21 @@ pytestmark = pytest.mark.integration
 
 
 async def test_seed_platforms_and_ruleset_present(db_session: AsyncSession) -> None:
-    platform_count = (
-        await db_session.execute(text("select count(*) from platforms"))
-    ).scalar_one()
-    assert platform_count == 7
+    # Les codes, pas leur nombre : un compteur casse à chaque ajout légitime
+    # sans rien garantir sur ce qui est réellement présent.
+    codes = set(
+        (await db_session.execute(text("select code from platforms"))).scalars()
+    )
+    assert codes >= {
+        "chrono24",
+        "catawiki",
+        "ebay",
+        "vestiaire_collective",
+        "watchcharts",
+        "watchfinder",
+        "independent_boutique",
+        "user_data",
+    }
 
     ruleset_version = (
         await db_session.execute(text("select version from rulesets limit 1"))

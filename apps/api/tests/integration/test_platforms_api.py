@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from decimal import Decimal
 
 import pytest
 from httpx import AsyncClient
@@ -316,3 +317,153 @@ async def test_an_unknown_purchase_platform_is_refused(
         },
     )
     assert response.status_code == 404
+
+
+# --- TVA sur commission et frais de paiement -----------------------------
+
+
+async def test_ebay_is_a_known_platform(client: AsyncClient) -> None:
+    """eBay manquait à la liste. Une revente qui s'y fait n'était donc pas
+    modélisable, et aucun écran ne le disait."""
+
+    codes = {item["code"] for item in (await client.get("/api/v1/platforms")).json()}
+    assert "ebay" in codes
+
+
+async def test_vat_and_payment_fees_are_recorded(client: AsyncClient) -> None:
+    body = (
+        await _create(
+            client,
+            seller_fee_vat_rate="0.20",
+            buyer_fee_vat_rate="0",
+            payment_fee_rate="0.03",
+        )
+    ).json()
+
+    assert body["seller_fee_vat_rate"] == "0.2000000000"
+    assert body["payment_fee_rate"] == "0.0300000000"
+    # Zéro et non renseigné sont deux constats différents : un zéro affirme que
+    # les frais sont déjà taxe comprise, un vide dit qu'on ne sait pas.
+    assert body["buyer_fee_vat_rate"] == "0.0000000000"
+
+
+async def test_an_unstated_vat_rate_stays_unstated(client: AsyncClient) -> None:
+    body = (await _create(client)).json()
+    assert body["seller_fee_vat_rate"] is None
+    assert body["payment_fee_rate"] is None
+
+
+async def test_a_vat_rate_written_as_a_percentage_is_refused(
+    client: AsyncClient,
+) -> None:
+    """« 20 » au lieu de « 0.20 » multiplierait la commission par vingt.
+    Accepter la saisie la rendrait indétectable dans les profits."""
+
+    response = await _create(client, seller_fee_vat_rate="20")
+    assert response.status_code == 422
+
+
+async def test_vat_on_commission_reaches_the_analysis(
+    client: AsyncClient, db_session: AsyncSession, default_portfolio_id: uuid.UUID
+) -> None:
+    """Le cas du vendeur particulier : la TVA sur la commission ne se récupère
+    pas, donc elle sort du profit. Sans elle, tout profit de revente était
+    surestimé d'un cinquième de la commission."""
+
+    await db_session.execute(
+        text(
+            """
+            insert into portfolio_ledger_entries (portfolio_id, kind,
+              amount_source, currency, amount_eur, rate_to_eur, fx_rate_at,
+              fx_source, occurred_at, actor_user_id)
+            select :pf, 'capital_contribution', 30000, 'EUR', 30000, 1, now(),
+                   'saisie manuelle', now(), id from users limit 1
+            """
+        ),
+        {"pf": default_portfolio_id},
+    )
+    await db_session.commit()
+
+    opportunity = (
+        await client.post(
+            "/api/v1/opportunities",
+            json={
+                "portfolio_id": str(default_portfolio_id),
+                "source": {"mode": "manual", "manual_identifier": "TVA-001"},
+                "watch": {
+                    "brand": "Tudor",
+                    "reference": "79030N",
+                    "mechanical_condition": "verified",
+                    "cosmetic_condition": "excellent",
+                    "box": True,
+                    "papers": True,
+                },
+                "seller": {"country_code": "FR", "seller_type": "private"},
+                "price": {"amount": "2400.00", "currency": "EUR"},
+            },
+        )
+    ).json()
+    opportunity_id = opportunity["id"]
+
+    await client.post(
+        f"/api/v1/opportunities/{opportunity_id}/reference-confirmations",
+        json={
+            "status": "confirmed",
+            "reference_id": opportunity["watch"]["reference_id"],
+            "reason": "Référence vérifiée.",
+        },
+    )
+    for index, amount in enumerate(
+        ["3500.00", "3550.00", "3600.00", "3620.00", "3680.00", "3700.00"]
+    ):
+        await client.post(
+            f"/api/v1/opportunities/{opportunity_id}/comparables",
+            json={
+                "source_name": "Chrono24",
+                "seller_fingerprint": f"v{index}",
+                "price_kind": "asking",
+                "amount": amount,
+                "currency": "EUR",
+                "market_status": "active",
+                "observed_at": "2026-07-20T10:00:00Z",
+                "source_reliability": "a",
+                "mechanical_condition": "verified",
+                "cosmetic_condition": "excellent",
+                "box": True,
+                "papers": True,
+            },
+        )
+    await client.post(f"/api/v1/opportunities/{opportunity_id}/valuations")
+
+    async def central_with(**fees: object) -> dict[str, str]:
+        await client.post(
+            "/api/v1/platforms/chrono24/rules",
+            json={
+                "provenance_url": "https://exemple.test/chrono24",
+                "seller_fee_rate": "0.10",
+                "currency": "EUR",
+                **fees,
+            },
+        )
+        await client.post(
+            f"/api/v1/portfolios/{default_portfolio_id}/strategy",
+            json={"resale_platform_code": "chrono24"},
+        )
+        analysis = (
+            await client.post(f"/api/v1/opportunities/{opportunity_id}/analyses")
+        ).json()
+        central: dict[str, str] = analysis["scenario_results"]["central"]
+        return central
+
+    without_vat = await central_with()
+    with_vat = await central_with(seller_fee_vat_rate="0.20")
+
+    # Le prix de vente ne dépend pas des frais : c'est la cote qui le fixe.
+    assert with_vat["sale_price_eur"] == without_vat["sale_price_eur"]
+
+    # La TVA vaut 20 % d'une commission de 10 %, soit exactement 2 % du prix de
+    # vente. Un écart différent signalerait qu'elle s'applique au mauvais
+    # montant, ou deux fois.
+    sale_price = Decimal(with_vat["sale_price_eur"])
+    lost = Decimal(without_vat["net_profit_eur"]) - Decimal(with_vat["net_profit_eur"])
+    assert lost == (sale_price * Decimal("0.02")).quantize(Decimal("0.01"))

@@ -1370,12 +1370,42 @@
             ],
             "title": "Buyer Fee Rate"
           },
+          "buyer_fee_vat_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buyer Fee Vat Rate"
+          },
           "currency": {
             "default": "EUR",
             "maxLength": 3,
             "minLength": 3,
             "title": "Currency",
             "type": "string"
+          },
+          "payment_fee_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Fee Rate"
           },
           "provenance_url": {
             "minLength": 1,
@@ -1446,6 +1476,21 @@
               }
             ],
             "title": "Seller Fee Rate"
+          },
+          "seller_fee_vat_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seller Fee Vat Rate"
           }
         },
         "required": [
@@ -1508,10 +1553,32 @@
             ],
             "title": "Buyer Fee Rate"
           },
+          "buyer_fee_vat_rate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buyer Fee Vat Rate"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "payment_fee_rate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Fee Rate"
           },
           "platform_code": {
             "title": "Platform Code",
@@ -1575,6 +1642,17 @@
               }
             ],
             "title": "Seller Fee Rate"
+          },
+          "seller_fee_vat_rate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seller Fee Vat Rate"
           },
           "valid_from": {
             "format": "date-time",

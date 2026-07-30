@@ -15,6 +15,26 @@ function percent(rate: string | null | undefined): string {
   return `${(value * 100).toFixed(2).replace(".", ",")} %`;
 }
 
+/** Ce que revendre coûte réellement : commission, TVA sur la commission et
+ *  frais de paiement. Rendu `null` quand la TVA n'est pas renseignée — la
+ *  taire donnerait un coût sous-estimé d'un cinquième de la commission, et
+ *  c'est précisément ce qu'il faut voir. */
+function resaleCost(rule: {
+  seller_fee_rate?: string | null;
+  seller_fee_vat_rate?: string | null;
+  payment_fee_rate?: string | null;
+}): string | null {
+  const commission = Number(rule.seller_fee_rate ?? 0);
+  if (!Number.isFinite(commission)) return null;
+  if (commission > 0 && rule.seller_fee_vat_rate == null) return null;
+
+  const vat = Number(rule.seller_fee_vat_rate ?? 0);
+  const payment = Number(rule.payment_fee_rate ?? 0);
+  if (!Number.isFinite(vat) || !Number.isFinite(payment)) return null;
+
+  return percent(String(commission * (1 + vat) + payment));
+}
+
 export default async function PlatformsPage() {
   const platforms = await listPlatforms();
   const missing = platforms.filter((platform) => !platform.has_active_rule);
@@ -80,6 +100,22 @@ export default async function PlatformsPage() {
                         : ""}
                     </dd>
                   </div>
+                  {rule.payment_fee_rate && (
+                    <div className="contents">
+                      <dt className="text-fg-muted">Frais de paiement</dt>
+                      <dd className="numeric">{percent(rule.payment_fee_rate)}</dd>
+                    </div>
+                  )}
+                  <div className="contents">
+                    <dt className="text-fg-muted">Coût réel de revente</dt>
+                    <dd className="numeric">
+                      {resaleCost(rule) ?? (
+                        <span className="text-amber-500">
+                          TVA sur commission non renseignée
+                        </span>
+                      )}
+                    </dd>
+                  </div>
                   {rule.provenance_url && (
                     <div className="contents">
                       <dt className="text-fg-muted">Source</dt>
@@ -107,6 +143,9 @@ export default async function PlatformsPage() {
                             sellerFeeFixed: rule.seller_fee_fixed,
                             sellerFeeMin: rule.seller_fee_min,
                             sellerFeeMax: rule.seller_fee_max,
+                            buyerFeeVatRate: rule.buyer_fee_vat_rate,
+                            sellerFeeVatRate: rule.seller_fee_vat_rate,
+                            paymentFeeRate: rule.payment_fee_rate,
                             provenanceUrl: rule.provenance_url,
                           }
                         : null

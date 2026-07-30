@@ -28,6 +28,12 @@ export default function RootLayout({
                 Opportunités
               </Link>
               <Link
+                href="/portefeuille"
+                className="transition-colors hover:text-fg"
+              >
+                Portefeuille
+              </Link>
+              <Link
                 href="/opportunities/new"
                 className="rounded-md bg-accent px-3 py-1.5 font-medium text-bg transition-opacity hover:opacity-90"
               >
@@ -37,7 +43,7 @@ export default function RootLayout({
           </header>
           <main className="flex-1 py-8">{children}</main>
           <footer className="border-t border-border py-6 text-xs text-fg-muted">
-            KAIROS — parcours manuel, socle décisionnel (KAI-001 à KAI-103)
+            KAIROS — parcours manuel, décision et portefeuille
           </footer>
         </div>
       </body>

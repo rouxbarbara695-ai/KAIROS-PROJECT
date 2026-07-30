@@ -832,6 +832,191 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "HoldingResponse": {
+        "properties": {
+          "brand": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand"
+          },
+          "cost_eur": {
+            "title": "Cost Eur",
+            "type": "string"
+          },
+          "opportunity_id": {
+            "format": "uuid",
+            "title": "Opportunity Id",
+            "type": "string"
+          },
+          "purchased_at": {
+            "format": "date-time",
+            "title": "Purchased At",
+            "type": "string"
+          },
+          "reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference"
+          }
+        },
+        "required": [
+          "opportunity_id",
+          "cost_eur",
+          "purchased_at"
+        ],
+        "title": "HoldingResponse",
+        "type": "object"
+      },
+      "LedgerMovementCreate": {
+        "description": "Mouvement de tr\u00e9sorerie saisi par l'utilisateur.\n\nSeules les natures sans contrepartie ailleurs sont accept\u00e9es. Un paiement\nd'achat ou un encaissement de vente a sa ligne dans `purchases` ou\n`sales` : le saisir ici ferait diverger le registre des op\u00e9rations qu'il\nrefl\u00e8te.\n\nLe montant est toujours positif \u2014 c'est la nature qui porte le sens, comme\ndans le registre lui-m\u00eame.",
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              }
+            ],
+            "title": "Amount"
+          },
+          "currency": {
+            "maxLength": 3,
+            "minLength": 3,
+            "title": "Currency",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "capital_contribution",
+              "withdrawal",
+              "positive_adjustment",
+              "negative_adjustment"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "occurred_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Occurred At"
+          }
+        },
+        "required": [
+          "kind",
+          "amount",
+          "currency"
+        ],
+        "title": "LedgerMovementCreate",
+        "type": "object"
+      },
+      "LedgerMovementResponse": {
+        "description": "Une \u00e9criture du registre, avec la tra\u00e7abilit\u00e9 de change qu'exige la\nr\u00e8gle 3 : devise source, montant EUR, taux, source et horodatage.",
+        "properties": {
+          "amount_eur": {
+            "title": "Amount Eur",
+            "type": "string"
+          },
+          "amount_source": {
+            "title": "Amount Source",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "fx_rate_at": {
+            "format": "date-time",
+            "title": "Fx Rate At",
+            "type": "string"
+          },
+          "fx_source": {
+            "title": "Fx Source",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "rate_to_eur": {
+            "title": "Rate To Eur",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "amount_source",
+          "currency",
+          "amount_eur",
+          "rate_to_eur",
+          "fx_source",
+          "fx_rate_at",
+          "occurred_at",
+          "created_at"
+        ],
+        "title": "LedgerMovementResponse",
+        "type": "object"
+      },
       "OpportunityPage": {
         "properties": {
           "items": {
@@ -1076,6 +1261,52 @@
           "created_at"
         ],
         "title": "OverrideResponse",
+        "type": "object"
+      },
+      "PortfolioOverviewResponse": {
+        "description": "Tr\u00e9sorerie, stock et d\u00e9tail.\n\nLe stock est d\u00e9taill\u00e9 plut\u00f4t que r\u00e9sum\u00e9 : annoncer un taux\nd'immobilisation sans dire quelles montres immobilisent le capital ne dit\npas quoi vendre.",
+        "properties": {
+          "available_cash_eur": {
+            "title": "Available Cash Eur",
+            "type": "string"
+          },
+          "holdings": {
+            "items": {
+              "$ref": "#/components/schemas/HoldingResponse"
+            },
+            "title": "Holdings",
+            "type": "array"
+          },
+          "movements": {
+            "items": {
+              "$ref": "#/components/schemas/LedgerMovementResponse"
+            },
+            "title": "Movements",
+            "type": "array"
+          },
+          "portfolio_id": {
+            "format": "uuid",
+            "title": "Portfolio Id",
+            "type": "string"
+          },
+          "stock_at_cost_eur": {
+            "title": "Stock At Cost Eur",
+            "type": "string"
+          },
+          "total_capital_eur": {
+            "title": "Total Capital Eur",
+            "type": "string"
+          }
+        },
+        "required": [
+          "portfolio_id",
+          "available_cash_eur",
+          "stock_at_cost_eur",
+          "total_capital_eur",
+          "holdings",
+          "movements"
+        ],
+        "title": "PortfolioOverviewResponse",
         "type": "object"
       },
       "PriceCreate": {
@@ -2845,6 +3076,103 @@
         "summary": "Get Platform Rules Route",
         "tags": [
           "platforms"
+        ]
+      }
+    },
+    "/api/v1/portfolios/{portfolio_id}/ledger-entries": {
+      "post": {
+        "description": "Ajoute un mouvement de tr\u00e9sorerie.\n\nLe registre est append-only : on ne corrige pas une \u00e9criture, on en passe\nune autre en sens inverse. C'est ce qui permet \u00e0 la tr\u00e9sorerie de\ns'expliquer ligne \u00e0 ligne.",
+        "operationId": "create_ledger_entry_route_api_v1_portfolios__portfolio_id__ledger_entries_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "portfolio_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Portfolio Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LedgerMovementCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LedgerMovementResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Ledger Entry Route",
+        "tags": [
+          "portfolio"
+        ]
+      }
+    },
+    "/api/v1/portfolios/{portfolio_id}/overview": {
+      "get": {
+        "operationId": "get_portfolio_overview_route_api_v1_portfolios__portfolio_id__overview_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "portfolio_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Portfolio Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortfolioOverviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Portfolio Overview Route",
+        "tags": [
+          "portfolio"
         ]
       }
     }

@@ -204,6 +204,17 @@ const RECORD_FIELD: Record<string, string> = {
   platform: "Plateforme",
 };
 
+const LEDGER_KIND: Record<string, string> = {
+  capital_contribution: "Apport de capital",
+  withdrawal: "Retrait",
+  purchase_payment: "Paiement d'achat",
+  cost_payment: "Paiement de frais",
+  sale_receipt: "Encaissement de vente",
+  refund: "Remboursement",
+  positive_adjustment: "Ajustement positif",
+  negative_adjustment: "Ajustement négatif",
+};
+
 function translate(
   dictionary: Record<string, string>,
   value: string | null | undefined,
@@ -213,6 +224,7 @@ function translate(
 }
 
 export const labels = {
+  ledgerKind: (value: string | null | undefined) => translate(LEDGER_KIND, value),
   recommendation: (value: string | null | undefined) =>
     translate(RECOMMENDATION, value),
   gate: (value: string | null | undefined) => translate(GATE, value),

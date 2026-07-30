@@ -94,8 +94,7 @@ class PlatformRuleCreate(BaseModel):
         ):
             if value is not None and not (0 <= value <= 1):
                 raise ValueError(
-                    f"{field} doit être un taux décimal entre 0 et 1 "
-                    "(0.20 pour 20 %)."
+                    f"{field} doit être un taux décimal entre 0 et 1 (0.20 pour 20 %)."
                 )
         return self
 

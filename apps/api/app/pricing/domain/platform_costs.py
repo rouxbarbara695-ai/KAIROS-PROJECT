@@ -139,9 +139,7 @@ def costs_from_platform(
     )
     # Prélevés sur le prix de vente, donc au vendeur : les compter à l'achat
     # les appliquerait au mauvais montant.
-    add(
-        "frais de paiement", CostMode.RATE, CostPhase.SALE, fees.payment_fee_rate
-    )
+    add("frais de paiement", CostMode.RATE, CostPhase.SALE, fees.payment_fee_rate)
     add(
         "transport entrant", CostMode.FIXED, CostPhase.ACQUISITION, inbound_shipping_eur
     )

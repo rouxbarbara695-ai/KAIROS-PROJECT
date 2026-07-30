@@ -11,6 +11,7 @@ import {
   WatchProfileForm,
 } from "./CorrectionForms";
 import { ComparablesPanel } from "./ComparablesPanel";
+import { AnalysisPanel } from "./AnalysisPanel";
 import { ValuationPanel } from "./ValuationPanel";
 import { ReferenceConfirmationForm } from "./ReferenceConfirmationForm";
 
@@ -175,6 +176,15 @@ export default async function OpportunityDetailPage({
           <ValuationPanel opportunityId={opportunity.id} />
         </Card>
       </div>
+
+      {/* L'analyse occupe toute la largeur : c'est la conclusion du dossier,
+          et sa justification tient mal dans une colonne. */}
+      <Card>
+        <h2 className="mb-3 text-sm font-semibold text-fg-muted">
+          Analyse et décision
+        </h2>
+        <AnalysisPanel opportunityId={opportunity.id} />
+      </Card>
 
       <Card>
         <h2 className="mb-3 text-sm font-semibold text-fg-muted">

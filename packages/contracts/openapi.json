@@ -1,6 +1,224 @@
 {
   "components": {
     "schemas": {
+      "AnalysisResponse": {
+        "description": "Analyse fig\u00e9e et sa trace compl\u00e8te.\n\nTous les nombres sont des cha\u00eenes d\u00e9cimales : un score, un ROI ou un prix\nqui transiterait en flottant perdrait la valeur exacte qui a \u00e9t\u00e9 calcul\u00e9e\net fig\u00e9e (api-contract.md, CLAUDE.md r\u00e8gle 2).\n\n`explanation`, `pillars`, `caps` et `scenario_results` portent les entr\u00e9es,\nr\u00e8gles, versions, exclusions, plafonds et motifs qu'exige la r\u00e8gle 6 :\nune recommandation doit pouvoir \u00eatre rejou\u00e9e et contest\u00e9e.",
+        "properties": {
+          "calculated_at": {
+            "format": "date-time",
+            "title": "Calculated At",
+            "type": "string"
+          },
+          "caps": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Caps",
+            "type": "array"
+          },
+          "current_price_eur": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Price Eur"
+          },
+          "evidence_quality_score": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence Quality Score"
+          },
+          "expected_days_to_sell": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Days To Sell"
+          },
+          "expected_profit_eur": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Profit Eur"
+          },
+          "expected_roi": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Roi"
+          },
+          "expected_sale_price_eur": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Sale Price Eur"
+          },
+          "explanation": {
+            "additionalProperties": true,
+            "title": "Explanation",
+            "type": "object"
+          },
+          "gates": {
+            "items": {
+              "$ref": "#/components/schemas/GateResultResponse"
+            },
+            "title": "Gates",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "max_purchase_price_eur": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Purchase Price Eur"
+          },
+          "opportunity_id": {
+            "format": "uuid",
+            "title": "Opportunity Id",
+            "type": "string"
+          },
+          "pillars": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pillars"
+          },
+          "portfolio_snapshot": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Portfolio Snapshot"
+          },
+          "raw_max_purchase_price_eur": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Raw Max Purchase Price Eur"
+          },
+          "recommendation": {
+            "title": "Recommendation",
+            "type": "string"
+          },
+          "scenario_results": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scenario Results"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "strategy_snapshot": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strategy Snapshot"
+          },
+          "total_cost_eur": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Cost Eur"
+          }
+        },
+        "required": [
+          "id",
+          "opportunity_id",
+          "calculated_at",
+          "state",
+          "recommendation",
+          "gates",
+          "caps",
+          "explanation"
+        ],
+        "title": "AnalysisResponse",
+        "type": "object"
+      },
       "AuditEventPage": {
         "properties": {
           "items": {
@@ -568,6 +786,37 @@
           "watch"
         ],
         "title": "CreateOpportunityRequest",
+        "type": "object"
+      },
+      "GateResultResponse": {
+        "properties": {
+          "blocking": {
+            "title": "Blocking",
+            "type": "boolean"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "reason_codes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reason Codes",
+            "type": "array"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "status",
+          "reason_codes",
+          "blocking"
+        ],
+        "title": "GateResultResponse",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -1883,6 +2132,93 @@
         ]
       }
     },
+    "/api/v1/opportunities/{opportunity_id}/analyses": {
+      "post": {
+        "description": "Recalcule l'analyse. Chaque appel cr\u00e9e une version cha\u00een\u00e9e \u00e0 la\npr\u00e9c\u00e9dente : une analyse n'est jamais \u00e9cras\u00e9e (CLAUDE.md r\u00e8gle 4).",
+        "operationId": "create_analysis_route_api_v1_opportunities__opportunity_id__analyses_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "opportunity_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Opportunity Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Analysis Route",
+        "tags": [
+          "analyses"
+        ]
+      }
+    },
+    "/api/v1/opportunities/{opportunity_id}/analyses/latest": {
+      "get": {
+        "operationId": "get_latest_analysis_route_api_v1_opportunities__opportunity_id__analyses_latest_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "opportunity_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Opportunity Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Latest Analysis Route",
+        "tags": [
+          "analyses"
+        ]
+      }
+    },
     "/api/v1/opportunities/{opportunity_id}/comparables": {
       "get": {
         "operationId": "list_comparables_route_api_v1_opportunities__opportunity_id__comparables_get",
@@ -2339,6 +2675,50 @@
           }
         },
         "summary": "Create Valuation Route",
+        "tags": [
+          "comparables"
+        ]
+      }
+    },
+    "/api/v1/opportunities/{opportunity_id}/valuations/latest": {
+      "get": {
+        "description": "Derni\u00e8re cote calcul\u00e9e.\n\nSans elle, l'\u00e9cran repartirait de z\u00e9ro \u00e0 chaque ouverture et pr\u00e9tendrait\nqu'aucune cote n'existe alors que l'analyse vient de s'appuyer dessus.",
+        "operationId": "get_latest_valuation_route_api_v1_opportunities__opportunity_id__valuations_latest_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "opportunity_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Opportunity Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValuationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Latest Valuation Route",
         "tags": [
           "comparables"
         ]

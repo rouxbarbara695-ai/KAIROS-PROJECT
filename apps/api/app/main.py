@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.errors import register_error_handlers
+from app.api.v1.routes.analyses import router as analyses_router
 from app.api.v1.routes.comparables import router as comparables_router
 from app.api.v1.routes.health import router as health_router
 from app.api.v1.routes.me import router as me_router
@@ -34,6 +35,7 @@ def create_app() -> FastAPI:
     app.include_router(opportunities_router, prefix="/api/v1")
     app.include_router(platforms_router, prefix="/api/v1")
     app.include_router(comparables_router, prefix="/api/v1")
+    app.include_router(analyses_router, prefix="/api/v1")
 
     return app
 

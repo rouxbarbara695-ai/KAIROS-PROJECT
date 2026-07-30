@@ -8,6 +8,8 @@ from httpx import AsyncClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.shared.config import get_settings
+
 pytestmark = pytest.mark.integration
 
 
@@ -97,7 +99,10 @@ async def test_valuation_is_computed_and_traced(
     assert low <= central <= high
 
     explanation = body["explanation"]
-    assert explanation["ruleset_version"] == "1.0.0"
+    # Rattaché au barème actif, pas à une version en dur : figer « 1.0.0 » ici
+    # ferait échouer le test à chaque nouveau ruleset alors que le
+    # comportement vérifié — la cote porte sa version — n'a pas changé.
+    assert explanation["ruleset_version"] == get_settings().active_ruleset_version
     assert explanation["comparables_used"] == 4
     assert explanation["target_completeness"] == "full_set"
     assert "confidence" in explanation
@@ -220,3 +225,33 @@ async def test_valuation_of_foreign_opportunity_is_not_disclosed(
 ) -> None:
     response = await client.post(f"/api/v1/opportunities/{uuid.uuid4()}/valuations")
     assert response.status_code == 404
+
+
+async def test_the_latest_valuation_can_be_read_back(
+    client: AsyncClient, default_portfolio_id: uuid.UUID
+) -> None:
+    """Sans relecture, l'écran repartirait de zéro à chaque ouverture et
+    prétendrait qu'aucune cote n'existe."""
+
+    opportunity = await _opportunity(client, default_portfolio_id, "VAL-100")
+    await _add(client, opportunity["id"], "3000.00", seller="s1")
+    await _add(client, opportunity["id"], "3100.00", seller="s2")
+
+    absent = await client.get(
+        f"/api/v1/opportunities/{opportunity['id']}/valuations/latest"
+    )
+    assert absent.status_code == 404
+
+    created = (
+        await client.post(f"/api/v1/opportunities/{opportunity['id']}/valuations")
+    ).json()
+    second = (
+        await client.post(f"/api/v1/opportunities/{opportunity['id']}/valuations")
+    ).json()
+
+    latest = await client.get(
+        f"/api/v1/opportunities/{opportunity['id']}/valuations/latest"
+    )
+    assert latest.status_code == 200
+    assert latest.json()["id"] == second["id"]
+    assert latest.json()["id"] != created["id"]

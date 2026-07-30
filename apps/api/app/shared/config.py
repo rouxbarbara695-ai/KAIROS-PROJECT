@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     default_currency: str = "EUR"
     fx_max_age_hours: int = 24
-    active_ruleset_version: str = "1.0.0"
+    active_ruleset_version: str = "1.2.0"
     cursor_secret: SecretStr
     dev_principal_email: str = "dev@kairos.local"
     cors_allowed_origins: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]

@@ -1263,6 +1263,342 @@
         "title": "OverrideResponse",
         "type": "object"
       },
+      "PlatformResponse": {
+        "properties": {
+          "active_rule": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlatformRuleResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "has_active_rule": {
+            "title": "Has Active Rule",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "has_active_rule"
+        ],
+        "title": "PlatformResponse",
+        "type": "object"
+      },
+      "PlatformRuleCreate": {
+        "description": "Grille de frais saisie \u00e0 la main.\n\nAucun champ n'a de valeur par d\u00e9faut : inventer une commission fausserait\ntous les profits d'un portefeuille sans que rien ne le signale. Tout\nlaisser vide est accept\u00e9 \u2014 c'est une plateforme sans frais, et c'est un\nconstat, pas un oubli.\n\n`provenance_url` est obligatoire : une grille qu'on ne peut pas v\u00e9rifier\nne vaut pas mieux qu'une grille invent\u00e9e.",
+        "properties": {
+          "buyer_fee_fixed": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buyer Fee Fixed"
+          },
+          "buyer_fee_max": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buyer Fee Max"
+          },
+          "buyer_fee_min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buyer Fee Min"
+          },
+          "buyer_fee_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buyer Fee Rate"
+          },
+          "currency": {
+            "default": "EUR",
+            "maxLength": 3,
+            "minLength": 3,
+            "title": "Currency",
+            "type": "string"
+          },
+          "provenance_url": {
+            "minLength": 1,
+            "title": "Provenance Url",
+            "type": "string"
+          },
+          "region_code": {
+            "default": "*",
+            "title": "Region Code",
+            "type": "string"
+          },
+          "seller_fee_fixed": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seller Fee Fixed"
+          },
+          "seller_fee_max": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seller Fee Max"
+          },
+          "seller_fee_min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seller Fee Min"
+          },
+          "seller_fee_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seller Fee Rate"
+          }
+        },
+        "required": [
+          "provenance_url"
+        ],
+        "title": "PlatformRuleCreate",
+        "type": "object"
+      },
+      "PlatformRuleResponse": {
+        "properties": {
+          "access_authorized": {
+            "title": "Access Authorized",
+            "type": "boolean"
+          },
+          "access_method": {
+            "title": "Access Method",
+            "type": "string"
+          },
+          "buyer_fee_fixed": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buyer Fee Fixed"
+          },
+          "buyer_fee_max": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buyer Fee Max"
+          },
+          "buyer_fee_min": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buyer Fee Min"
+          },
+          "buyer_fee_rate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buyer Fee Rate"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "platform_code": {
+            "title": "Platform Code",
+            "type": "string"
+          },
+          "provenance_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provenance Url"
+          },
+          "region_code": {
+            "title": "Region Code",
+            "type": "string"
+          },
+          "seller_fee_fixed": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seller Fee Fixed"
+          },
+          "seller_fee_max": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seller Fee Max"
+          },
+          "seller_fee_min": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seller Fee Min"
+          },
+          "seller_fee_rate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seller Fee Rate"
+          },
+          "valid_from": {
+            "format": "date-time",
+            "title": "Valid From",
+            "type": "string"
+          },
+          "valid_to": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid To"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "platform_code",
+          "region_code",
+          "version",
+          "valid_from",
+          "access_method",
+          "access_authorized"
+        ],
+        "title": "PlatformRuleResponse",
+        "type": "object"
+      },
       "PortfolioOverviewResponse": {
         "description": "Tr\u00e9sorerie, stock et d\u00e9tail.\n\nLe stock est d\u00e9taill\u00e9 plut\u00f4t que r\u00e9sum\u00e9 : annoncer un taux\nd'immobilisation sans dire quelles montres immobilisent le capital ne dit\npas quoi vendre.",
         "properties": {
@@ -1513,6 +1849,7 @@
         "type": "object"
       },
       "SellerCreate": {
+        "description": "Profil du vendeur tel qu'on le constate.\n\nFiabilit\u00e9, risque et protections ne sont pas des jugements de valeur :\nce sont des faits que la porte \u00ab risque vendeur \u00bb et le pilier \u00ab qualit\u00e9\ndes preuves \u00bb consomment tels quels. Les laisser vides est l\u00e9gitime \u2014 ils\nretombent alors sur \u00ab inconnu \u00bb, qui a sa propre note, jamais sur une\nvaleur favorable.",
         "properties": {
           "country_code": {
             "anyOf": [
@@ -1527,6 +1864,28 @@
             ],
             "title": "Country Code"
           },
+          "reliability": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reliability"
+          },
+          "risk_level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Risk Level"
+          },
           "seller_type": {
             "anyOf": [
               {
@@ -1537,6 +1896,17 @@
               }
             ],
             "title": "Seller Type"
+          },
+          "transaction_protections": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transaction Protections"
           }
         },
         "title": "SellerCreate",
@@ -1562,6 +1932,28 @@
             "title": "Reason",
             "type": "string"
           },
+          "reliability": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reliability"
+          },
+          "risk_level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Risk Level"
+          },
           "seller_type": {
             "anyOf": [
               {
@@ -1572,6 +1964,17 @@
               }
             ],
             "title": "Seller Type"
+          },
+          "transaction_protections": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transaction Protections"
           }
         },
         "required": [
@@ -1598,6 +2001,28 @@
             "title": "Id",
             "type": "string"
           },
+          "reliability": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reliability"
+          },
+          "risk_level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Risk Level"
+          },
           "seller_type": {
             "anyOf": [
               {
@@ -1608,6 +2033,17 @@
               }
             ],
             "title": "Seller Type"
+          },
+          "transaction_protections": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transaction Protections"
           }
         },
         "required": [
@@ -3008,6 +3444,32 @@
         ]
       }
     },
+    "/api/v1/platforms": {
+      "get": {
+        "description": "Plateformes connues et grille en vigueur pour chacune.\n\nUne plateforme sans grille est signal\u00e9e comme telle : une opportunit\u00e9 qui\nen vient ne peut pas \u00eatre analys\u00e9e, faute de pouvoir \u00e9tablir ses co\u00fbts.",
+        "operationId": "list_platforms_route_api_v1_platforms_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PlatformResponse"
+                  },
+                  "title": "Response List Platforms Route Api V1 Platforms Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Platforms Route",
+        "tags": [
+          "platforms"
+        ]
+      }
+    },
     "/api/v1/platforms/{code}/rules": {
       "get": {
         "operationId": "get_platform_rules_route_api_v1_platforms__code__rules_get",
@@ -3074,6 +3536,57 @@
           }
         },
         "summary": "Get Platform Rules Route",
+        "tags": [
+          "platforms"
+        ]
+      },
+      "post": {
+        "description": "Enregistre une grille de frais, en nouvelle version.\n\nLa pr\u00e9c\u00e9dente est ferm\u00e9e, jamais r\u00e9\u00e9crite : une analyse produite sous\nl'ancienne grille reste rejouable.",
+        "operationId": "create_platform_rule_route_api_v1_platforms__code__rules_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "title": "Code",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlatformRuleCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformRuleResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Platform Rule Route",
         "tags": [
           "platforms"
         ]

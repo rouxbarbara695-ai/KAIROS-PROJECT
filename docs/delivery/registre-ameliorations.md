@@ -48,10 +48,12 @@ mais doivent être comblés pour que le parcours soit réellement utilisable.
 
 | ID | Priorité | Sujet |
 |---|---|---|
-| POL-050 | P1 | Aucune interface d'alimentation du registre : apports de capital, achats et ventes s'écrivent en SQL. Tant que ce n'est pas fait, le pilier portefeuille ne bouge pas depuis l'application, alors que c'est lui qui bloque le plus souvent le verdict. Suite de `KAI-502`. |
-| POL-051 | P2 | La fiabilité du vendeur, son niveau de risque et les protections de la transaction ne sont jamais saisis : ils retombent sur « inconnu », ce qui coûte des points au pilier des preuves et déclenche une réserve sur la porte vendeur. Le formulaire doit les demander. |
+| POL-050 | P2 | **Partiellement traité.** Apports, retraits et ajustements se saisissent désormais depuis l'écran portefeuille. Restent les achats et les ventes, qui appartiennent aux parcours d'opération (Epic 4) : leurs écritures de trésorerie en découlent et ne doivent pas se saisir à la main. |
+| POL-051 | — | **Traité.** Fiabilité, niveau de risque et protections sont saisis à la création et corrigibles avec motif. |
 | POL-052 | P2 | Les coûts opérationnels — révision, polissage, transport — n'ont pas d'interface de saisie. Ils sont exceptionnels (« on achète et on revend, on ne révise pas »), mais quand ils existent ils changent le profit et le prix maximal. |
-| POL-053 | P2 | Aucune plateforme n'est rattachée à une opportunité manuelle, donc aucun frais d'achat ni de vente n'entre dans les scénarios. Le profit affiché est celui d'une vente de particulier à particulier ; sur Catawiki ou Chrono24 il serait sensiblement plus bas. |
+| POL-053 | P2 | **Partiellement traité.** Les grilles de frais se saisissent depuis l'écran plateformes, et une opportunité issue d'une annonce en ligne les applique. Une opportunité **manuelle** reste sans plateforme : ses scénarios sont ceux d'une vente entre particuliers. Il manque un moyen de dire « achetée sur Catawiki » sans coller d'URL. |
+| POL-056 | P2 | Les grilles de frais réelles ne sont pas renseignées : celles saisies en vérification sont des valeurs d'illustration. Tant qu'elles ne le sont pas, tout profit affiché sur une annonce en ligne est faux — ou l'analyse refuse de se faire. À remplir depuis les pages tarifs officielles. |
+| POL-057 | P2 | La plateforme de **revente** n'est jamais choisie. Le moteur distingue frais acheteur et frais vendeur, mais rien ne permet de dire où l'on compte revendre : les frais vendeur appliqués sont ceux de la plateforme d'achat, ce qui n'a de sens que si l'on revend au même endroit. À rattacher à la stratégie plutôt qu'à l'annonce. |
 | POL-054 | P3 | Le prix affiché du scénario est calculé mais l'analyse n'expose pas les coûts ligne à ligne, seulement leur total. La règle 6 demande le détail. |
 | POL-055 | P3 | L'analyse ne montre pas ce qui a changé depuis la version précédente. Un recalcul après correction devrait pouvoir se lire comme un écart, pas comme un nouveau tableau. |
 

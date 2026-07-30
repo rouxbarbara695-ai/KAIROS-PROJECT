@@ -26,6 +26,34 @@ ORIGINALITY_FALLBACK: Final = "uncertain"
 SELLER_TYPES: Final = ("private", "professional", "unknown")
 SELLER_TYPE_FALLBACK: Final = "unknown"
 
+# Vocabulaires du vendeur, lus par la porte « risque vendeur » et par le
+# pilier « qualité des preuves ».
+#
+# `reliability` et `risk_level` ont chacun une case « inconnu » : c'est un
+# état réel du dossier, pas un défaut de saisie, et le barème lui donne sa
+# propre note. `protections` n'en a pas — l'absence de protection connue
+# retombe donc sur « none », le niveau le plus prudent. Supposer une
+# protection qu'on n'a pas constatée serait exactement l'erreur que
+# principles.md #6 interdit.
+SELLER_RELIABILITY_LEVELS: Final = (
+    "verified",
+    "strong_history",
+    "unknown",
+    "negative_signals",
+)
+SELLER_RELIABILITY_FALLBACK: Final = "unknown"
+
+SELLER_RISK_LEVELS: Final = ("low", "medium", "high", "unknown")
+SELLER_RISK_FALLBACK: Final = "unknown"
+
+TRANSACTION_PROTECTIONS: Final = (
+    "authentication_and_escrow",
+    "one_protection",
+    "limited_recourses",
+    "none",
+)
+TRANSACTION_PROTECTIONS_FALLBACK: Final = "none"
+
 
 def normalize(raw_value: str | None, allowed: tuple[str, ...], fallback: str) -> str:
     """Convertit une saisie libre en valeur du vocabulaire fermé. Une valeur

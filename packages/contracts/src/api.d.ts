@@ -310,6 +310,29 @@ export interface paths {
         patch: operations["patch_watch_profile_route_api_v1_opportunities__opportunity_id__watch_profile_patch"];
         trace?: never;
     };
+    "/api/v1/platforms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Platforms Route
+         * @description Plateformes connues et grille en vigueur pour chacune.
+         *
+         *     Une plateforme sans grille est signalée comme telle : une opportunité qui
+         *     en vient ne peut pas être analysée, faute de pouvoir établir ses coûts.
+         */
+        get: operations["list_platforms_route_api_v1_platforms_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/platforms/{code}/rules": {
         parameters: {
             query?: never;
@@ -320,7 +343,14 @@ export interface paths {
         /** Get Platform Rules Route */
         get: operations["get_platform_rules_route_api_v1_platforms__code__rules_get"];
         put?: never;
-        post?: never;
+        /**
+         * Create Platform Rule Route
+         * @description Enregistre une grille de frais, en nouvelle version.
+         *
+         *     La précédente est fermée, jamais réécrite : une analyse produite sous
+         *     l'ancienne grille reste rejouable.
+         */
+        post: operations["create_platform_rule_route_api_v1_platforms__code__rules_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -861,6 +891,101 @@ export interface components {
             /** Reason */
             reason: string;
         };
+        /** PlatformResponse */
+        PlatformResponse: {
+            active_rule?: components["schemas"]["PlatformRuleResponse"] | null;
+            /** Code */
+            code: string;
+            /** Has Active Rule */
+            has_active_rule: boolean;
+            /** Name */
+            name: string;
+        };
+        /**
+         * PlatformRuleCreate
+         * @description Grille de frais saisie à la main.
+         *
+         *     Aucun champ n'a de valeur par défaut : inventer une commission fausserait
+         *     tous les profits d'un portefeuille sans que rien ne le signale. Tout
+         *     laisser vide est accepté — c'est une plateforme sans frais, et c'est un
+         *     constat, pas un oubli.
+         *
+         *     `provenance_url` est obligatoire : une grille qu'on ne peut pas vérifier
+         *     ne vaut pas mieux qu'une grille inventée.
+         */
+        PlatformRuleCreate: {
+            /** Buyer Fee Fixed */
+            buyer_fee_fixed?: number | string | null;
+            /** Buyer Fee Max */
+            buyer_fee_max?: number | string | null;
+            /** Buyer Fee Min */
+            buyer_fee_min?: number | string | null;
+            /** Buyer Fee Rate */
+            buyer_fee_rate?: number | string | null;
+            /**
+             * Currency
+             * @default EUR
+             */
+            currency: string;
+            /** Provenance Url */
+            provenance_url: string;
+            /**
+             * Region Code
+             * @default *
+             */
+            region_code: string;
+            /** Seller Fee Fixed */
+            seller_fee_fixed?: number | string | null;
+            /** Seller Fee Max */
+            seller_fee_max?: number | string | null;
+            /** Seller Fee Min */
+            seller_fee_min?: number | string | null;
+            /** Seller Fee Rate */
+            seller_fee_rate?: number | string | null;
+        };
+        /** PlatformRuleResponse */
+        PlatformRuleResponse: {
+            /** Access Authorized */
+            access_authorized: boolean;
+            /** Access Method */
+            access_method: string;
+            /** Buyer Fee Fixed */
+            buyer_fee_fixed?: string | null;
+            /** Buyer Fee Max */
+            buyer_fee_max?: string | null;
+            /** Buyer Fee Min */
+            buyer_fee_min?: string | null;
+            /** Buyer Fee Rate */
+            buyer_fee_rate?: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Platform Code */
+            platform_code: string;
+            /** Provenance Url */
+            provenance_url?: string | null;
+            /** Region Code */
+            region_code: string;
+            /** Seller Fee Fixed */
+            seller_fee_fixed?: string | null;
+            /** Seller Fee Max */
+            seller_fee_max?: string | null;
+            /** Seller Fee Min */
+            seller_fee_min?: string | null;
+            /** Seller Fee Rate */
+            seller_fee_rate?: string | null;
+            /**
+             * Valid From
+             * Format: date-time
+             */
+            valid_from: string;
+            /** Valid To */
+            valid_to?: string | null;
+            /** Version */
+            version: number;
+        };
         /**
          * PortfolioOverviewResponse
          * @description Trésorerie, stock et détail.
@@ -937,12 +1062,27 @@ export interface components {
              */
             status: "suggested" | "confirmed" | "corrected" | "unknown";
         };
-        /** SellerCreate */
+        /**
+         * SellerCreate
+         * @description Profil du vendeur tel qu'on le constate.
+         *
+         *     Fiabilité, risque et protections ne sont pas des jugements de valeur :
+         *     ce sont des faits que la porte « risque vendeur » et le pilier « qualité
+         *     des preuves » consomment tels quels. Les laisser vides est légitime — ils
+         *     retombent alors sur « inconnu », qui a sa propre note, jamais sur une
+         *     valeur favorable.
+         */
         SellerCreate: {
             /** Country Code */
             country_code?: string | null;
+            /** Reliability */
+            reliability?: string | null;
+            /** Risk Level */
+            risk_level?: string | null;
             /** Seller Type */
             seller_type?: string | null;
+            /** Transaction Protections */
+            transaction_protections?: string | null;
         };
         /** SellerProfilePatchRequest */
         SellerProfilePatchRequest: {
@@ -950,8 +1090,14 @@ export interface components {
             country_code?: string | null;
             /** Reason */
             reason: string;
+            /** Reliability */
+            reliability?: string | null;
+            /** Risk Level */
+            risk_level?: string | null;
             /** Seller Type */
             seller_type?: string | null;
+            /** Transaction Protections */
+            transaction_protections?: string | null;
         };
         /** SellerProfileResponse */
         SellerProfileResponse: {
@@ -962,8 +1108,14 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /** Reliability */
+            reliability?: string | null;
+            /** Risk Level */
+            risk_level?: string | null;
             /** Seller Type */
             seller_type: string | null;
+            /** Transaction Protections */
+            transaction_protections?: string | null;
         };
         /** SourceCreate */
         SourceCreate: {
@@ -1738,6 +1890,26 @@ export interface operations {
             };
         };
     };
+    list_platforms_route_api_v1_platforms_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformResponse"][];
+                };
+            };
+        };
+    };
     get_platform_rules_route_api_v1_platforms__code__rules_get: {
         parameters: {
             query?: {
@@ -1761,6 +1933,41 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_platform_rule_route_api_v1_platforms__code__rules_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlatformRuleCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformRuleResponse"];
                 };
             };
             /** @description Validation Error */

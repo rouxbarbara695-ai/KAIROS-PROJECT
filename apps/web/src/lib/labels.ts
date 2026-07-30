@@ -215,6 +215,27 @@ const LEDGER_KIND: Record<string, string> = {
   negative_adjustment: "Ajustement négatif",
 };
 
+const SELLER_RELIABILITY: Record<string, string> = {
+  verified: "Vérifié",
+  strong_history: "Historique solide",
+  unknown: "Inconnu",
+  negative_signals: "Signaux négatifs",
+};
+
+const SELLER_RISK: Record<string, string> = {
+  low: "Faible",
+  medium: "Moyen",
+  high: "Élevé",
+  unknown: "Inconnu",
+};
+
+const TRANSACTION_PROTECTIONS: Record<string, string> = {
+  authentication_and_escrow: "Authentification et séquestre",
+  one_protection: "Une protection",
+  limited_recourses: "Recours limités",
+  none: "Aucune",
+};
+
 function translate(
   dictionary: Record<string, string>,
   value: string | null | undefined,
@@ -224,6 +245,11 @@ function translate(
 }
 
 export const labels = {
+  sellerReliability: (value: string | null | undefined) =>
+    translate(SELLER_RELIABILITY, value),
+  sellerRisk: (value: string | null | undefined) => translate(SELLER_RISK, value),
+  transactionProtections: (value: string | null | undefined) =>
+    translate(TRANSACTION_PROTECTIONS, value),
   ledgerKind: (value: string | null | undefined) => translate(LEDGER_KIND, value),
   recommendation: (value: string | null | undefined) =>
     translate(RECOMMENDATION, value),
@@ -287,6 +313,19 @@ export const options = {
   mechanicalCondition: ["verified", "functional", "unknown", "defect"],
   cosmeticCondition: ["excellent", "very_good", "good", "fair", "poor"],
   sellerType: ["private", "professional", "unknown"],
+  sellerReliability: [
+    "verified",
+    "strong_history",
+    "unknown",
+    "negative_signals",
+  ],
+  sellerRisk: ["low", "medium", "high", "unknown"],
+  transactionProtections: [
+    "authentication_and_escrow",
+    "one_protection",
+    "limited_recourses",
+    "none",
+  ],
 } as const;
 
 /**

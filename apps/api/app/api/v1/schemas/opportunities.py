@@ -13,6 +13,11 @@ class SourceCreate(BaseModel):
     mode: Literal["manual", "url"]
     manual_identifier: str | None = None
     url: str | None = None
+    # En mode manuel, la plateforme d'achat n'est déductible d'aucune URL : sans
+    # elle, l'analyse traiterait l'achat comme une vente de particulier à
+    # particulier et ignorerait la commission. En mode URL elle est superflue —
+    # c'est l'annonce qui fait foi.
+    platform_code: str | None = None
 
     @model_validator(mode="after")
     def _check_required_field(self) -> SourceCreate:
@@ -35,8 +40,20 @@ class WatchCreate(BaseModel):
 
 
 class SellerCreate(BaseModel):
+    """Profil du vendeur tel qu'on le constate.
+
+    Fiabilité, risque et protections ne sont pas des jugements de valeur :
+    ce sont des faits que la porte « risque vendeur » et le pilier « qualité
+    des preuves » consomment tels quels. Les laisser vides est légitime — ils
+    retombent alors sur « inconnu », qui a sa propre note, jamais sur une
+    valeur favorable.
+    """
+
     country_code: str | None = Field(default=None, min_length=2, max_length=2)
     seller_type: str | None = None
+    reliability: str | None = None
+    risk_level: str | None = None
+    transaction_protections: str | None = None
 
 
 class PriceCreate(BaseModel):
@@ -66,6 +83,7 @@ class OpportunityResponse(BaseModel):
     portfolio_id: uuid.UUID
     source_mode: str
     manual_identifier: str | None
+    purchase_platform_code: str | None = None
     status: str
     version: int
     watch: WatchProfileResponse
@@ -91,6 +109,9 @@ class SellerProfileResponse(BaseModel):
     id: uuid.UUID
     country_code: str | None
     seller_type: str | None
+    reliability: str | None = None
+    risk_level: str | None = None
+    transaction_protections: str | None = None
 
 
 class PriceResponse(BaseModel):
@@ -127,6 +148,9 @@ class WatchProfilePatchRequest(BaseModel):
 class SellerProfilePatchRequest(BaseModel):
     country_code: str | None = Field(default=None, min_length=2, max_length=2)
     seller_type: str | None = None
+    reliability: str | None = None
+    risk_level: str | None = None
+    transaction_protections: str | None = None
     reason: str = Field(min_length=1)
 
 

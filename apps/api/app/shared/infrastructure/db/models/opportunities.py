@@ -46,6 +46,9 @@ class Opportunity(Base):
     strategy_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("strategies.id")
     )
+    purchase_platform_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("platforms.id")
+    )
     status: Mapped[str] = mapped_column(
         pg_enum(OpportunityStatus, "opportunity_status"),
         nullable=False,

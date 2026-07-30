@@ -143,6 +143,7 @@ create table platform_rules (
   buyer_fee_basis text,
   buyer_fee_min numeric(16,2),
   buyer_fee_max numeric(16,2),
+  buyer_fee_vat_rate numeric(18,10),
 
   seller_fee_rate numeric(18,10),
   seller_fee_fixed numeric(16,2),
@@ -150,6 +151,12 @@ create table platform_rules (
   seller_fee_basis text,
   seller_fee_min numeric(16,2),
   seller_fee_max numeric(16,2),
+  seller_fee_vat_rate numeric(18,10),
+
+  -- Frais de traitement du paiement prélevés au vendeur, en plus de la
+  -- commission. Séparés parce qu'ils ne portent pas de TVA et qu'ils
+  -- s'appliquent au prix de vente, pas au prix d'achat.
+  payment_fee_rate numeric(18,10),
 
   payment_rules jsonb not null default '{}'::jsonb,
   shipping_rules jsonb not null default '{}'::jsonb,
@@ -178,6 +185,11 @@ create table platform_rules (
   check (buyer_fee_max is null or buyer_fee_max >= 0),
   check (seller_fee_min is null or seller_fee_min >= 0),
   check (seller_fee_max is null or seller_fee_max >= 0),
+  -- Un taux de TVA ne peut pas dépasser 1 : au-delà, c'est une saisie en
+  -- pourcentage prise pour un taux décimal, et elle doublerait la commission.
+  check (buyer_fee_vat_rate is null or (buyer_fee_vat_rate >= 0 and buyer_fee_vat_rate <= 1)),
+  check (seller_fee_vat_rate is null or (seller_fee_vat_rate >= 0 and seller_fee_vat_rate <= 1)),
+  check (payment_fee_rate is null or (payment_fee_rate >= 0 and payment_fee_rate <= 1)),
   check (buyer_fee_min is null or buyer_fee_max is null or buyer_fee_min <= buyer_fee_max),
   check (seller_fee_min is null or seller_fee_max is null or seller_fee_min <= seller_fee_max),
   check (buyer_fee_fixed is null or buyer_fee_currency is not null),
@@ -302,6 +314,11 @@ create table opportunities (
   watch_id uuid not null references watches(id),
   seller_id uuid references sellers(id),
   strategy_id uuid references strategies(id),
+  -- Plateforme d'achat quand l'opportunité n'a pas d'annonce. Une saisie
+  -- manuelle peut parfaitement venir de Catawiki sans qu'on ait collé l'URL,
+  -- et ses frais d'achat existent quand même. Redondant avec la plateforme de
+  -- l'annonce lorsqu'il y en a une : c'est alors l'annonce qui fait foi.
+  purchase_platform_id uuid references platforms(id),
   status opportunity_status not null default 'watching',
   version integer not null default 1 check (version > 0),
   created_at timestamptz not null default now(),
@@ -1152,7 +1169,8 @@ insert into platforms (id, code, name) values
   ('00000000-0000-0000-0000-000000000004', 'watchcharts', 'WatchCharts'),
   ('00000000-0000-0000-0000-000000000005', 'watchfinder', 'Watchfinder'),
   ('00000000-0000-0000-0000-000000000006', 'independent_boutique', 'Boutique indépendante'),
-  ('00000000-0000-0000-0000-000000000007', 'user_data', 'Donnée utilisateur')
+  ('00000000-0000-0000-0000-000000000007', 'user_data', 'Donnée utilisateur'),
+  ('00000000-0000-0000-0000-000000000008', 'ebay', 'eBay')
 on conflict (id) do nothing;
 
 with seed(version, config, valid_from) as (

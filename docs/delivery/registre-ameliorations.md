@@ -48,10 +48,15 @@ mais doivent être comblés pour que le parcours soit réellement utilisable.
 
 | ID | Priorité | Sujet |
 |---|---|---|
-| POL-050 | P1 | Aucune interface d'alimentation du registre : apports de capital, achats et ventes s'écrivent en SQL. Tant que ce n'est pas fait, le pilier portefeuille ne bouge pas depuis l'application, alors que c'est lui qui bloque le plus souvent le verdict. Suite de `KAI-502`. |
-| POL-051 | P2 | La fiabilité du vendeur, son niveau de risque et les protections de la transaction ne sont jamais saisis : ils retombent sur « inconnu », ce qui coûte des points au pilier des preuves et déclenche une réserve sur la porte vendeur. Le formulaire doit les demander. |
+| POL-050 | P2 | **Partiellement traité.** Apports, retraits et ajustements se saisissent désormais depuis l'écran portefeuille. Restent les achats et les ventes, qui appartiennent aux parcours d'opération (Epic 4) : leurs écritures de trésorerie en découlent et ne doivent pas se saisir à la main. |
+| POL-051 | — | **Traité.** Fiabilité, niveau de risque et protections sont saisis à la création et corrigibles avec motif. |
 | POL-052 | P2 | Les coûts opérationnels — révision, polissage, transport — n'ont pas d'interface de saisie. Ils sont exceptionnels (« on achète et on revend, on ne révise pas »), mais quand ils existent ils changent le profit et le prix maximal. |
-| POL-053 | P2 | Aucune plateforme n'est rattachée à une opportunité manuelle, donc aucun frais d'achat ni de vente n'entre dans les scénarios. Le profit affiché est celui d'une vente de particulier à particulier ; sur Catawiki ou Chrono24 il serait sensiblement plus bas. |
+| POL-053 | — | **Traité.** Une saisie manuelle déclare sa plateforme d'achat, et l'analyse en applique les frais. « Aucune » reste possible et signifie un achat de particulier à particulier — un constat, pas un oubli. |
+| POL-058 | P1 | `seller_fee_min` et `seller_fee_max` sont saisis, stockés, transportés jusqu'à `PlatformFees`… puis **ignorés**. `costs_from_platform` ne lit que le taux et le frais fixe, et `Cost` ne porte aucune borne : une commission de vente plafonnée n'est donc jamais plafonnée dans les scénarios. Le côté acheteur, lui, est correct — le solveur applique bien les bornes. Conséquence : une grille à commission plafonnée surestime le coût de revente, et la TVA calculée sur cette commission hérite du même écart. Corriger demande de rendre les bornes visibles à l'évaluation des scénarios, où le prix de vente est connu. |
+| POL-059 | P2 | Les barèmes par tranches ne sont pas représentables : le modèle porte un taux unique, un plancher et un plafond. Vestiaire Collective facture 17 % entre 75 € et 15 000 € puis 2 500 € forfaitaires au-delà — approchable par un plafond à 2 500 € au prix d'un écart maximal de 50 € entre 14 706 € et 15 000 €, mais ce n'est pas la grille. Tant que POL-058 n'est pas traité, même cette approximation est inopérante. |
+| POL-060 | P2 | La TVA sur commission de Chrono24 est inconnue : la page relevée ne précise pas si les 6,5 % sont HT ou TTC. Comme c'est l'un des deux seuls lieux de revente utilisés, l'écart potentiel est de 20 % de la commission sur toutes les ventes. À vérifier auprès d'une facture réelle, pas d'une page d'aide. |
+| POL-056 | P2 | Les grilles de frais réelles ne sont pas renseignées : celles saisies en vérification sont des valeurs d'illustration. Tant qu'elles ne le sont pas, tout profit affiché sur une annonce en ligne est faux — ou l'analyse refuse de se faire. À remplir depuis les pages tarifs officielles. |
+| POL-057 | — | **Traité.** La plateforme de revente est un paramètre de stratégie, versionné comme le reste. Les frais acheteur viennent de l'annonce, les frais vendeur de la revente choisie : acheter et revendre au même endroit ne compte plus qu'une fois chaque commission. |
 | POL-054 | P3 | Le prix affiché du scénario est calculé mais l'analyse n'expose pas les coûts ligne à ligne, seulement leur total. La règle 6 demande le détail. |
 | POL-055 | P3 | L'analyse ne montre pas ce qui a changé depuis la version précédente. Un recalcul après correction devrait pouvoir se lire comme un écart, pas comme un nouveau tableau. |
 
@@ -65,7 +70,7 @@ mais doivent être comblés pour que le parcours soit réellement utilisable.
 | POL-043 | P2 | Redis est configuré et démarré sans être utilisé. Soit un usage réel arrive avec les moteurs, soit la dépendance sort du socle. |
 | POL-044 | P2 | Les origines CORS ont une valeur par défaut en dur dans la configuration. Elles doivent devenir strictement environnementales avant tout déploiement. |
 | POL-045 | P2 | Aucune limitation de débit sur l'API. |
-| POL-046 | P3 | La migration initiale rejoue `database/schema.sql` d'un bloc. Les migrations suivantes devront être incrémentales et écrites à la main : documenter cette bascule. |
+| POL-046 | — | **Traité.** La bascule est faite : `0004` est la première migration incrémentale. Elle utilise `add column if not exists` parce que `0001` rejoue `schema.sql` d'un bloc — sur une base neuve la colonne existe déjà, sur une base existante non. |
 | POL-047 | P3 | Couverture à 93 %. Les zones non couvertes sont la résolution de change, la fabrique de session et les opérations arithmétiques de `Money` en cas d'erreur. |
 | POL-048 | P3 | Les actions GitHub utilisées ciblent Node 20, déprécié par les exécuteurs. À relever lors d'une passe d'entretien de la CI. |
 

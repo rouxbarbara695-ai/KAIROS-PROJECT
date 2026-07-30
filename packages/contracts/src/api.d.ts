@@ -310,6 +310,29 @@ export interface paths {
         patch: operations["patch_watch_profile_route_api_v1_opportunities__opportunity_id__watch_profile_patch"];
         trace?: never;
     };
+    "/api/v1/platforms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Platforms Route
+         * @description Plateformes connues et grille en vigueur pour chacune.
+         *
+         *     Une plateforme sans grille est signalée comme telle : une opportunité qui
+         *     en vient ne peut pas être analysée, faute de pouvoir établir ses coûts.
+         */
+        get: operations["list_platforms_route_api_v1_platforms_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/platforms/{code}/rules": {
         parameters: {
             query?: never;
@@ -320,7 +343,79 @@ export interface paths {
         /** Get Platform Rules Route */
         get: operations["get_platform_rules_route_api_v1_platforms__code__rules_get"];
         put?: never;
+        /**
+         * Create Platform Rule Route
+         * @description Enregistre une grille de frais, en nouvelle version.
+         *
+         *     La précédente est fermée, jamais réécrite : une analyse produite sous
+         *     l'ancienne grille reste rejouable.
+         */
+        post: operations["create_platform_rule_route_api_v1_platforms__code__rules_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portfolios/{portfolio_id}/ledger-entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Ledger Entry Route
+         * @description Ajoute un mouvement de trésorerie.
+         *
+         *     Le registre est append-only : on ne corrige pas une écriture, on en passe
+         *     une autre en sens inverse. C'est ce qui permet à la trésorerie de
+         *     s'expliquer ligne à ligne.
+         */
+        post: operations["create_ledger_entry_route_api_v1_portfolios__portfolio_id__ledger_entries_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portfolios/{portfolio_id}/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Portfolio Overview Route */
+        get: operations["get_portfolio_overview_route_api_v1_portfolios__portfolio_id__overview_get"];
+        put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portfolios/{portfolio_id}/strategy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Strategy Route */
+        get: operations["get_strategy_route_api_v1_portfolios__portfolio_id__strategy_get"];
+        put?: never;
+        /**
+         * Update Strategy Route
+         * @description Ouvre une nouvelle version de la stratégie.
+         *
+         *     Une version n'est jamais réécrite : une analyse figée référence celle qui
+         *     l'a produite, et la modifier rendrait ce verdict inexplicable après coup.
+         */
+        post: operations["update_strategy_route_api_v1_portfolios__portfolio_id__strategy_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -634,6 +729,93 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** HoldingResponse */
+        HoldingResponse: {
+            /** Brand */
+            brand?: string | null;
+            /** Cost Eur */
+            cost_eur: string;
+            /**
+             * Opportunity Id
+             * Format: uuid
+             */
+            opportunity_id: string;
+            /**
+             * Purchased At
+             * Format: date-time
+             */
+            purchased_at: string;
+            /** Reference */
+            reference?: string | null;
+        };
+        /**
+         * LedgerMovementCreate
+         * @description Mouvement de trésorerie saisi par l'utilisateur.
+         *
+         *     Seules les natures sans contrepartie ailleurs sont acceptées. Un paiement
+         *     d'achat ou un encaissement de vente a sa ligne dans `purchases` ou
+         *     `sales` : le saisir ici ferait diverger le registre des opérations qu'il
+         *     reflète.
+         *
+         *     Le montant est toujours positif — c'est la nature qui porte le sens, comme
+         *     dans le registre lui-même.
+         */
+        LedgerMovementCreate: {
+            /** Amount */
+            amount: number | string;
+            /** Currency */
+            currency: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "capital_contribution" | "withdrawal" | "positive_adjustment" | "negative_adjustment";
+            /** Notes */
+            notes?: string | null;
+            /** Occurred At */
+            occurred_at?: string | null;
+        };
+        /**
+         * LedgerMovementResponse
+         * @description Une écriture du registre, avec la traçabilité de change qu'exige la
+         *     règle 3 : devise source, montant EUR, taux, source et horodatage.
+         */
+        LedgerMovementResponse: {
+            /** Amount Eur */
+            amount_eur: string;
+            /** Amount Source */
+            amount_source: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Currency */
+            currency: string;
+            /**
+             * Fx Rate At
+             * Format: date-time
+             */
+            fx_rate_at: string;
+            /** Fx Source */
+            fx_source: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Notes */
+            notes?: string | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Rate To Eur */
+            rate_to_eur: string;
+        };
         /** OpportunityPage */
         OpportunityPage: {
             /** Items */
@@ -670,6 +852,8 @@ export interface components {
              * Format: uuid
              */
             portfolio_id: string;
+            /** Purchase Platform Code */
+            purchase_platform_code?: string | null;
             seller: components["schemas"]["SellerProfileResponse"] | null;
             /** Source Mode */
             source_mode: string;
@@ -733,6 +917,138 @@ export interface components {
             /** Reason */
             reason: string;
         };
+        /** PlatformResponse */
+        PlatformResponse: {
+            active_rule?: components["schemas"]["PlatformRuleResponse"] | null;
+            /** Code */
+            code: string;
+            /** Has Active Rule */
+            has_active_rule: boolean;
+            /** Name */
+            name: string;
+        };
+        /**
+         * PlatformRuleCreate
+         * @description Grille de frais saisie à la main.
+         *
+         *     Aucun champ n'a de valeur par défaut : inventer une commission fausserait
+         *     tous les profits d'un portefeuille sans que rien ne le signale. Tout
+         *     laisser vide est accepté — c'est une plateforme sans frais, et c'est un
+         *     constat, pas un oubli.
+         *
+         *     `provenance_url` est obligatoire : une grille qu'on ne peut pas vérifier
+         *     ne vaut pas mieux qu'une grille inventée.
+         */
+        PlatformRuleCreate: {
+            /** Buyer Fee Fixed */
+            buyer_fee_fixed?: number | string | null;
+            /** Buyer Fee Max */
+            buyer_fee_max?: number | string | null;
+            /** Buyer Fee Min */
+            buyer_fee_min?: number | string | null;
+            /** Buyer Fee Rate */
+            buyer_fee_rate?: number | string | null;
+            /** Buyer Fee Vat Rate */
+            buyer_fee_vat_rate?: number | string | null;
+            /**
+             * Currency
+             * @default EUR
+             */
+            currency: string;
+            /** Payment Fee Rate */
+            payment_fee_rate?: number | string | null;
+            /** Provenance Url */
+            provenance_url: string;
+            /**
+             * Region Code
+             * @default *
+             */
+            region_code: string;
+            /** Seller Fee Fixed */
+            seller_fee_fixed?: number | string | null;
+            /** Seller Fee Max */
+            seller_fee_max?: number | string | null;
+            /** Seller Fee Min */
+            seller_fee_min?: number | string | null;
+            /** Seller Fee Rate */
+            seller_fee_rate?: number | string | null;
+            /** Seller Fee Vat Rate */
+            seller_fee_vat_rate?: number | string | null;
+        };
+        /** PlatformRuleResponse */
+        PlatformRuleResponse: {
+            /** Access Authorized */
+            access_authorized: boolean;
+            /** Access Method */
+            access_method: string;
+            /** Buyer Fee Fixed */
+            buyer_fee_fixed?: string | null;
+            /** Buyer Fee Max */
+            buyer_fee_max?: string | null;
+            /** Buyer Fee Min */
+            buyer_fee_min?: string | null;
+            /** Buyer Fee Rate */
+            buyer_fee_rate?: string | null;
+            /** Buyer Fee Vat Rate */
+            buyer_fee_vat_rate?: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Payment Fee Rate */
+            payment_fee_rate?: string | null;
+            /** Platform Code */
+            platform_code: string;
+            /** Provenance Url */
+            provenance_url?: string | null;
+            /** Region Code */
+            region_code: string;
+            /** Seller Fee Fixed */
+            seller_fee_fixed?: string | null;
+            /** Seller Fee Max */
+            seller_fee_max?: string | null;
+            /** Seller Fee Min */
+            seller_fee_min?: string | null;
+            /** Seller Fee Rate */
+            seller_fee_rate?: string | null;
+            /** Seller Fee Vat Rate */
+            seller_fee_vat_rate?: string | null;
+            /**
+             * Valid From
+             * Format: date-time
+             */
+            valid_from: string;
+            /** Valid To */
+            valid_to?: string | null;
+            /** Version */
+            version: number;
+        };
+        /**
+         * PortfolioOverviewResponse
+         * @description Trésorerie, stock et détail.
+         *
+         *     Le stock est détaillé plutôt que résumé : annoncer un taux
+         *     d'immobilisation sans dire quelles montres immobilisent le capital ne dit
+         *     pas quoi vendre.
+         */
+        PortfolioOverviewResponse: {
+            /** Available Cash Eur */
+            available_cash_eur: string;
+            /** Holdings */
+            holdings: components["schemas"]["HoldingResponse"][];
+            /** Movements */
+            movements: components["schemas"]["LedgerMovementResponse"][];
+            /**
+             * Portfolio Id
+             * Format: uuid
+             */
+            portfolio_id: string;
+            /** Stock At Cost Eur */
+            stock_at_cost_eur: string;
+            /** Total Capital Eur */
+            total_capital_eur: string;
+        };
         /** PriceCreate */
         PriceCreate: {
             /** Amount */
@@ -784,12 +1100,27 @@ export interface components {
              */
             status: "suggested" | "confirmed" | "corrected" | "unknown";
         };
-        /** SellerCreate */
+        /**
+         * SellerCreate
+         * @description Profil du vendeur tel qu'on le constate.
+         *
+         *     Fiabilité, risque et protections ne sont pas des jugements de valeur :
+         *     ce sont des faits que la porte « risque vendeur » et le pilier « qualité
+         *     des preuves » consomment tels quels. Les laisser vides est légitime — ils
+         *     retombent alors sur « inconnu », qui a sa propre note, jamais sur une
+         *     valeur favorable.
+         */
         SellerCreate: {
             /** Country Code */
             country_code?: string | null;
+            /** Reliability */
+            reliability?: string | null;
+            /** Risk Level */
+            risk_level?: string | null;
             /** Seller Type */
             seller_type?: string | null;
+            /** Transaction Protections */
+            transaction_protections?: string | null;
         };
         /** SellerProfilePatchRequest */
         SellerProfilePatchRequest: {
@@ -797,8 +1128,14 @@ export interface components {
             country_code?: string | null;
             /** Reason */
             reason: string;
+            /** Reliability */
+            reliability?: string | null;
+            /** Risk Level */
+            risk_level?: string | null;
             /** Seller Type */
             seller_type?: string | null;
+            /** Transaction Protections */
+            transaction_protections?: string | null;
         };
         /** SellerProfileResponse */
         SellerProfileResponse: {
@@ -809,8 +1146,14 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /** Reliability */
+            reliability?: string | null;
+            /** Risk Level */
+            risk_level?: string | null;
             /** Seller Type */
             seller_type: string | null;
+            /** Transaction Protections */
+            transaction_protections?: string | null;
         };
         /** SourceCreate */
         SourceCreate: {
@@ -821,8 +1164,65 @@ export interface components {
              * @enum {string}
              */
             mode: "manual" | "url";
+            /** Platform Code */
+            platform_code?: string | null;
             /** Url */
             url?: string | null;
+        };
+        /** StrategyResponse */
+        StrategyResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Maximum Allocation Rate */
+            maximum_allocation_rate: string;
+            /** Minimum Profit Eur */
+            minimum_profit_eur: string;
+            /** Minimum Roi */
+            minimum_roi: string;
+            /** Negotiation Buffer */
+            negotiation_buffer: string;
+            /** Resale Platform Code */
+            resale_platform_code?: string | null;
+            /**
+             * Valid From
+             * Format: date-time
+             */
+            valid_from: string;
+            /** Version */
+            version: number;
+        };
+        /**
+         * StrategyUpdate
+         * @description Ajustement de la stratégie.
+         *
+         *     Chaque champ est facultatif : ceux qu'on ne mentionne pas sont repris de
+         *     la version courante. Une stratégie se corrige d'un paramètre à la fois ;
+         *     exiger la saisie complète inviterait à la faute de recopie.
+         *
+         *     `resale_platform_code` est la plateforme où l'on compte revendre — une
+         *     décision, pas une propriété de l'annonce achetée. `clear_resale_platform`
+         *     la retire explicitement, ce qu'un champ vide ne saurait exprimer sans
+         *     ambiguïté.
+         */
+        StrategyUpdate: {
+            /**
+             * Clear Resale Platform
+             * @default false
+             */
+            clear_resale_platform: boolean;
+            /** Maximum Allocation Rate */
+            maximum_allocation_rate?: number | string | null;
+            /** Minimum Profit Eur */
+            minimum_profit_eur?: number | string | null;
+            /** Minimum Roi */
+            minimum_roi?: number | string | null;
+            /** Negotiation Buffer */
+            negotiation_buffer?: number | string | null;
+            /** Resale Platform Code */
+            resale_platform_code?: string | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -1585,6 +1985,26 @@ export interface operations {
             };
         };
     };
+    list_platforms_route_api_v1_platforms_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformResponse"][];
+                };
+            };
+        };
+    };
     get_platform_rules_route_api_v1_platforms__code__rules_get: {
         parameters: {
             query?: {
@@ -1608,6 +2028,173 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_platform_rule_route_api_v1_platforms__code__rules_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlatformRuleCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformRuleResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_ledger_entry_route_api_v1_portfolios__portfolio_id__ledger_entries_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                portfolio_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LedgerMovementCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LedgerMovementResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_portfolio_overview_route_api_v1_portfolios__portfolio_id__overview_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                portfolio_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortfolioOverviewResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_strategy_route_api_v1_portfolios__portfolio_id__strategy_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                portfolio_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StrategyResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_strategy_route_api_v1_portfolios__portfolio_id__strategy_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                portfolio_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StrategyUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StrategyResponse"];
                 };
             };
             /** @description Validation Error */

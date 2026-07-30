@@ -10,6 +10,7 @@ from app.api.v1.routes.health import router as health_router
 from app.api.v1.routes.me import router as me_router
 from app.api.v1.routes.opportunities import router as opportunities_router
 from app.api.v1.routes.platforms import router as platforms_router
+from app.api.v1.routes.portfolio import router as portfolio_router
 from app.shared.config import get_settings
 from app.shared.logging import configure_logging
 from app.shared.middleware import RequestContextMiddleware
@@ -36,6 +37,7 @@ def create_app() -> FastAPI:
     app.include_router(platforms_router, prefix="/api/v1")
     app.include_router(comparables_router, prefix="/api/v1")
     app.include_router(analyses_router, prefix="/api/v1")
+    app.include_router(portfolio_router, prefix="/api/v1")
 
     return app
 

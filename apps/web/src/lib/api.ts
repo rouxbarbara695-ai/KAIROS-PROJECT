@@ -256,3 +256,60 @@ export async function getLatestAnalysis(
     throw err;
   }
 }
+
+export type PortfolioOverview =
+  components["schemas"]["PortfolioOverviewResponse"];
+export type LedgerMovementCreate =
+  components["schemas"]["LedgerMovementCreate"];
+export type LedgerMovementResponse =
+  components["schemas"]["LedgerMovementResponse"];
+
+export function getPortfolioOverview(
+  portfolioId: string,
+): Promise<PortfolioOverview> {
+  return request<PortfolioOverview>(`/portfolios/${portfolioId}/overview`);
+}
+
+export function createLedgerEntry(
+  portfolioId: string,
+  body: LedgerMovementCreate,
+): Promise<LedgerMovementResponse> {
+  return request<LedgerMovementResponse>(
+    `/portfolios/${portfolioId}/ledger-entries`,
+    { method: "POST", body: JSON.stringify(body) },
+  );
+}
+
+export type PlatformResponse = components["schemas"]["PlatformResponse"];
+export type PlatformRuleCreate = components["schemas"]["PlatformRuleCreate"];
+
+export function listPlatforms(): Promise<PlatformResponse[]> {
+  return request<PlatformResponse[]>("/platforms");
+}
+
+export function createPlatformRule(
+  code: string,
+  body: PlatformRuleCreate,
+): Promise<unknown> {
+  return request(`/platforms/${code}/rules`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export type StrategyResponse = components["schemas"]["StrategyResponse"];
+export type StrategyUpdate = components["schemas"]["StrategyUpdate"];
+
+export function getStrategy(portfolioId: string): Promise<StrategyResponse> {
+  return request<StrategyResponse>(`/portfolios/${portfolioId}/strategy`);
+}
+
+export function updateStrategy(
+  portfolioId: string,
+  body: StrategyUpdate,
+): Promise<StrategyResponse> {
+  return request<StrategyResponse>(`/portfolios/${portfolioId}/strategy`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}

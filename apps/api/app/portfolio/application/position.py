@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import uuid
+from dataclasses import dataclass
+from datetime import datetime
 from decimal import Decimal
 
 from sqlalchemy import func, select
@@ -62,6 +64,94 @@ async def _stock_at_cost_eur(
         )
 
     return (await session.execute(query)).scalar_one()
+
+
+@dataclass(frozen=True, slots=True)
+class HoldingView:
+    """Une montre encore détenue, à son coût d'acquisition."""
+
+    opportunity_id: uuid.UUID
+    brand: str | None
+    reference: str | None
+    cost_eur: Decimal
+    purchased_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class PortfolioOverview:
+    """Ce que vaut le portefeuille et d'où ce chiffre vient.
+
+    Le stock est détaillé plutôt que résumé : un utilisateur à qui l'on
+    annonce 72 % d'immobilisation doit pouvoir voir *quelles* montres
+    immobilisent son capital, sinon le chiffre ne lui dit pas quoi vendre.
+    """
+
+    available_cash_eur: Decimal
+    stock_at_cost_eur: Decimal
+    total_capital_eur: Decimal
+    holdings: tuple[HoldingView, ...]
+    movements: tuple[PortfolioLedgerEntry, ...]
+
+
+async def overview(
+    session: AsyncSession, portfolio_id: uuid.UUID, movement_limit: int = 50
+) -> PortfolioOverview:
+    cash = await cash_available_eur(session, portfolio_id)
+    stock = await _stock_at_cost_eur(session, portfolio_id, brand=None)
+
+    sold = select(Sale.opportunity_id).where(Sale.portfolio_id == portfolio_id)
+    rows = (
+        await session.execute(
+            select(
+                Purchase.opportunity_id,
+                WatchReference.brand,
+                WatchReference.reference,
+                Purchase.amount_eur,
+                Purchase.purchased_at,
+            )
+            .join(Opportunity, Opportunity.id == Purchase.opportunity_id)
+            .join(Watch, Watch.id == Opportunity.watch_id)
+            .outerjoin(WatchReference, WatchReference.id == Watch.reference_id)
+            .where(
+                Purchase.portfolio_id == portfolio_id,
+                Purchase.opportunity_id.notin_(sold),
+            )
+            .order_by(Purchase.purchased_at.desc())
+        )
+    ).all()
+
+    movements = (
+        (
+            await session.execute(
+                select(PortfolioLedgerEntry)
+                .where(PortfolioLedgerEntry.portfolio_id == portfolio_id)
+                .order_by(
+                    PortfolioLedgerEntry.occurred_at.desc(),
+                    PortfolioLedgerEntry.id.desc(),
+                )
+                .limit(movement_limit)
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    return PortfolioOverview(
+        available_cash_eur=cash,
+        stock_at_cost_eur=stock,
+        total_capital_eur=cash + stock,
+        holdings=tuple(
+            HoldingView(
+                opportunity_id=opportunity_id,
+                brand=brand,
+                reference=reference,
+                cost_eur=cost,
+                purchased_at=purchased_at,
+            )
+            for opportunity_id, brand, reference, cost, purchased_at in rows
+        ),
+        movements=tuple(movements),
+    )
 
 
 async def current_position(

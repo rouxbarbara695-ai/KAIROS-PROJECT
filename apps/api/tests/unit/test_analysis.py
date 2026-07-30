@@ -95,9 +95,14 @@ _FEES = PlatformFees(
 
 
 def _costs(fees: PlatformFees = _FEES, **overrides: object) -> TransactionCosts:
+    """Par défaut on achète et on revend au même endroit — le cas simple.
+    Les tests qui séparent les deux passent `resale_fees` explicitement."""
+
     base: dict = {
-        "platform_fees": fees,
-        "platform_label": "Catawiki",
+        "purchase_fees": fees,
+        "purchase_label": "Achat Catawiki",
+        "resale_fees": fees,
+        "resale_label": "Revente Catawiki",
         "outbound_shipping_eur": Decimal("30"),
     }
     base.update(overrides)
@@ -381,3 +386,99 @@ def test_the_outcome_carries_everything_the_verdict_rests_on(
     assert outcome.score.ruleset_version == "1.0.0"
     assert outcome.max_purchase.binding_constraint
     assert outcome.max_purchase.solver
+
+
+# --- Achat et revente sur des plateformes différentes --------------------
+
+
+def test_the_resale_platform_drives_the_sale_fees(ruleset: Ruleset) -> None:
+    """Où l'on revend est une décision, pas une propriété de l'annonce
+    achetée. Reprendre la grille d'achat supposerait une revente au même
+    endroit — faux dès qu'on achète en enchère pour revendre en vitrine."""
+
+    cheap_resale = PlatformFees(seller_fee_rate=Decimal("0.05"))
+    dear_resale = PlatformFees(seller_fee_rate=Decimal("0.20"))
+    purchase = PlatformFees(buyer_fee_rate=Decimal("0.05"))
+
+    cheap = _analyse(
+        ruleset,
+        transaction_costs=TransactionCosts(
+            purchase_fees=purchase,
+            purchase_label="Achat",
+            resale_fees=cheap_resale,
+            resale_label="Revente peu chère",
+        ),
+    )
+    dear = _analyse(
+        ruleset,
+        transaction_costs=TransactionCosts(
+            purchase_fees=purchase,
+            purchase_label="Achat",
+            resale_fees=dear_resale,
+            resale_label="Revente chère",
+        ),
+    )
+
+    central_cheap = cheap.scenarios[Scenario.CENTRAL]
+    central_dear = dear.scenarios[Scenario.CENTRAL]
+
+    # Même achat : le coût avant vente est identique.
+    assert (
+        central_cheap.total_cost_before_sale_eur
+        == central_dear.total_cost_before_sale_eur
+    )
+    # Seule la revente diffère, et elle ampute le profit.
+    assert central_dear.net_profit_eur < central_cheap.net_profit_eur
+    # Le prix maximal aussi : on peut payer moins si la revente coûte plus.
+    assert dear.max_purchase.value_eur < cheap.max_purchase.value_eur
+
+
+def test_the_purchase_platform_never_contributes_sale_fees(
+    ruleset: Ruleset,
+) -> None:
+    """La grille d'achat porte aussi un côté vendeur, qui ne doit pas
+    s'appliquer : on n'a pas décidé de revendre là."""
+
+    both_sides = PlatformFees(
+        buyer_fee_rate=Decimal("0.05"), seller_fee_rate=Decimal("0.30")
+    )
+    free_resale = PlatformFees()
+
+    outcome = _analyse(
+        ruleset,
+        transaction_costs=TransactionCosts(
+            purchase_fees=both_sides,
+            purchase_label="Achat",
+            resale_fees=free_resale,
+            resale_label="Revente de particulier à particulier",
+        ),
+    )
+
+    central = outcome.scenarios[Scenario.CENTRAL]
+    # 2400 + 5 % = 2520 de coût, produit net = prix de vente entier.
+    assert central.total_cost_before_sale_eur == Decimal("2520.00")
+    assert central.net_sale_proceeds_eur == Decimal("3600.00")
+
+
+def test_buying_and_reselling_on_the_same_platform_counts_fees_once(
+    ruleset: Ruleset,
+) -> None:
+    """Le cas le plus courant, et celui où le double comptage se glisserait
+    sans se voir."""
+
+    same = PlatformFees(buyer_fee_rate=Decimal("0.10"), seller_fee_rate=Decimal("0.10"))
+    outcome = _analyse(
+        ruleset,
+        transaction_costs=TransactionCosts(
+            purchase_fees=same,
+            purchase_label="Achat",
+            resale_fees=same,
+            resale_label="Revente",
+        ),
+    )
+
+    central = outcome.scenarios[Scenario.CENTRAL]
+    # 2400 × 1,10 — une seule fois la commission d'achat.
+    assert central.total_cost_before_sale_eur == Decimal("2640.00")
+    # 3600 × 0,90 — une seule fois la commission de vente.
+    assert central.net_sale_proceeds_eur == Decimal("3240.00")

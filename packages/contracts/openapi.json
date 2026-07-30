@@ -832,6 +832,191 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "HoldingResponse": {
+        "properties": {
+          "brand": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand"
+          },
+          "cost_eur": {
+            "title": "Cost Eur",
+            "type": "string"
+          },
+          "opportunity_id": {
+            "format": "uuid",
+            "title": "Opportunity Id",
+            "type": "string"
+          },
+          "purchased_at": {
+            "format": "date-time",
+            "title": "Purchased At",
+            "type": "string"
+          },
+          "reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference"
+          }
+        },
+        "required": [
+          "opportunity_id",
+          "cost_eur",
+          "purchased_at"
+        ],
+        "title": "HoldingResponse",
+        "type": "object"
+      },
+      "LedgerMovementCreate": {
+        "description": "Mouvement de tr\u00e9sorerie saisi par l'utilisateur.\n\nSeules les natures sans contrepartie ailleurs sont accept\u00e9es. Un paiement\nd'achat ou un encaissement de vente a sa ligne dans `purchases` ou\n`sales` : le saisir ici ferait diverger le registre des op\u00e9rations qu'il\nrefl\u00e8te.\n\nLe montant est toujours positif \u2014 c'est la nature qui porte le sens, comme\ndans le registre lui-m\u00eame.",
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              }
+            ],
+            "title": "Amount"
+          },
+          "currency": {
+            "maxLength": 3,
+            "minLength": 3,
+            "title": "Currency",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "capital_contribution",
+              "withdrawal",
+              "positive_adjustment",
+              "negative_adjustment"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "occurred_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Occurred At"
+          }
+        },
+        "required": [
+          "kind",
+          "amount",
+          "currency"
+        ],
+        "title": "LedgerMovementCreate",
+        "type": "object"
+      },
+      "LedgerMovementResponse": {
+        "description": "Une \u00e9criture du registre, avec la tra\u00e7abilit\u00e9 de change qu'exige la\nr\u00e8gle 3 : devise source, montant EUR, taux, source et horodatage.",
+        "properties": {
+          "amount_eur": {
+            "title": "Amount Eur",
+            "type": "string"
+          },
+          "amount_source": {
+            "title": "Amount Source",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "fx_rate_at": {
+            "format": "date-time",
+            "title": "Fx Rate At",
+            "type": "string"
+          },
+          "fx_source": {
+            "title": "Fx Source",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "rate_to_eur": {
+            "title": "Rate To Eur",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "amount_source",
+          "currency",
+          "amount_eur",
+          "rate_to_eur",
+          "fx_source",
+          "fx_rate_at",
+          "occurred_at",
+          "created_at"
+        ],
+        "title": "LedgerMovementResponse",
+        "type": "object"
+      },
       "OpportunityPage": {
         "properties": {
           "items": {
@@ -927,6 +1112,17 @@
             "format": "uuid",
             "title": "Portfolio Id",
             "type": "string"
+          },
+          "purchase_platform_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Purchase Platform Code"
           },
           "seller": {
             "anyOf": [
@@ -1076,6 +1272,466 @@
           "created_at"
         ],
         "title": "OverrideResponse",
+        "type": "object"
+      },
+      "PlatformResponse": {
+        "properties": {
+          "active_rule": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlatformRuleResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "has_active_rule": {
+            "title": "Has Active Rule",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "has_active_rule"
+        ],
+        "title": "PlatformResponse",
+        "type": "object"
+      },
+      "PlatformRuleCreate": {
+        "description": "Grille de frais saisie \u00e0 la main.\n\nAucun champ n'a de valeur par d\u00e9faut : inventer une commission fausserait\ntous les profits d'un portefeuille sans que rien ne le signale. Tout\nlaisser vide est accept\u00e9 \u2014 c'est une plateforme sans frais, et c'est un\nconstat, pas un oubli.\n\n`provenance_url` est obligatoire : une grille qu'on ne peut pas v\u00e9rifier\nne vaut pas mieux qu'une grille invent\u00e9e.",
+        "properties": {
+          "buyer_fee_fixed": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buyer Fee Fixed"
+          },
+          "buyer_fee_max": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buyer Fee Max"
+          },
+          "buyer_fee_min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buyer Fee Min"
+          },
+          "buyer_fee_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buyer Fee Rate"
+          },
+          "buyer_fee_vat_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buyer Fee Vat Rate"
+          },
+          "currency": {
+            "default": "EUR",
+            "maxLength": 3,
+            "minLength": 3,
+            "title": "Currency",
+            "type": "string"
+          },
+          "payment_fee_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Fee Rate"
+          },
+          "provenance_url": {
+            "minLength": 1,
+            "title": "Provenance Url",
+            "type": "string"
+          },
+          "region_code": {
+            "default": "*",
+            "title": "Region Code",
+            "type": "string"
+          },
+          "seller_fee_fixed": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seller Fee Fixed"
+          },
+          "seller_fee_max": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seller Fee Max"
+          },
+          "seller_fee_min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seller Fee Min"
+          },
+          "seller_fee_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seller Fee Rate"
+          },
+          "seller_fee_vat_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seller Fee Vat Rate"
+          }
+        },
+        "required": [
+          "provenance_url"
+        ],
+        "title": "PlatformRuleCreate",
+        "type": "object"
+      },
+      "PlatformRuleResponse": {
+        "properties": {
+          "access_authorized": {
+            "title": "Access Authorized",
+            "type": "boolean"
+          },
+          "access_method": {
+            "title": "Access Method",
+            "type": "string"
+          },
+          "buyer_fee_fixed": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buyer Fee Fixed"
+          },
+          "buyer_fee_max": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buyer Fee Max"
+          },
+          "buyer_fee_min": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buyer Fee Min"
+          },
+          "buyer_fee_rate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buyer Fee Rate"
+          },
+          "buyer_fee_vat_rate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buyer Fee Vat Rate"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "payment_fee_rate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Fee Rate"
+          },
+          "platform_code": {
+            "title": "Platform Code",
+            "type": "string"
+          },
+          "provenance_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provenance Url"
+          },
+          "region_code": {
+            "title": "Region Code",
+            "type": "string"
+          },
+          "seller_fee_fixed": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seller Fee Fixed"
+          },
+          "seller_fee_max": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seller Fee Max"
+          },
+          "seller_fee_min": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seller Fee Min"
+          },
+          "seller_fee_rate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seller Fee Rate"
+          },
+          "seller_fee_vat_rate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seller Fee Vat Rate"
+          },
+          "valid_from": {
+            "format": "date-time",
+            "title": "Valid From",
+            "type": "string"
+          },
+          "valid_to": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid To"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "platform_code",
+          "region_code",
+          "version",
+          "valid_from",
+          "access_method",
+          "access_authorized"
+        ],
+        "title": "PlatformRuleResponse",
+        "type": "object"
+      },
+      "PortfolioOverviewResponse": {
+        "description": "Tr\u00e9sorerie, stock et d\u00e9tail.\n\nLe stock est d\u00e9taill\u00e9 plut\u00f4t que r\u00e9sum\u00e9 : annoncer un taux\nd'immobilisation sans dire quelles montres immobilisent le capital ne dit\npas quoi vendre.",
+        "properties": {
+          "available_cash_eur": {
+            "title": "Available Cash Eur",
+            "type": "string"
+          },
+          "holdings": {
+            "items": {
+              "$ref": "#/components/schemas/HoldingResponse"
+            },
+            "title": "Holdings",
+            "type": "array"
+          },
+          "movements": {
+            "items": {
+              "$ref": "#/components/schemas/LedgerMovementResponse"
+            },
+            "title": "Movements",
+            "type": "array"
+          },
+          "portfolio_id": {
+            "format": "uuid",
+            "title": "Portfolio Id",
+            "type": "string"
+          },
+          "stock_at_cost_eur": {
+            "title": "Stock At Cost Eur",
+            "type": "string"
+          },
+          "total_capital_eur": {
+            "title": "Total Capital Eur",
+            "type": "string"
+          }
+        },
+        "required": [
+          "portfolio_id",
+          "available_cash_eur",
+          "stock_at_cost_eur",
+          "total_capital_eur",
+          "holdings",
+          "movements"
+        ],
+        "title": "PortfolioOverviewResponse",
         "type": "object"
       },
       "PriceCreate": {
@@ -1282,6 +1938,7 @@
         "type": "object"
       },
       "SellerCreate": {
+        "description": "Profil du vendeur tel qu'on le constate.\n\nFiabilit\u00e9, risque et protections ne sont pas des jugements de valeur :\nce sont des faits que la porte \u00ab risque vendeur \u00bb et le pilier \u00ab qualit\u00e9\ndes preuves \u00bb consomment tels quels. Les laisser vides est l\u00e9gitime \u2014 ils\nretombent alors sur \u00ab inconnu \u00bb, qui a sa propre note, jamais sur une\nvaleur favorable.",
         "properties": {
           "country_code": {
             "anyOf": [
@@ -1296,6 +1953,28 @@
             ],
             "title": "Country Code"
           },
+          "reliability": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reliability"
+          },
+          "risk_level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Risk Level"
+          },
           "seller_type": {
             "anyOf": [
               {
@@ -1306,6 +1985,17 @@
               }
             ],
             "title": "Seller Type"
+          },
+          "transaction_protections": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transaction Protections"
           }
         },
         "title": "SellerCreate",
@@ -1331,6 +2021,28 @@
             "title": "Reason",
             "type": "string"
           },
+          "reliability": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reliability"
+          },
+          "risk_level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Risk Level"
+          },
           "seller_type": {
             "anyOf": [
               {
@@ -1341,6 +2053,17 @@
               }
             ],
             "title": "Seller Type"
+          },
+          "transaction_protections": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transaction Protections"
           }
         },
         "required": [
@@ -1367,6 +2090,28 @@
             "title": "Id",
             "type": "string"
           },
+          "reliability": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reliability"
+          },
+          "risk_level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Risk Level"
+          },
           "seller_type": {
             "anyOf": [
               {
@@ -1377,6 +2122,17 @@
               }
             ],
             "title": "Seller Type"
+          },
+          "transaction_protections": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transaction Protections"
           }
         },
         "required": [
@@ -1408,6 +2164,17 @@
             "title": "Mode",
             "type": "string"
           },
+          "platform_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Platform Code"
+          },
           "url": {
             "anyOf": [
               {
@@ -1424,6 +2191,145 @@
           "mode"
         ],
         "title": "SourceCreate",
+        "type": "object"
+      },
+      "StrategyResponse": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "maximum_allocation_rate": {
+            "title": "Maximum Allocation Rate",
+            "type": "string"
+          },
+          "minimum_profit_eur": {
+            "title": "Minimum Profit Eur",
+            "type": "string"
+          },
+          "minimum_roi": {
+            "title": "Minimum Roi",
+            "type": "string"
+          },
+          "negotiation_buffer": {
+            "title": "Negotiation Buffer",
+            "type": "string"
+          },
+          "resale_platform_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resale Platform Code"
+          },
+          "valid_from": {
+            "format": "date-time",
+            "title": "Valid From",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "valid_from",
+          "minimum_roi",
+          "minimum_profit_eur",
+          "maximum_allocation_rate",
+          "negotiation_buffer"
+        ],
+        "title": "StrategyResponse",
+        "type": "object"
+      },
+      "StrategyUpdate": {
+        "description": "Ajustement de la strat\u00e9gie.\n\nChaque champ est facultatif : ceux qu'on ne mentionne pas sont repris de\nla version courante. Une strat\u00e9gie se corrige d'un param\u00e8tre \u00e0 la fois ;\nexiger la saisie compl\u00e8te inviterait \u00e0 la faute de recopie.\n\n`resale_platform_code` est la plateforme o\u00f9 l'on compte revendre \u2014 une\nd\u00e9cision, pas une propri\u00e9t\u00e9 de l'annonce achet\u00e9e. `clear_resale_platform`\nla retire explicitement, ce qu'un champ vide ne saurait exprimer sans\nambigu\u00eft\u00e9.",
+        "properties": {
+          "clear_resale_platform": {
+            "default": false,
+            "title": "Clear Resale Platform",
+            "type": "boolean"
+          },
+          "maximum_allocation_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maximum Allocation Rate"
+          },
+          "minimum_profit_eur": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minimum Profit Eur"
+          },
+          "minimum_roi": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minimum Roi"
+          },
+          "negotiation_buffer": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Negotiation Buffer"
+          },
+          "resale_platform_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resale Platform Code"
+          }
+        },
+        "title": "StrategyUpdate",
         "type": "object"
       },
       "ValidationError": {
@@ -2777,6 +3683,32 @@
         ]
       }
     },
+    "/api/v1/platforms": {
+      "get": {
+        "description": "Plateformes connues et grille en vigueur pour chacune.\n\nUne plateforme sans grille est signal\u00e9e comme telle : une opportunit\u00e9 qui\nen vient ne peut pas \u00eatre analys\u00e9e, faute de pouvoir \u00e9tablir ses co\u00fbts.",
+        "operationId": "list_platforms_route_api_v1_platforms_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PlatformResponse"
+                  },
+                  "title": "Response List Platforms Route Api V1 Platforms Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Platforms Route",
+        "tags": [
+          "platforms"
+        ]
+      }
+    },
     "/api/v1/platforms/{code}/rules": {
       "get": {
         "operationId": "get_platform_rules_route_api_v1_platforms__code__rules_get",
@@ -2845,6 +3777,249 @@
         "summary": "Get Platform Rules Route",
         "tags": [
           "platforms"
+        ]
+      },
+      "post": {
+        "description": "Enregistre une grille de frais, en nouvelle version.\n\nLa pr\u00e9c\u00e9dente est ferm\u00e9e, jamais r\u00e9\u00e9crite : une analyse produite sous\nl'ancienne grille reste rejouable.",
+        "operationId": "create_platform_rule_route_api_v1_platforms__code__rules_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "title": "Code",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlatformRuleCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformRuleResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Platform Rule Route",
+        "tags": [
+          "platforms"
+        ]
+      }
+    },
+    "/api/v1/portfolios/{portfolio_id}/ledger-entries": {
+      "post": {
+        "description": "Ajoute un mouvement de tr\u00e9sorerie.\n\nLe registre est append-only : on ne corrige pas une \u00e9criture, on en passe\nune autre en sens inverse. C'est ce qui permet \u00e0 la tr\u00e9sorerie de\ns'expliquer ligne \u00e0 ligne.",
+        "operationId": "create_ledger_entry_route_api_v1_portfolios__portfolio_id__ledger_entries_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "portfolio_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Portfolio Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LedgerMovementCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LedgerMovementResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Ledger Entry Route",
+        "tags": [
+          "portfolio"
+        ]
+      }
+    },
+    "/api/v1/portfolios/{portfolio_id}/overview": {
+      "get": {
+        "operationId": "get_portfolio_overview_route_api_v1_portfolios__portfolio_id__overview_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "portfolio_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Portfolio Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortfolioOverviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Portfolio Overview Route",
+        "tags": [
+          "portfolio"
+        ]
+      }
+    },
+    "/api/v1/portfolios/{portfolio_id}/strategy": {
+      "get": {
+        "operationId": "get_strategy_route_api_v1_portfolios__portfolio_id__strategy_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "portfolio_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Portfolio Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StrategyResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Strategy Route",
+        "tags": [
+          "portfolio"
+        ]
+      },
+      "post": {
+        "description": "Ouvre une nouvelle version de la strat\u00e9gie.\n\nUne version n'est jamais r\u00e9\u00e9crite : une analyse fig\u00e9e r\u00e9f\u00e9rence celle qui\nl'a produite, et la modifier rendrait ce verdict inexplicable apr\u00e8s coup.",
+        "operationId": "update_strategy_route_api_v1_portfolios__portfolio_id__strategy_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "portfolio_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Portfolio Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StrategyUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StrategyResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Strategy Route",
+        "tags": [
+          "portfolio"
         ]
       }
     }

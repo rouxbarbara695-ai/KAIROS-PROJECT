@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.v1.schemas.opportunities import SellerProfilePatchRequest
 from app.audit.application.audit_log import record_audit_event
 from app.identity.domain import vocabularies as vocab
+from app.identity.domain.seller import reliability_data
 from app.shared.domain.errors import DomainError, ErrorCode
 from app.shared.domain.principal import Principal
 from app.shared.infrastructure.db.models.opportunities import Opportunity
@@ -45,11 +46,16 @@ async def patch_seller_profile(
         session.add(seller)
         await session.flush()
         opportunity.seller_id = seller.id
-        before: dict[str, object] = {"country_code": None, "seller_type": None}
+        before: dict[str, object] = {
+            "country_code": None,
+            "seller_type": None,
+            "reliability_data": {},
+        }
     else:
         before = {
             "country_code": seller.country_code,
             "seller_type": seller.seller_type,
+            "reliability_data": dict(seller.reliability_data),
         }
 
     if request.country_code is not None:
@@ -59,7 +65,18 @@ async def patch_seller_profile(
             request.seller_type, vocab.SELLER_TYPES, vocab.SELLER_TYPE_FALLBACK
         )
 
-    after = {"country_code": seller.country_code, "seller_type": seller.seller_type}
+    seller.reliability_data = reliability_data(
+        reliability=request.reliability,
+        risk_level=request.risk_level,
+        transaction_protections=request.transaction_protections,
+        current=seller.reliability_data,
+    )
+
+    after = {
+        "country_code": seller.country_code,
+        "seller_type": seller.seller_type,
+        "reliability_data": dict(seller.reliability_data),
+    }
 
     await record_audit_event(
         session,

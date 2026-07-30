@@ -126,3 +126,109 @@ def test_the_cost_function_is_monotonic() -> None:
         current = cost_of(Decimal(price))
         assert current > previous
         previous = current
+
+
+# --- TVA sur commission et frais de paiement -----------------------------
+
+
+def test_vat_on_commission_is_a_cost_of_its_own() -> None:
+    """Une commission de 12,5 % coûte 15 % à un vendeur qui ne récupère pas la
+    taxe. La TVA figure en ligne distincte plutôt que fondue dans le taux :
+    c'est la seule ligne que change un changement de statut fiscal, et elle
+    doit rester lisible."""
+
+    costs = costs_from_platform(
+        PlatformFees(
+            seller_fee_rate=Decimal("0.125"),
+            seller_fee_fixed=Decimal("10"),
+            seller_fee_vat_rate=Decimal("0.20"),
+        ),
+        label="Catawiki",
+    )
+
+    labels = {cost.label for cost in costs}
+    assert "Catawiki — TVA sur commission vente" in labels
+    assert "Catawiki — TVA sur frais fixes vente" in labels
+
+    breakdown = summarise_costs(costs, Scenario.CENTRAL)
+    assert breakdown.sale_variable_rate == Decimal("0.15")
+    assert breakdown.fixed_sale_costs == Decimal("12.00")
+
+
+def test_an_unstated_vat_rate_adds_nothing_and_shows_nothing() -> None:
+    """Une TVA non renseignée n'est pas une TVA nulle. Rien n'est ajouté — on
+    n'invente pas un taux (règle 1) — et aucune ligne n'apparaît, de sorte que
+    l'absence se voit au lieu d'être comblée."""
+
+    costs = costs_from_platform(
+        PlatformFees(seller_fee_rate=Decimal("0.065")), label="Chrono24"
+    )
+
+    assert all("TVA" not in cost.label for cost in costs)
+    assert summarise_costs(costs, Scenario.CENTRAL).sale_variable_rate == Decimal(
+        "0.065"
+    )
+
+
+def test_payment_fees_are_charged_on_the_sale() -> None:
+    """Les frais de paiement sont prélevés sur l'encaissement : les compter à
+    l'acquisition les appliquerait au prix d'achat, donc au mauvais montant."""
+
+    costs = costs_from_platform(
+        PlatformFees(payment_fee_rate=Decimal("0.03")), label="Vestiaire"
+    )
+
+    (cost,) = costs
+    assert cost.mode is CostMode.RATE
+    assert cost.phase is CostPhase.SALE
+    assert cost.central == Decimal("0.03")
+
+
+def test_payment_fees_carry_no_vat() -> None:
+    """Ce sont des frais financiers : leur appliquer la TVA de la commission
+    inventerait une taxe que la plateforme ne facture pas."""
+
+    costs = costs_from_platform(
+        PlatformFees(
+            payment_fee_rate=Decimal("0.03"),
+            seller_fee_vat_rate=Decimal("0.20"),
+        ),
+        label="Vestiaire",
+    )
+
+    assert summarise_costs(costs, Scenario.CENTRAL).sale_variable_rate == Decimal(
+        "0.03"
+    )
+
+
+def test_the_solver_pays_vat_on_the_buyer_commission() -> None:
+    """Le solveur reconstruit les frais acheteur à chaque essai de prix. S'il
+    ignorait la TVA que le détail des coûts applique, le prix maximal serait
+    plus élevé que ce que l'opération supporte réellement."""
+
+    fees = PlatformFees(
+        buyer_fee_rate=Decimal("0.09"),
+        buyer_fee_max=Decimal("500"),
+        buyer_fee_vat_rate=Decimal("0.20"),
+    )
+    cost_of = buyer_cost_function(fees, Decimal("0"))
+    assert cost_of is not None
+
+    # 1 000 € + 9 % = 90 € de commission, majorée de 20 % de TVA = 108 €.
+    assert cost_of(Decimal("1000")) == Decimal("1108.00")
+
+
+def test_vat_applies_to_the_capped_commission_not_the_theoretical_one() -> None:
+    """C'est le montant facturé qui est taxé. Taxer la commission avant
+    plafonnement gonflerait un coût que la plateforme ne réclame pas."""
+
+    fees = PlatformFees(
+        buyer_fee_rate=Decimal("0.09"),
+        buyer_fee_max=Decimal("100"),
+        buyer_fee_vat_rate=Decimal("0.20"),
+    )
+    cost_of = buyer_cost_function(fees, Decimal("0"))
+    assert cost_of is not None
+
+    # 9 % de 5 000 € vaudraient 450 €, plafonnés à 100 € : la TVA porte sur 100.
+    assert cost_of(Decimal("5000")) == Decimal("5120.00")

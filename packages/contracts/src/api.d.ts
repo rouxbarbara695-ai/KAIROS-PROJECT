@@ -948,11 +948,15 @@ export interface components {
             buyer_fee_min?: number | string | null;
             /** Buyer Fee Rate */
             buyer_fee_rate?: number | string | null;
+            /** Buyer Fee Vat Rate */
+            buyer_fee_vat_rate?: number | string | null;
             /**
              * Currency
              * @default EUR
              */
             currency: string;
+            /** Payment Fee Rate */
+            payment_fee_rate?: number | string | null;
             /** Provenance Url */
             provenance_url: string;
             /**
@@ -968,6 +972,8 @@ export interface components {
             seller_fee_min?: number | string | null;
             /** Seller Fee Rate */
             seller_fee_rate?: number | string | null;
+            /** Seller Fee Vat Rate */
+            seller_fee_vat_rate?: number | string | null;
         };
         /** PlatformRuleResponse */
         PlatformRuleResponse: {
@@ -983,11 +989,15 @@ export interface components {
             buyer_fee_min?: string | null;
             /** Buyer Fee Rate */
             buyer_fee_rate?: string | null;
+            /** Buyer Fee Vat Rate */
+            buyer_fee_vat_rate?: string | null;
             /**
              * Id
              * Format: uuid
              */
             id: string;
+            /** Payment Fee Rate */
+            payment_fee_rate?: string | null;
             /** Platform Code */
             platform_code: string;
             /** Provenance Url */
@@ -1002,6 +1012,8 @@ export interface components {
             seller_fee_min?: string | null;
             /** Seller Fee Rate */
             seller_fee_rate?: string | null;
+            /** Seller Fee Vat Rate */
+            seller_fee_vat_rate?: string | null;
             /**
              * Valid From
              * Format: date-time

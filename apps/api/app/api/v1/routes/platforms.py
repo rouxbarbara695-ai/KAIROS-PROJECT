@@ -63,11 +63,15 @@ class PlatformRuleCreate(BaseModel):
     buyer_fee_fixed: DecimalString | None = None
     buyer_fee_min: DecimalString | None = None
     buyer_fee_max: DecimalString | None = None
+    buyer_fee_vat_rate: DecimalString | None = None
 
     seller_fee_rate: DecimalString | None = None
     seller_fee_fixed: DecimalString | None = None
     seller_fee_min: DecimalString | None = None
     seller_fee_max: DecimalString | None = None
+    seller_fee_vat_rate: DecimalString | None = None
+
+    payment_fee_rate: DecimalString | None = None
 
     @model_validator(mode="after")
     def _check_bounds(self) -> PlatformRuleCreate:
@@ -78,6 +82,20 @@ class PlatformRuleCreate(BaseModel):
             if low is not None and high is not None and low > high:
                 raise ValueError(
                     f"Le plancher de commission {side} dépasse son plafond."
+                )
+
+        # Un taux au-delà de 1 est une saisie en pourcentage prise pour un taux
+        # décimal. Accepté, il multiplierait la commission par vingt sans que
+        # rien ne le signale — mieux vaut refuser la saisie.
+        for field, value in (
+            ("buyer_fee_vat_rate", self.buyer_fee_vat_rate),
+            ("seller_fee_vat_rate", self.seller_fee_vat_rate),
+            ("payment_fee_rate", self.payment_fee_rate),
+        ):
+            if value is not None and not (0 <= value <= 1):
+                raise ValueError(
+                    f"{field} doit être un taux décimal entre 0 et 1 "
+                    "(0.20 pour 20 %)."
                 )
         return self
 
@@ -102,6 +120,9 @@ class PlatformRuleResponse(BaseModel):
     seller_fee_fixed: DecimalString | None = None
     seller_fee_min: DecimalString | None = None
     seller_fee_max: DecimalString | None = None
+    buyer_fee_vat_rate: DecimalString | None = None
+    seller_fee_vat_rate: DecimalString | None = None
+    payment_fee_rate: DecimalString | None = None
 
 
 class PlatformResponse(BaseModel):
@@ -130,6 +151,9 @@ def _rule_response(code: str, rule: PlatformRule) -> PlatformRuleResponse:
         seller_fee_fixed=rule.seller_fee_fixed,
         seller_fee_min=rule.seller_fee_min,
         seller_fee_max=rule.seller_fee_max,
+        buyer_fee_vat_rate=rule.buyer_fee_vat_rate,
+        seller_fee_vat_rate=rule.seller_fee_vat_rate,
+        payment_fee_rate=rule.payment_fee_rate,
     )
 
 
@@ -185,6 +209,9 @@ async def create_platform_rule_route(
         seller_fee_fixed=body.seller_fee_fixed,
         seller_fee_min=body.seller_fee_min,
         seller_fee_max=body.seller_fee_max,
+        buyer_fee_vat_rate=body.buyer_fee_vat_rate,
+        seller_fee_vat_rate=body.seller_fee_vat_rate,
+        payment_fee_rate=body.payment_fee_rate,
         currency=body.currency,
         provenance_url=body.provenance_url,
     )

@@ -107,17 +107,26 @@ class TransactionCosts:
             buyer_fee_fixed=self.purchase_fees.buyer_fee_fixed,
             buyer_fee_min=self.purchase_fees.buyer_fee_min,
             buyer_fee_max=self.purchase_fees.buyer_fee_max,
+            buyer_fee_vat_rate=self.purchase_fees.buyer_fee_vat_rate,
         )
 
     @property
     def seller_side(self) -> PlatformFees:
-        """La grille de revente, amputée de son côté acheteur."""
+        """La grille de revente, amputée de son côté acheteur.
+
+        Les frais de paiement suivent le vendeur : ils sont prélevés là où
+        l'encaissement a lieu, c'est-à-dire sur la plateforme de revente. Les
+        rattacher à la grille d'achat les appliquerait à un encaissement qui
+        n'y survient jamais.
+        """
 
         return PlatformFees(
             seller_fee_rate=self.resale_fees.seller_fee_rate,
             seller_fee_fixed=self.resale_fees.seller_fee_fixed,
             seller_fee_min=self.resale_fees.seller_fee_min,
             seller_fee_max=self.resale_fees.seller_fee_max,
+            seller_fee_vat_rate=self.resale_fees.seller_fee_vat_rate,
+            payment_fee_rate=self.resale_fees.payment_fee_rate,
         )
 
     def all_costs(self) -> list[Cost]:

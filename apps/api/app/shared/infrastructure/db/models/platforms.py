@@ -67,6 +67,7 @@ class PlatformRule(Base):
     buyer_fee_basis: Mapped[str | None] = mapped_column(Text)
     buyer_fee_min: Mapped[Decimal | None] = mapped_column(Numeric(16, 2))
     buyer_fee_max: Mapped[Decimal | None] = mapped_column(Numeric(16, 2))
+    buyer_fee_vat_rate: Mapped[Decimal | None] = mapped_column(Numeric(18, 10))
 
     seller_fee_rate: Mapped[Decimal | None] = mapped_column(Numeric(18, 10))
     seller_fee_fixed: Mapped[Decimal | None] = mapped_column(Numeric(16, 2))
@@ -74,6 +75,8 @@ class PlatformRule(Base):
     seller_fee_basis: Mapped[str | None] = mapped_column(Text)
     seller_fee_min: Mapped[Decimal | None] = mapped_column(Numeric(16, 2))
     seller_fee_max: Mapped[Decimal | None] = mapped_column(Numeric(16, 2))
+    seller_fee_vat_rate: Mapped[Decimal | None] = mapped_column(Numeric(18, 10))
+    payment_fee_rate: Mapped[Decimal | None] = mapped_column(Numeric(18, 10))
 
     payment_rules: Mapped[dict[str, object]] = mapped_column(
         JSONB, nullable=False, server_default=text("'{}'::jsonb")

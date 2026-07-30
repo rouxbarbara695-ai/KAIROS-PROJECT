@@ -28,6 +28,9 @@ export function PlatformFeesForm({
     sellerFeeFixed?: string | null;
     sellerFeeMin?: string | null;
     sellerFeeMax?: string | null;
+    buyerFeeVatRate?: string | null;
+    sellerFeeVatRate?: string | null;
+    paymentFeeRate?: string | null;
     provenanceUrl?: string | null;
   } | null;
 }) {
@@ -51,6 +54,13 @@ export function PlatformFeesForm({
           seller_fee_fixed: optional(String(data.get("seller_fee_fixed") ?? "")),
           seller_fee_min: optional(String(data.get("seller_fee_min") ?? "")),
           seller_fee_max: optional(String(data.get("seller_fee_max") ?? "")),
+          buyer_fee_vat_rate: optional(
+            String(data.get("buyer_fee_vat_rate") ?? ""),
+          ),
+          seller_fee_vat_rate: optional(
+            String(data.get("seller_fee_vat_rate") ?? ""),
+          ),
+          payment_fee_rate: optional(String(data.get("payment_fee_rate") ?? "")),
         });
         router.refresh();
       } catch (err) {
@@ -133,6 +143,53 @@ export function PlatformFeesForm({
           />
         </label>
       </div>
+
+      <fieldset className="rounded-md border border-border p-3">
+        <legend className="px-1 text-xs text-fg-muted">
+          Ce qui s&apos;ajoute à la commission
+        </legend>
+        <p className="mb-3 text-xs text-fg-muted">
+          Laisser vide si la plateforme ne le précise pas : un champ vide
+          signale l&apos;inconnu, un zéro affirme qu&apos;il n&apos;y a rien. La
+          TVA sur commission n&apos;est un coût que si vous ne la récupérez pas
+          — c&apos;est le cas d&apos;un vendeur particulier.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <label className="block">
+            <span className="mb-1 block text-xs text-fg-muted">
+              TVA sur commission achat (ex. 0.20)
+            </span>
+            <input
+              name="buyer_fee_vat_rate"
+              inputMode="decimal"
+              defaultValue={current?.buyerFeeVatRate ?? ""}
+              className={`numeric ${inputClass}`}
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-xs text-fg-muted">
+              TVA sur commission vente (ex. 0.20)
+            </span>
+            <input
+              name="seller_fee_vat_rate"
+              inputMode="decimal"
+              defaultValue={current?.sellerFeeVatRate ?? ""}
+              className={`numeric ${inputClass}`}
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-xs text-fg-muted">
+              Frais de paiement vendeur (ex. 0.03)
+            </span>
+            <input
+              name="payment_fee_rate"
+              inputMode="decimal"
+              defaultValue={current?.paymentFeeRate ?? ""}
+              className={`numeric ${inputClass}`}
+            />
+          </label>
+        </div>
+      </fieldset>
 
       <label className="block">
         <span className="mb-1 block text-xs text-fg-muted">

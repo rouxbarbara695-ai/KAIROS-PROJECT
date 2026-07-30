@@ -215,6 +215,9 @@ def _fees(rule: PlatformRule) -> PlatformFees:
         seller_fee_fixed=rule.seller_fee_fixed,
         seller_fee_min=rule.seller_fee_min,
         seller_fee_max=rule.seller_fee_max,
+        buyer_fee_vat_rate=rule.buyer_fee_vat_rate,
+        seller_fee_vat_rate=rule.seller_fee_vat_rate,
+        payment_fee_rate=rule.payment_fee_rate,
     )
 
 

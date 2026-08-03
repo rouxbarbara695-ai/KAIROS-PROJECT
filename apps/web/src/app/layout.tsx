@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { LogoutButton } from "@/components/LogoutButton";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -45,6 +46,7 @@ export default function RootLayout({
               >
                 Nouvelle opportunité
               </Link>
+              <LogoutButton />
             </nav>
           </header>
           <main className="flex-1 py-8">{children}</main>

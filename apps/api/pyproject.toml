@@ -12,6 +12,7 @@ dependencies = [
   "pydantic>=2.8",
   "pydantic-settings>=2.4",
   "structlog>=24.4",
+  "argon2-cffi>=23.1",
 ]
 
 [project.optional-dependencies]

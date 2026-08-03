@@ -4,6 +4,56 @@
  */
 
 export interface paths {
+    "/api/v1/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Login Route
+         * @description Ouvre une session.
+         *
+         *     Aucune inscription publique n'existe : KAIROS est mono-organisation et les
+         *     comptes se créent en ligne de commande sur la machine qui héberge la base.
+         */
+        post: operations["login_route_api_v1_auth_login_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Logout Route
+         * @description Révoque la session courante et efface le cookie.
+         *
+         *     Les deux, et pas seulement l'un : révoquer sans effacer laisserait le
+         *     navigateur présenter un jeton mort à chaque page, et effacer sans révoquer
+         *     laisserait vivante une session copiée ailleurs.
+         *
+         *     Le cookie est effacé même si le jeton était déjà inconnu — se déconnecter
+         *     d'une session qui n'existe plus n'est pas une erreur.
+         */
+        post: operations["logout_route_api_v1_auth_logout_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/comparables/{comparable_id}/overrides": {
         parameters: {
             query?: never;
@@ -950,6 +1000,13 @@ export interface components {
             /** Rate To Eur */
             rate_to_eur: string;
         };
+        /** LoginRequest */
+        LoginRequest: {
+            /** Email */
+            email: string;
+            /** Password */
+            password: string;
+        };
         /** OpportunityPage */
         OpportunityPage: {
             /** Items */
@@ -1586,6 +1643,59 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    login_route_api_v1_auth_login_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    logout_route_api_v1_auth_logout_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     create_override_route_api_v1_comparables__comparable_id__overrides_post: {
         parameters: {
             query?: never;

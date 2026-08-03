@@ -1088,6 +1088,26 @@
         "title": "LedgerMovementResponse",
         "type": "object"
       },
+      "LoginRequest": {
+        "properties": {
+          "email": {
+            "minLength": 1,
+            "title": "Email",
+            "type": "string"
+          },
+          "password": {
+            "minLength": 1,
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "LoginRequest",
+        "type": "object"
+      },
       "OpportunityPage": {
         "properties": {
           "items": {
@@ -3018,6 +3038,67 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/auth/login": {
+      "post": {
+        "description": "Ouvre une session.\n\nAucune inscription publique n'existe : KAIROS est mono-organisation et les\ncomptes se cr\u00e9ent en ligne de commande sur la machine qui h\u00e9berge la base.",
+        "operationId": "login_route_api_v1_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Login Route Api V1 Auth Login Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Login Route",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "description": "R\u00e9voque la session courante et efface le cookie.\n\nLes deux, et pas seulement l'un : r\u00e9voquer sans effacer laisserait le\nnavigateur pr\u00e9senter un jeton mort \u00e0 chaque page, et effacer sans r\u00e9voquer\nlaisserait vivante une session copi\u00e9e ailleurs.\n\nLe cookie est effac\u00e9 m\u00eame si le jeton \u00e9tait d\u00e9j\u00e0 inconnu \u2014 se d\u00e9connecter\nd'une session qui n'existe plus n'est pas une erreur.",
+        "operationId": "logout_route_api_v1_auth_logout_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Logout Route",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/api/v1/comparables/{comparable_id}/overrides": {
       "post": {
         "operationId": "create_override_route_api_v1_comparables__comparable_id__overrides_post",

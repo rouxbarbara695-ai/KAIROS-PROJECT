@@ -29,6 +29,11 @@ from app.identity.application.seller_profile import patch_seller_profile
 from app.identity.application.watch_profile import patch_watch_profile
 from app.operations.application.change_status import change_status
 from app.operations.application.record_purchase import record_purchase
+from app.operations.application.sell import (
+    record_payout,
+    record_sale,
+    record_sale_listing,
+)
 from app.opportunities.application.add_price_input import add_price_input
 from app.opportunities.application.create_opportunity import create_opportunity
 from app.opportunities.application.get_opportunity import get_opportunity
@@ -358,3 +363,133 @@ async def change_status_route(
         latest_price,
         await _platform_code(session, opportunity),
     )
+
+
+class SaleListingCreate(BaseModel):
+    """Mise en vente : canal et prix demandé.
+
+    `asking_amount` n'est pas le prix d'affichage recommandé par l'analyse. On
+    peut viser plus haut pour garder de la marge de négociation, ou plus bas
+    pour partir vite : c'est une décision commerciale, et l'enregistrer telle
+    quelle est la seule façon d'en mesurer la justesse après coup.
+    """
+
+    asking_amount: DecimalString
+    currency: str = Field(default="EUR", min_length=3, max_length=3)
+    platform_code: str | None = None
+    external_url: str | None = None
+    listed_at: datetime | None = None
+    reason: str = Field(min_length=1)
+
+
+class SaleCreate(BaseModel):
+    """Vente conclue : la montre part, les fonds sont encore retenus."""
+
+    realized_amount: DecimalString
+    currency: str = Field(default="EUR", min_length=3, max_length=3)
+    sold_at: datetime | None = None
+    reason: str = Field(min_length=1)
+
+
+class PayoutCreate(BaseModel):
+    """Encaissement constaté.
+
+    `amount` est ce qui est **réellement arrivé sur le compte**, commission de
+    plateforme déjà déduite. Laissé vide, le prix réalisé fait foi — ce qui
+    correspond à une vente sans intermédiaire.
+    """
+
+    amount: DecimalString | None = None
+    currency: str | None = Field(default=None, min_length=3, max_length=3)
+    received_at: datetime | None = None
+    reason: str = Field(min_length=1)
+
+
+@router.post(
+    "/opportunities/{opportunity_id}/sale-listing",
+    status_code=status.HTTP_201_CREATED,
+)
+async def record_sale_listing_route(
+    opportunity_id: uuid.UUID,
+    body: SaleListingCreate,
+    session: AsyncSession = Depends(get_session),
+    principal: Principal = Depends(get_current_principal),
+    settings: Settings = Depends(get_settings),
+) -> dict[str, str | None]:
+    listing = await record_sale_listing(
+        session,
+        principal,
+        opportunity_id,
+        asking_amount=body.asking_amount,
+        currency=body.currency,
+        platform_code=body.platform_code,
+        external_url=body.external_url,
+        listed_at=body.listed_at,
+        reason=body.reason,
+        settings=settings,
+    )
+    return {
+        "id": str(listing.id),
+        "asking_amount_eur": str(listing.asking_amount_eur),
+        "listed_at": listing.listed_at.isoformat(),
+    }
+
+
+@router.post(
+    "/opportunities/{opportunity_id}/sale", status_code=status.HTTP_201_CREATED
+)
+async def record_sale_route(
+    opportunity_id: uuid.UUID,
+    body: SaleCreate,
+    session: AsyncSession = Depends(get_session),
+    principal: Principal = Depends(get_current_principal),
+    settings: Settings = Depends(get_settings),
+) -> dict[str, str]:
+    """Enregistre la vente. Aucune écriture de trésorerie : les fonds sont
+    retenus jusqu'à l'encaissement."""
+
+    sale = await record_sale(
+        session,
+        principal,
+        opportunity_id,
+        realized_amount=body.realized_amount,
+        currency=body.currency,
+        sold_at=body.sold_at,
+        reason=body.reason,
+        settings=settings,
+    )
+    return {
+        "id": str(sale.id),
+        "realized_amount_eur": str(sale.realized_amount_eur),
+        "sold_at": sale.sold_at.isoformat(),
+    }
+
+
+@router.post("/opportunities/{opportunity_id}/payout")
+async def record_payout_route(
+    opportunity_id: uuid.UUID,
+    body: PayoutCreate,
+    session: AsyncSession = Depends(get_session),
+    principal: Principal = Depends(get_current_principal),
+    settings: Settings = Depends(get_settings),
+) -> dict[str, str | None]:
+    """Constate l'encaissement : c'est ici que la trésorerie monte."""
+
+    sale = await record_payout(
+        session,
+        principal,
+        opportunity_id,
+        amount=body.amount,
+        currency=body.currency,
+        received_at=body.received_at,
+        reason=body.reason,
+        settings=settings,
+    )
+    return {
+        "id": str(sale.id),
+        "payout_received_at": (
+            None
+            if sale.payout_received_at is None
+            else sale.payout_received_at.isoformat()
+        ),
+    }

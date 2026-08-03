@@ -1274,6 +1274,61 @@
         "title": "OverrideResponse",
         "type": "object"
       },
+      "PayoutCreate": {
+        "description": "Encaissement constat\u00e9.\n\n`amount` est ce qui est **r\u00e9ellement arriv\u00e9 sur le compte**, commission de\nplateforme d\u00e9j\u00e0 d\u00e9duite. Laiss\u00e9 vide, le prix r\u00e9alis\u00e9 fait foi \u2014 ce qui\ncorrespond \u00e0 une vente sans interm\u00e9diaire.",
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "maxLength": 3,
+                "minLength": 3,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "reason": {
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "received_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Received At"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "PayoutCreate",
+        "type": "object"
+      },
       "PlatformResponse": {
         "properties": {
           "active_rule": {
@@ -1982,6 +2037,122 @@
           "reason"
         ],
         "title": "ReferenceConfirmationRequest",
+        "type": "object"
+      },
+      "SaleCreate": {
+        "description": "Vente conclue : la montre part, les fonds sont encore retenus.",
+        "properties": {
+          "currency": {
+            "default": "EUR",
+            "maxLength": 3,
+            "minLength": 3,
+            "title": "Currency",
+            "type": "string"
+          },
+          "realized_amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              }
+            ],
+            "title": "Realized Amount"
+          },
+          "reason": {
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "sold_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sold At"
+          }
+        },
+        "required": [
+          "realized_amount",
+          "reason"
+        ],
+        "title": "SaleCreate",
+        "type": "object"
+      },
+      "SaleListingCreate": {
+        "description": "Mise en vente : canal et prix demand\u00e9.\n\n`asking_amount` n'est pas le prix d'affichage recommand\u00e9 par l'analyse. On\npeut viser plus haut pour garder de la marge de n\u00e9gociation, ou plus bas\npour partir vite : c'est une d\u00e9cision commerciale, et l'enregistrer telle\nquelle est la seule fa\u00e7on d'en mesurer la justesse apr\u00e8s coup.",
+        "properties": {
+          "asking_amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              }
+            ],
+            "title": "Asking Amount"
+          },
+          "currency": {
+            "default": "EUR",
+            "maxLength": 3,
+            "minLength": 3,
+            "title": "Currency",
+            "type": "string"
+          },
+          "external_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Url"
+          },
+          "listed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Listed At"
+          },
+          "platform_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Platform Code"
+          },
+          "reason": {
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "asking_amount",
+          "reason"
+        ],
+        "title": "SaleListingCreate",
         "type": "object"
       },
       "SellerCreate": {
@@ -3445,6 +3616,71 @@
         ]
       }
     },
+    "/api/v1/opportunities/{opportunity_id}/payout": {
+      "post": {
+        "description": "Constate l'encaissement : c'est ici que la tr\u00e9sorerie monte.",
+        "operationId": "record_payout_route_api_v1_opportunities__opportunity_id__payout_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "opportunity_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Opportunity Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PayoutCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "title": "Response Record Payout Route Api V1 Opportunities  Opportunity Id  Payout Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Record Payout Route",
+        "tags": [
+          "opportunities"
+        ]
+      }
+    },
     "/api/v1/opportunities/{opportunity_id}/price-inputs": {
       "post": {
         "operationId": "add_price_input_route_api_v1_opportunities__opportunity_id__price_inputs_post",
@@ -3608,6 +3844,128 @@
           }
         },
         "summary": "Confirm Reference Route",
+        "tags": [
+          "opportunities"
+        ]
+      }
+    },
+    "/api/v1/opportunities/{opportunity_id}/sale": {
+      "post": {
+        "description": "Enregistre la vente. Aucune \u00e9criture de tr\u00e9sorerie : les fonds sont\nretenus jusqu'\u00e0 l'encaissement.",
+        "operationId": "record_sale_route_api_v1_opportunities__opportunity_id__sale_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "opportunity_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Opportunity Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaleCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Record Sale Route Api V1 Opportunities  Opportunity Id  Sale Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Record Sale Route",
+        "tags": [
+          "opportunities"
+        ]
+      }
+    },
+    "/api/v1/opportunities/{opportunity_id}/sale-listing": {
+      "post": {
+        "operationId": "record_sale_listing_route_api_v1_opportunities__opportunity_id__sale_listing_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "opportunity_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Opportunity Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaleListingCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "title": "Response Record Sale Listing Route Api V1 Opportunities  Opportunity Id  Sale Listing Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Record Sale Listing Route",
         "tags": [
           "opportunities"
         ]

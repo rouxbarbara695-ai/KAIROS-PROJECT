@@ -25,15 +25,28 @@ from app.shared.infrastructure.db.models.opportunities import (
     OpportunityEvent,
 )
 
-# Ces statuts constatent une opération : les atteindre exige d'écrire aussi
-# l'achat ou la vente correspondante. Les autoriser ici produirait un
-# portefeuille qui se dit détenteur d'une montre dont aucune ligne d'achat
-# n'existe, et dont la trésorerie n'a jamais bougé.
-_REQUIRE_AN_OPERATION = frozenset(
-    {
-        OpportunityStatus.PURCHASED,
-        OpportunityStatus.SOLD,
-    }
+# Ces transitions constatent une opération : les franchir exige d'écrire
+# aussi la ligne d'achat, d'annonce ou de vente correspondante. Les
+# autoriser ici produirait un portefeuille qui se dit détenteur d'une montre
+# dont aucune ligne d'achat n'existe, et dont la trésorerie n'a jamais bougé.
+#
+# Ce sont des couples et non des statuts d'arrivée : revenir à
+# `listed_for_sale` parce qu'un acheteur s'est désisté ne crée aucune annonce,
+# elle existe déjà. Interdire le statut plutôt que la transition bloquerait ce
+# retour légitime.
+_REQUIRE_AN_OPERATION: frozenset[tuple[OpportunityStatus, OpportunityStatus]] = (
+    frozenset(
+        {
+            (OpportunityStatus.BUY, OpportunityStatus.PURCHASED),
+            (OpportunityStatus.AUCTION, OpportunityStatus.PURCHASED),
+            (OpportunityStatus.IN_STOCK, OpportunityStatus.LISTED_FOR_SALE),
+            (
+                OpportunityStatus.AWAITING_BUYER_PAYMENT,
+                OpportunityStatus.AWAITING_PAYOUT,
+            ),
+            (OpportunityStatus.AWAITING_PAYOUT, OpportunityStatus.SOLD),
+        }
+    )
 )
 
 
@@ -75,12 +88,12 @@ async def change_status(
 
     ensure_transition(OpportunityStatus(opportunity.status), wanted)
 
-    if wanted in _REQUIRE_AN_OPERATION:
+    if (OpportunityStatus(opportunity.status), wanted) in _REQUIRE_AN_OPERATION:
         raise DomainError(
             ErrorCode.VALIDATION_ERROR,
-            f"Le statut « {wanted.value} » constate une opération : il "
-            "s'obtient en enregistrant l'achat ou la vente, pas en changeant "
-            "le statut.",
+            f"Passer à « {wanted.value} » constate une opération : cela "
+            "s'obtient en enregistrant l'achat, la mise en vente, la vente ou "
+            "l'encaissement, pas en changeant le statut.",
             field="status",
         )
 

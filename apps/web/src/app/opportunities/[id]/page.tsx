@@ -12,6 +12,7 @@ import {
 } from "./CorrectionForms";
 import { ComparablesPanel } from "./ComparablesPanel";
 import { AnalysisPanel } from "./AnalysisPanel";
+import { OperationPanel } from "./OperationPanel";
 import { ValuationPanel } from "./ValuationPanel";
 import { ReferenceConfirmationForm } from "./ReferenceConfirmationForm";
 
@@ -188,6 +189,24 @@ export default async function OpportunityDetailPage({
           Analyse et décision
         </h2>
         <AnalysisPanel opportunityId={opportunity.id} />
+      </Card>
+
+      {/* Juste après l'analyse : c'est là qu'on décide, et c'est là qu'on
+          enregistre ce qu'on a fait. */}
+      <Card>
+        <h2 className="mb-3 text-sm font-semibold text-fg-muted">Opération</h2>
+        <OperationPanel
+          opportunityId={opportunity.id}
+          status={opportunity.status}
+          askingPrice={
+            opportunity.latest_price?.amount
+              ? formatAmount(
+                  opportunity.latest_price.amount,
+                  opportunity.latest_price.currency,
+                )
+              : null
+          }
+        />
       </Card>
 
       <Card>

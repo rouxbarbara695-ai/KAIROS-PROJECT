@@ -313,3 +313,27 @@ export function updateStrategy(
     body: JSON.stringify(body),
   });
 }
+
+export type PurchaseCreate = components["schemas"]["PurchaseCreate"];
+export type StatusChangeRequest =
+  components["schemas"]["StatusChangeRequest"];
+
+export function recordPurchase(
+  opportunityId: string,
+  body: PurchaseCreate,
+): Promise<{ id: string; amount_eur: string; purchased_at: string }> {
+  return request(`/opportunities/${opportunityId}/purchase`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function changeStatus(
+  opportunityId: string,
+  body: StatusChangeRequest,
+): Promise<unknown> {
+  return request(`/opportunities/${opportunityId}/status`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}

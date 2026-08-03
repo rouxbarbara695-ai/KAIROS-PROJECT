@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query, Request, status
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.v1.schemas.common import DecimalString
 from app.api.v1.schemas.events import (
     AuditEventPage,
     to_audit_event_response,
@@ -24,6 +27,8 @@ from app.audit.application.list_events import list_opportunity_events
 from app.identity.application.reference_confirmation import confirm_reference
 from app.identity.application.seller_profile import patch_seller_profile
 from app.identity.application.watch_profile import patch_watch_profile
+from app.operations.application.change_status import change_status
+from app.operations.application.record_purchase import record_purchase
 from app.opportunities.application.add_price_input import add_price_input
 from app.opportunities.application.create_opportunity import create_opportunity
 from app.opportunities.application.get_opportunity import get_opportunity
@@ -274,3 +279,82 @@ async def add_price_input_route(
         session, principal, opportunity_id, body, settings
     )
     return {"id": str(price_input.id)}
+
+
+class PurchaseCreate(BaseModel):
+    """Achat effectivement conclu.
+
+    `amount` est ce qui a **réellement** été payé. L'écran ne le préremplit ni
+    avec le prix affiché ni avec le maximum calculé : reprendre l'un des deux
+    ferait de KAIROS un outil qui se relit lui-même, et le coût de revient
+    serait faux dès la première négociation réussie.
+    """
+
+    amount: DecimalString
+    currency: str = Field(default="EUR", min_length=3, max_length=3)
+    purchased_at: datetime | None = None
+    reason: str = Field(min_length=1)
+
+
+class StatusChangeRequest(BaseModel):
+    status: str
+    reason: str = Field(min_length=1)
+
+
+@router.post(
+    "/opportunities/{opportunity_id}/purchase",
+    status_code=status.HTTP_201_CREATED,
+)
+async def record_purchase_route(
+    opportunity_id: uuid.UUID,
+    body: PurchaseCreate,
+    session: AsyncSession = Depends(get_session),
+    principal: Principal = Depends(get_current_principal),
+    settings: Settings = Depends(get_settings),
+) -> dict[str, str]:
+    """Enregistre l'achat : ligne d'achat, sortie de trésorerie et passage en
+    `purchased`, dans une seule transaction."""
+
+    purchase = await record_purchase(
+        session,
+        principal,
+        opportunity_id,
+        amount=body.amount,
+        currency=body.currency,
+        purchased_at=body.purchased_at,
+        reason=body.reason,
+        settings=settings,
+    )
+    return {
+        "id": str(purchase.id),
+        "amount_eur": str(purchase.amount_eur),
+        "purchased_at": purchase.purchased_at.isoformat(),
+    }
+
+
+@router.post(
+    "/opportunities/{opportunity_id}/status", response_model=OpportunityResponse
+)
+async def change_status_route(
+    opportunity_id: uuid.UUID,
+    body: StatusChangeRequest,
+    session: AsyncSession = Depends(get_session),
+    principal: Principal = Depends(get_current_principal),
+) -> OpportunityResponse:
+    """Change le statut, avec motif. Les statuts qui constatent une opération
+    — `purchased`, `sold` — s'obtiennent en enregistrant l'opération."""
+
+    await change_status(
+        session, principal, opportunity_id, target=body.status, reason=body.reason
+    )
+    opportunity, watch, reference, seller, latest_price = await get_opportunity(
+        session, principal, opportunity_id
+    )
+    return to_opportunity_response(
+        opportunity,
+        watch,
+        reference,
+        seller,
+        latest_price,
+        await _platform_code(session, opportunity),
+    )

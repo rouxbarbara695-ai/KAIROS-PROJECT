@@ -215,6 +215,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/opportunities/{opportunity_id}/purchase": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record Purchase Route
+         * @description Enregistre l'achat : ligne d'achat, sortie de trésorerie et passage en
+         *     `purchased`, dans une seule transaction.
+         */
+        post: operations["record_purchase_route_api_v1_opportunities__opportunity_id__purchase_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/opportunities/{opportunity_id}/reference-confirmations": {
         parameters: {
             query?: never;
@@ -247,6 +268,27 @@ export interface paths {
         head?: never;
         /** Patch Seller Profile Route */
         patch: operations["patch_seller_profile_route_api_v1_opportunities__opportunity_id__seller_profile_patch"];
+        trace?: never;
+    };
+    "/api/v1/opportunities/{opportunity_id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Change Status Route
+         * @description Change le statut, avec motif. Les statuts qui constatent une opération
+         *     — `purchased`, `sold` — s'obtiennent en enregistrant l'opération.
+         */
+        post: operations["change_status_route_api_v1_opportunities__opportunity_id__status_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/opportunities/{opportunity_id}/valuations": {
@@ -1088,6 +1130,28 @@ export interface components {
              */
             observed_at: string;
         };
+        /**
+         * PurchaseCreate
+         * @description Achat effectivement conclu.
+         *
+         *     `amount` est ce qui a **réellement** été payé. L'écran ne le préremplit ni
+         *     avec le prix affiché ni avec le maximum calculé : reprendre l'un des deux
+         *     ferait de KAIROS un outil qui se relit lui-même, et le coût de revient
+         *     serait faux dès la première négociation réussie.
+         */
+        PurchaseCreate: {
+            /** Amount */
+            amount: number | string;
+            /**
+             * Currency
+             * @default EUR
+             */
+            currency: string;
+            /** Purchased At */
+            purchased_at?: string | null;
+            /** Reason */
+            reason: string;
+        };
         /** ReferenceConfirmationRequest */
         ReferenceConfirmationRequest: {
             /** Reason */
@@ -1168,6 +1232,13 @@ export interface components {
             platform_code?: string | null;
             /** Url */
             url?: string | null;
+        };
+        /** StatusChangeRequest */
+        StatusChangeRequest: {
+            /** Reason */
+            reason: string;
+            /** Status */
+            status: string;
         };
         /** StrategyResponse */
         StrategyResponse: {
@@ -1818,6 +1889,43 @@ export interface operations {
             };
         };
     };
+    record_purchase_route_api_v1_opportunities__opportunity_id__purchase_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                opportunity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PurchaseCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     confirm_reference_route_api_v1_opportunities__opportunity_id__reference_confirmations_post: {
         parameters: {
             query?: never;
@@ -1865,6 +1973,41 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["SellerProfilePatchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    change_status_route_api_v1_opportunities__opportunity_id__status_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                opportunity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StatusChangeRequest"];
             };
         };
         responses: {

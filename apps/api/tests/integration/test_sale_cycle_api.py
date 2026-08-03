@@ -122,9 +122,7 @@ async def test_the_whole_cycle_runs_and_the_cash_comes_back(
         start["available_cash_eur"]
     ) + Decimal("950.00")
     assert Decimal(end["stock_at_cost_eur"]) == Decimal(start["stock_at_cost_eur"])
-    assert (await client.get(f"/api/v1/opportunities/{oid}")).json()[
-        "status"
-    ] == "sold"
+    assert (await client.get(f"/api/v1/opportunities/{oid}")).json()["status"] == "sold"
 
 
 async def test_a_sale_does_not_move_the_cash(
@@ -246,8 +244,7 @@ async def test_listing_closes_when_the_sale_is_recorded(
     row = (
         await db_session.execute(
             text(
-                "select status, ended_at from sale_listings "
-                "where opportunity_id = :id"
+                "select status, ended_at from sale_listings where opportunity_id = :id"
             ),
             {"id": oid},
         )

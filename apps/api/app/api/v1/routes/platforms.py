@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
+from decimal import Decimal
+from enum import StrEnum
 
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field, model_validator
@@ -19,6 +21,61 @@ from app.shared.infrastructure.db.session import get_session
 from app.shared.infrastructure.principal_provider import get_current_principal
 
 router = APIRouter(tags=["platforms"])
+
+
+class FeeBasisIn(StrEnum):
+    """Sur quoi la commission se calcule."""
+
+    PRICE = "price"
+    PRICE_AND_SHIPPING = "price_and_shipping"
+
+
+class FeeTierIn(BaseModel):
+    """Une tranche de barème, appliquée marginalement.
+
+    `up_to` vide marque la dernière tranche, celle qui couvre tout le reste.
+    Sans elle, un montant au-delà du dernier palier ne saurait pas se calculer,
+    et extrapoler au dernier taux serait inventer une règle.
+    """
+
+    up_to: DecimalString | None = None
+    rate: DecimalString
+
+
+def _check_tiers(side: str, tiers: list[FeeTierIn]) -> None:
+    if not tiers:
+        return
+
+    previous: Decimal | None = None
+    for index, tier in enumerate(tiers):
+        if not (0 <= tier.rate <= 1):
+            raise ValueError(
+                f"Le taux de la tranche {index + 1} ({side}) doit être un taux "
+                "décimal entre 0 et 1."
+            )
+        if tier.up_to is None:
+            if index != len(tiers) - 1:
+                raise ValueError(
+                    "Seule la dernière tranche peut être sans plafond : une "
+                    "tranche ouverte au milieu rendrait les suivantes "
+                    "inatteignables."
+                )
+            continue
+        if tier.up_to <= 0:
+            raise ValueError(
+                f"Le plafond de la tranche {index + 1} ({side}) doit être positif."
+            )
+        if previous is not None and tier.up_to <= previous:
+            raise ValueError(
+                f"Les tranches ({side}) doivent être ordonnées par plafond croissant."
+            )
+        previous = tier.up_to
+
+    if tiers[-1].up_to is not None:
+        raise ValueError(
+            f"La dernière tranche ({side}) doit être sans plafond, faute de "
+            "quoi les montants au-delà ne pourraient pas se calculer."
+        )
 
 
 @router.get("/platforms/{code}/rules")
@@ -73,6 +130,11 @@ class PlatformRuleCreate(BaseModel):
 
     payment_fee_rate: DecimalString | None = None
 
+    buyer_fee_tiers: list[FeeTierIn] = Field(default_factory=list)
+    seller_fee_tiers: list[FeeTierIn] = Field(default_factory=list)
+    buyer_fee_basis: FeeBasisIn = FeeBasisIn.PRICE
+    seller_fee_basis: FeeBasisIn = FeeBasisIn.PRICE
+
     @model_validator(mode="after")
     def _check_bounds(self) -> PlatformRuleCreate:
         for side, low, high in (
@@ -96,6 +158,12 @@ class PlatformRuleCreate(BaseModel):
                 raise ValueError(
                     f"{field} doit être un taux décimal entre 0 et 1 (0.20 pour 20 %)."
                 )
+
+        for side, tiers in (
+            ("buyer", self.buyer_fee_tiers),
+            ("seller", self.seller_fee_tiers),
+        ):
+            _check_tiers(side, tiers)
         return self
 
 
@@ -122,6 +190,10 @@ class PlatformRuleResponse(BaseModel):
     buyer_fee_vat_rate: DecimalString | None = None
     seller_fee_vat_rate: DecimalString | None = None
     payment_fee_rate: DecimalString | None = None
+    buyer_fee_tiers: list[FeeTierIn] = Field(default_factory=list)
+    seller_fee_tiers: list[FeeTierIn] = Field(default_factory=list)
+    buyer_fee_basis: FeeBasisIn = FeeBasisIn.PRICE
+    seller_fee_basis: FeeBasisIn = FeeBasisIn.PRICE
 
 
 class PlatformResponse(BaseModel):
@@ -153,6 +225,10 @@ def _rule_response(code: str, rule: PlatformRule) -> PlatformRuleResponse:
         buyer_fee_vat_rate=rule.buyer_fee_vat_rate,
         seller_fee_vat_rate=rule.seller_fee_vat_rate,
         payment_fee_rate=rule.payment_fee_rate,
+        buyer_fee_tiers=[FeeTierIn(**row) for row in rule.buyer_fee_tiers],
+        seller_fee_tiers=[FeeTierIn(**row) for row in rule.seller_fee_tiers],
+        buyer_fee_basis=FeeBasisIn(rule.buyer_fee_basis),
+        seller_fee_basis=FeeBasisIn(rule.seller_fee_basis),
     )
 
 
@@ -211,6 +287,12 @@ async def create_platform_rule_route(
         buyer_fee_vat_rate=body.buyer_fee_vat_rate,
         seller_fee_vat_rate=body.seller_fee_vat_rate,
         payment_fee_rate=body.payment_fee_rate,
+        buyer_fee_tiers=[tier.model_dump(mode="json") for tier in body.buyer_fee_tiers],
+        seller_fee_tiers=[
+            tier.model_dump(mode="json") for tier in body.seller_fee_tiers
+        ],
+        buyer_fee_basis=body.buyer_fee_basis.value,
+        seller_fee_basis=body.seller_fee_basis.value,
         currency=body.currency,
         provenance_url=body.provenance_url,
     )

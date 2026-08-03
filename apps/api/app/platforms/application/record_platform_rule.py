@@ -29,6 +29,10 @@ async def record_platform_rule(
     buyer_fee_vat_rate: Decimal | None,
     seller_fee_vat_rate: Decimal | None,
     payment_fee_rate: Decimal | None,
+    buyer_fee_tiers: list[dict[str, object]],
+    seller_fee_tiers: list[dict[str, object]],
+    buyer_fee_basis: str,
+    seller_fee_basis: str,
     currency: str,
     provenance_url: str,
 ) -> PlatformRule:
@@ -108,6 +112,10 @@ async def record_platform_rule(
         buyer_fee_vat_rate=buyer_fee_vat_rate,
         seller_fee_vat_rate=seller_fee_vat_rate,
         payment_fee_rate=payment_fee_rate,
+        buyer_fee_tiers=buyer_fee_tiers,
+        seller_fee_tiers=seller_fee_tiers,
+        buyer_fee_basis=buyer_fee_basis,
+        seller_fee_basis=seller_fee_basis,
         provenance_url=provenance_url,
         created_by_user_id=principal.user_id,
     )

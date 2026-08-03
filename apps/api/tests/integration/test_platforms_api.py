@@ -467,3 +467,174 @@ async def test_vat_on_commission_reaches_the_analysis(
     sale_price = Decimal(with_vat["sale_price_eur"])
     lost = Decimal(without_vat["net_profit_eur"]) - Decimal(with_vat["net_profit_eur"])
     assert lost == (sale_price * Decimal("0.02")).quantize(Decimal("0.01"))
+
+
+# --- Barèmes par tranches ------------------------------------------------
+
+_EBAY_TIERS = [
+    {"up_to": "2000.00", "rate": "0.10"},
+    {"up_to": None, "rate": "0.02"},
+]
+
+
+async def test_ebays_real_scale_is_recorded_as_tiers(client: AsyncClient) -> None:
+    """La grille réelle d'eBay France : 10 % sur les 2 000 premiers euros,
+    2 % au-delà, 0,35 € par commande, et une base qui inclut le port."""
+
+    response = await client.post(
+        "/api/v1/platforms/ebay/rules",
+        json={
+            "provenance_url": "https://www.ebay.fr/help/selling/fees-credits-invoices"
+            "/services-de-paiement-frais-pour-les-vendeurs-particuliers?id=4822",
+            "seller_fee_tiers": _EBAY_TIERS,
+            "seller_fee_fixed": "0.35",
+            "seller_fee_basis": "price_and_shipping",
+            "payment_fee_rate": "0.0042",
+            "currency": "EUR",
+        },
+    )
+    assert response.status_code == 201, response.text
+
+    body = response.json()
+    assert body["seller_fee_basis"] == "price_and_shipping"
+    assert [tier["rate"] for tier in body["seller_fee_tiers"]] == [
+        "0.10",
+        "0.02",
+    ]
+    assert body["seller_fee_tiers"][1]["up_to"] is None
+
+
+async def test_a_scale_without_a_final_open_tier_is_refused(
+    client: AsyncClient,
+) -> None:
+    """Sans tranche finale ouverte, un montant au-delà du dernier palier ne
+    saurait pas se calculer — et l'extrapoler serait inventer une règle."""
+
+    response = await client.post(
+        "/api/v1/platforms/ebay/rules",
+        json={
+            "provenance_url": "https://exemple.test/ebay",
+            "seller_fee_tiers": [{"up_to": "2000.00", "rate": "0.10"}],
+        },
+    )
+    assert response.status_code == 422
+
+
+async def test_tiers_out_of_order_are_refused(client: AsyncClient) -> None:
+    response = await client.post(
+        "/api/v1/platforms/ebay/rules",
+        json={
+            "provenance_url": "https://exemple.test/ebay",
+            "seller_fee_tiers": [
+                {"up_to": "5000.00", "rate": "0.10"},
+                {"up_to": "2000.00", "rate": "0.05"},
+                {"up_to": None, "rate": "0.02"},
+            ],
+        },
+    )
+    assert response.status_code == 422
+
+
+async def test_an_unknown_fee_basis_is_refused(client: AsyncClient) -> None:
+    response = await client.post(
+        "/api/v1/platforms/ebay/rules",
+        json={
+            "provenance_url": "https://exemple.test/ebay",
+            "seller_fee_basis": "au_pif",
+        },
+    )
+    assert response.status_code == 422
+
+
+async def test_the_tiered_scale_reaches_the_analysis(
+    client: AsyncClient, db_session: AsyncSession, default_portfolio_id: uuid.UUID
+) -> None:
+    """Le chiffre qui compte : sur une revente à 3 600 €, eBay prélève 232 € de
+    commission et non 360 €. Un taux unique de 10 % se tromperait de 128 €, et
+    un taux unique de 2 % de 160 € dans l'autre sens."""
+
+    await client.post(
+        "/api/v1/platforms/ebay/rules",
+        json={
+            "provenance_url": "https://exemple.test/ebay",
+            "seller_fee_tiers": _EBAY_TIERS,
+            "currency": "EUR",
+        },
+    )
+    await db_session.execute(
+        text(
+            """
+            insert into portfolio_ledger_entries (portfolio_id, kind,
+              amount_source, currency, amount_eur, rate_to_eur, fx_rate_at,
+              fx_source, occurred_at, actor_user_id)
+            select :pf, 'capital_contribution', 30000, 'EUR', 30000, 1, now(),
+                   'saisie manuelle', now(), id from users limit 1
+            """
+        ),
+        {"pf": default_portfolio_id},
+    )
+    await db_session.commit()
+
+    opportunity = (
+        await client.post(
+            "/api/v1/opportunities",
+            json={
+                "portfolio_id": str(default_portfolio_id),
+                "source": {"mode": "manual", "manual_identifier": "TRANCHES-001"},
+                "watch": {
+                    "brand": "Tudor",
+                    "reference": "79030N",
+                    "mechanical_condition": "verified",
+                    "cosmetic_condition": "excellent",
+                    "box": True,
+                    "papers": True,
+                },
+                "seller": {"country_code": "FR", "seller_type": "private"},
+                "price": {"amount": "2400.00", "currency": "EUR"},
+            },
+        )
+    ).json()
+
+    await client.post(
+        f"/api/v1/opportunities/{opportunity['id']}/reference-confirmations",
+        json={
+            "status": "confirmed",
+            "reference_id": opportunity["watch"]["reference_id"],
+            "reason": "Référence vérifiée.",
+        },
+    )
+    for index, amount in enumerate(
+        ["3500.00", "3550.00", "3600.00", "3620.00", "3680.00", "3700.00"]
+    ):
+        await client.post(
+            f"/api/v1/opportunities/{opportunity['id']}/comparables",
+            json={
+                "source_name": "Chrono24",
+                "seller_fingerprint": f"t{index}",
+                "price_kind": "asking",
+                "amount": amount,
+                "currency": "EUR",
+                "market_status": "active",
+                "observed_at": "2026-07-20T10:00:00Z",
+                "source_reliability": "a",
+                "mechanical_condition": "verified",
+                "cosmetic_condition": "excellent",
+                "box": True,
+                "papers": True,
+            },
+        )
+    await client.post(f"/api/v1/opportunities/{opportunity['id']}/valuations")
+    await client.post(
+        f"/api/v1/portfolios/{default_portfolio_id}/strategy",
+        json={"resale_platform_code": "ebay"},
+    )
+
+    analysis = (
+        await client.post(f"/api/v1/opportunities/{opportunity['id']}/analyses")
+    ).json()
+    central = analysis["scenario_results"]["central"]
+
+    sale_price = Decimal(central["sale_price_eur"])
+    commission = sale_price - Decimal(central["net_sale_proceeds_eur"])
+    expected = Decimal("200.00") + (sale_price - Decimal("2000")) * Decimal("0.02")
+    assert commission == expected.quantize(Decimal("0.01"))

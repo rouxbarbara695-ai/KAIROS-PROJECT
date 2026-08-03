@@ -17,6 +17,7 @@ from app.pricing.domain.costs import (
 from app.pricing.domain.max_price import MaxPurchasePrice, max_purchase_price
 from app.pricing.domain.platform_costs import (
     PlatformFees,
+    PriceContext,
     buyer_cost_function,
     costs_from_platform,
 )
@@ -108,6 +109,8 @@ class TransactionCosts:
             buyer_fee_min=self.purchase_fees.buyer_fee_min,
             buyer_fee_max=self.purchase_fees.buyer_fee_max,
             buyer_fee_vat_rate=self.purchase_fees.buyer_fee_vat_rate,
+            buyer_fee_tiers=self.purchase_fees.buyer_fee_tiers,
+            buyer_fee_basis=self.purchase_fees.buyer_fee_basis,
         )
 
     @property
@@ -126,22 +129,40 @@ class TransactionCosts:
             seller_fee_min=self.resale_fees.seller_fee_min,
             seller_fee_max=self.resale_fees.seller_fee_max,
             seller_fee_vat_rate=self.resale_fees.seller_fee_vat_rate,
+            seller_fee_tiers=self.resale_fees.seller_fee_tiers,
+            seller_fee_basis=self.resale_fees.seller_fee_basis,
             payment_fee_rate=self.resale_fees.payment_fee_rate,
         )
 
-    def all_costs(self) -> list[Cost]:
-        """Tous les coûts, prêts pour l'évaluation des scénarios."""
+    def all_costs(
+        self, *, purchase_price_eur: Decimal, sale_price_eur: Decimal
+    ) -> list[Cost]:
+        """Tous les coûts pour un couple de prix donné.
+
+        Les prix sont exigés parce que les commissions se calculent au montant
+        et non au taux : c'est la seule façon d'honorer un barème par tranches,
+        un plancher ou un plafond. Un jeu de coûts ne vaut donc que pour le
+        scénario qui l'a demandé.
+        """
 
         return [
             *costs_from_platform(
                 self.buyer_side,
                 label=self.purchase_label,
-                inbound_shipping_eur=self.inbound_shipping_eur,
+                prices=PriceContext(
+                    purchase_price_eur=purchase_price_eur,
+                    sale_price_eur=sale_price_eur,
+                    inbound_shipping_eur=self.inbound_shipping_eur,
+                ),
             ),
             *costs_from_platform(
                 self.seller_side,
                 label=self.resale_label,
-                outbound_shipping_eur=self.outbound_shipping_eur,
+                prices=PriceContext(
+                    purchase_price_eur=purchase_price_eur,
+                    sale_price_eur=sale_price_eur,
+                    outbound_shipping_eur=self.outbound_shipping_eur,
+                ),
             ),
             *self.operational,
         ]
@@ -226,20 +247,28 @@ def analyse(
         ruleset,
     )
 
-    costs = transaction_costs.all_costs()
     sale_prices = {
         Scenario.PRUDENT: market.low_eur,
         Scenario.CENTRAL: market.central_eur,
         Scenario.FAVORABLE: market.high_eur,
     }
+    # Un jeu de coûts par scénario : la commission dépend du prix de vente dès
+    # qu'un barème par tranches ou un plafond entre en jeu, et un jeu unique
+    # les appliquerait au mauvais montant dans deux scénarios sur trois.
+    costs_by_scenario = {
+        scenario: transaction_costs.all_costs(
+            purchase_price_eur=purchase_price_eur, sale_price_eur=sale_price
+        )
+        for scenario, sale_price in sale_prices.items()
+    }
     scenarios = {
         scenario: evaluate_scenario(
             scenario=scenario,
             purchase_price_eur=purchase_price_eur,
-            sale_price_eur=sale_price,
-            costs=costs,
+            sale_price_eur=sale_prices[scenario],
+            costs=costs_by_scenario[scenario],
         )
-        for scenario, sale_price in sale_prices.items()
+        for scenario in sale_prices
     }
 
     prudent = scenarios[Scenario.PRUDENT]
@@ -247,13 +276,14 @@ def analyse(
 
     max_purchase = max_purchase_price(
         net_sale_proceeds_eur=prudent.net_sale_proceeds_eur,
-        prudent_costs=costs,
+        prudent_costs=costs_by_scenario[Scenario.PRUDENT],
         minimum_profit_eur=terms.minimum_profit_eur,
         minimum_roi=terms.minimum_roi,
         ruleset=ruleset,
         cost_of_purchase=buyer_cost_function(
             transaction_costs.buyer_side,
             transaction_costs.acquisition_costs_outside_platform_fees_eur,
+            transaction_costs.inbound_shipping_eur,
         ),
     )
 

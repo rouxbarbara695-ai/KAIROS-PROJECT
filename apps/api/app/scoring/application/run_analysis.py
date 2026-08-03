@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.opportunities.application.get_opportunity import get_opportunity
 from app.portfolio.application.position import current_position
 from app.pricing.domain.costs import Cost, CostMode, CostPhase, Scenario
-from app.pricing.domain.platform_costs import PlatformFees
+from app.pricing.domain.platform_costs import FeeBasis, FeeTier, PlatformFees
 from app.scoring.application.analysis_inputs import (
     AnalysisOutcome,
     MarketFacts,
@@ -218,6 +218,27 @@ def _fees(rule: PlatformRule) -> PlatformFees:
         buyer_fee_vat_rate=rule.buyer_fee_vat_rate,
         seller_fee_vat_rate=rule.seller_fee_vat_rate,
         payment_fee_rate=rule.payment_fee_rate,
+        buyer_fee_tiers=_tiers(rule.buyer_fee_tiers),
+        seller_fee_tiers=_tiers(rule.seller_fee_tiers),
+        buyer_fee_basis=FeeBasis(rule.buyer_fee_basis),
+        seller_fee_basis=FeeBasis(rule.seller_fee_basis),
+    )
+
+
+def _tiers(rows: list[dict[str, object]]) -> tuple[FeeTier, ...]:
+    """Relit un barème stocké en JSONB.
+
+    `Decimal(str(...))` et non `Decimal(...)` : la valeur relue peut être un
+    flottant si elle a transité par du JSON, et la convertir directement
+    traînerait son imprécision jusque dans une commission (CLAUDE.md règle 2).
+    """
+
+    return tuple(
+        FeeTier(
+            up_to=None if row.get("up_to") is None else Decimal(str(row["up_to"])),
+            rate=Decimal(str(row["rate"])),
+        )
+        for row in rows
     )
 
 

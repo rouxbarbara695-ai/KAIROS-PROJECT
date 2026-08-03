@@ -14,6 +14,33 @@ function optional(value: string): string | null {
   return trimmed === "" ? null : trimmed;
 }
 
+/** Lit un barème saisi une tranche par ligne, `plafond: taux`.
+ *
+ *  La dernière ligne s'écrit sans plafond — `au-delà: 0.02` — parce qu'un
+ *  barème dont la dernière tranche est bornée ne saurait pas calculer les
+ *  montants au-delà, et que l'API le refuse pour cette raison. */
+function parseTiers(value: string): { up_to: string | null; rate: string }[] {
+  return value
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const parts = line.split(":").map((part) => part.trim());
+      const ceiling = parts[0] ?? "";
+      const rate = parts[1] ?? "";
+      const open = ceiling === "" || /^(au-delà|au dela|\*|-)$/i.test(ceiling);
+      return { up_to: open ? null : ceiling, rate };
+    });
+}
+
+function formatTiers(
+  tiers: { up_to?: string | null; rate: string }[] | undefined,
+): string {
+  return (tiers ?? [])
+    .map((tier) => `${tier.up_to ?? "au-delà"}: ${tier.rate}`)
+    .join("\n");
+}
+
 export function PlatformFeesForm({
   code,
   name,
@@ -31,6 +58,8 @@ export function PlatformFeesForm({
     buyerFeeVatRate?: string | null;
     sellerFeeVatRate?: string | null;
     paymentFeeRate?: string | null;
+    sellerFeeBasis?: string | null;
+    sellerFeeTiers?: { up_to?: string | null; rate: string }[];
     provenanceUrl?: string | null;
   } | null;
 }) {
@@ -61,6 +90,16 @@ export function PlatformFeesForm({
             String(data.get("seller_fee_vat_rate") ?? ""),
           ),
           payment_fee_rate: optional(String(data.get("payment_fee_rate") ?? "")),
+          seller_fee_basis:
+            data.get("seller_fee_basis") === "price_and_shipping"
+              ? "price_and_shipping"
+              : "price",
+          seller_fee_tiers: parseTiers(String(data.get("seller_fee_tiers") ?? "")),
+          // Le côté acheteur n'a pas encore d'éditeur de barème : aucune
+          // plateforme relevée n'en applique un à l'achat. Les valeurs par
+          // défaut sont donc explicites plutôt que sous-entendues.
+          buyer_fee_basis: "price",
+          buyer_fee_tiers: [],
         });
         router.refresh();
       } catch (err) {
@@ -187,6 +226,52 @@ export function PlatformFeesForm({
               defaultValue={current?.paymentFeeRate ?? ""}
               className={`numeric ${inputClass}`}
             />
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset className="rounded-md border border-border p-3">
+        <legend className="px-1 text-xs text-fg-muted">
+          Barème par tranches et base de calcul
+        </legend>
+        <p className="mb-3 text-xs text-fg-muted">
+          eBay prélève 10 % sur les 2 000 premiers euros puis 2 % au-delà, sur
+          un montant qui inclut le port. Un taux unique se tromperait du simple
+          au double selon le prix : saisir le barème plutôt qu&apos;une
+          moyenne.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="block">
+            <span className="mb-1 block text-xs text-fg-muted">
+              Tranches de commission vente (une par ligne)
+            </span>
+            <textarea
+              name="seller_fee_tiers"
+              rows={3}
+              defaultValue={formatTiers(current?.sellerFeeTiers)}
+              placeholder={"2000: 0.10\nau-delà: 0.02"}
+              className={`numeric ${inputClass}`}
+            />
+            <span className="mt-1 block text-xs text-fg-muted">
+              Format « plafond : taux ». La dernière ligne s&apos;écrit
+              « au-delà », sans quoi les montants supérieurs ne pourraient pas
+              se calculer. Un barème renseigné remplace le taux unique.
+            </span>
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-xs text-fg-muted">
+              Base de la commission vente
+            </span>
+            <select
+              name="seller_fee_basis"
+              defaultValue={current?.sellerFeeBasis ?? "price"}
+              className={inputClass}
+            >
+              <option value="price">Prix de la montre seul</option>
+              <option value="price_and_shipping">
+                Prix + frais de port (eBay)
+              </option>
+            </select>
           </label>
         </div>
       </fieldset>

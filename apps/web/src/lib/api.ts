@@ -337,3 +337,37 @@ export function changeStatus(
     body: JSON.stringify(body),
   });
 }
+
+export type SaleListingCreate = components["schemas"]["SaleListingCreate"];
+export type SaleCreate = components["schemas"]["SaleCreate"];
+export type PayoutCreate = components["schemas"]["PayoutCreate"];
+
+export function recordSaleListing(
+  opportunityId: string,
+  body: SaleListingCreate,
+): Promise<unknown> {
+  return request(`/opportunities/${opportunityId}/sale-listing`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function recordSale(
+  opportunityId: string,
+  body: SaleCreate,
+): Promise<unknown> {
+  return request(`/opportunities/${opportunityId}/sale`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function recordPayout(
+  opportunityId: string,
+  body: PayoutCreate,
+): Promise<unknown> {
+  return request(`/opportunities/${opportunityId}/payout`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}

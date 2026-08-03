@@ -198,6 +198,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/opportunities/{opportunity_id}/payout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record Payout Route
+         * @description Constate l'encaissement : c'est ici que la trésorerie monte.
+         */
+        post: operations["record_payout_route_api_v1_opportunities__opportunity_id__payout_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/opportunities/{opportunity_id}/price-inputs": {
         parameters: {
             query?: never;
@@ -247,6 +267,44 @@ export interface paths {
         put?: never;
         /** Confirm Reference Route */
         post: operations["confirm_reference_route_api_v1_opportunities__opportunity_id__reference_confirmations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/opportunities/{opportunity_id}/sale": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record Sale Route
+         * @description Enregistre la vente. Aucune écriture de trésorerie : les fonds sont
+         *     retenus jusqu'à l'encaissement.
+         */
+        post: operations["record_sale_route_api_v1_opportunities__opportunity_id__sale_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/opportunities/{opportunity_id}/sale-listing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record Sale Listing Route */
+        post: operations["record_sale_listing_route_api_v1_opportunities__opportunity_id__sale_listing_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -959,6 +1017,24 @@ export interface components {
             /** Reason */
             reason: string;
         };
+        /**
+         * PayoutCreate
+         * @description Encaissement constaté.
+         *
+         *     `amount` est ce qui est **réellement arrivé sur le compte**, commission de
+         *     plateforme déjà déduite. Laissé vide, le prix réalisé fait foi — ce qui
+         *     correspond à une vente sans intermédiaire.
+         */
+        PayoutCreate: {
+            /** Amount */
+            amount?: number | string | null;
+            /** Currency */
+            currency?: string | null;
+            /** Reason */
+            reason: string;
+            /** Received At */
+            received_at?: string | null;
+        };
         /** PlatformResponse */
         PlatformResponse: {
             active_rule?: components["schemas"]["PlatformRuleResponse"] | null;
@@ -1163,6 +1239,49 @@ export interface components {
              * @enum {string}
              */
             status: "suggested" | "confirmed" | "corrected" | "unknown";
+        };
+        /**
+         * SaleCreate
+         * @description Vente conclue : la montre part, les fonds sont encore retenus.
+         */
+        SaleCreate: {
+            /**
+             * Currency
+             * @default EUR
+             */
+            currency: string;
+            /** Realized Amount */
+            realized_amount: number | string;
+            /** Reason */
+            reason: string;
+            /** Sold At */
+            sold_at?: string | null;
+        };
+        /**
+         * SaleListingCreate
+         * @description Mise en vente : canal et prix demandé.
+         *
+         *     `asking_amount` n'est pas le prix d'affichage recommandé par l'analyse. On
+         *     peut viser plus haut pour garder de la marge de négociation, ou plus bas
+         *     pour partir vite : c'est une décision commerciale, et l'enregistrer telle
+         *     quelle est la seule façon d'en mesurer la justesse après coup.
+         */
+        SaleListingCreate: {
+            /** Asking Amount */
+            asking_amount: number | string;
+            /**
+             * Currency
+             * @default EUR
+             */
+            currency: string;
+            /** External Url */
+            external_url?: string | null;
+            /** Listed At */
+            listed_at?: string | null;
+            /** Platform Code */
+            platform_code?: string | null;
+            /** Reason */
+            reason: string;
         };
         /**
          * SellerCreate
@@ -1852,6 +1971,43 @@ export interface operations {
             };
         };
     };
+    record_payout_route_api_v1_opportunities__opportunity_id__payout_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                opportunity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PayoutCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string | null;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     add_price_input_route_api_v1_opportunities__opportunity_id__price_inputs_post: {
         parameters: {
             query?: never;
@@ -1948,6 +2104,80 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OpportunityResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    record_sale_route_api_v1_opportunities__opportunity_id__sale_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                opportunity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaleCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    record_sale_listing_route_api_v1_opportunities__opportunity_id__sale_listing_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                opportunity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaleListingCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string | null;
+                    };
                 };
             };
             /** @description Validation Error */

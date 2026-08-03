@@ -1900,6 +1900,53 @@
         "title": "PriceResponse",
         "type": "object"
       },
+      "PurchaseCreate": {
+        "description": "Achat effectivement conclu.\n\n`amount` est ce qui a **r\u00e9ellement** \u00e9t\u00e9 pay\u00e9. L'\u00e9cran ne le pr\u00e9remplit ni\navec le prix affich\u00e9 ni avec le maximum calcul\u00e9 : reprendre l'un des deux\nferait de KAIROS un outil qui se relit lui-m\u00eame, et le co\u00fbt de revient\nserait faux d\u00e8s la premi\u00e8re n\u00e9gociation r\u00e9ussie.",
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              }
+            ],
+            "title": "Amount"
+          },
+          "currency": {
+            "default": "EUR",
+            "maxLength": 3,
+            "minLength": 3,
+            "title": "Currency",
+            "type": "string"
+          },
+          "purchased_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Purchased At"
+          },
+          "reason": {
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "reason"
+        ],
+        "title": "PurchaseCreate",
+        "type": "object"
+      },
       "ReferenceConfirmationRequest": {
         "properties": {
           "reason": {
@@ -2191,6 +2238,25 @@
           "mode"
         ],
         "title": "SourceCreate",
+        "type": "object"
+      },
+      "StatusChangeRequest": {
+        "properties": {
+          "reason": {
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "reason"
+        ],
+        "title": "StatusChangeRequest",
         "type": "object"
       },
       "StrategyResponse": {
@@ -3436,6 +3502,64 @@
         ]
       }
     },
+    "/api/v1/opportunities/{opportunity_id}/purchase": {
+      "post": {
+        "description": "Enregistre l'achat : ligne d'achat, sortie de tr\u00e9sorerie et passage en\n`purchased`, dans une seule transaction.",
+        "operationId": "record_purchase_route_api_v1_opportunities__opportunity_id__purchase_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "opportunity_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Opportunity Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PurchaseCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Record Purchase Route Api V1 Opportunities  Opportunity Id  Purchase Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Record Purchase Route",
+        "tags": [
+          "opportunities"
+        ]
+      }
+    },
     "/api/v1/opportunities/{opportunity_id}/reference-confirmations": {
       "post": {
         "operationId": "confirm_reference_route_api_v1_opportunities__opportunity_id__reference_confirmations_post",
@@ -3537,6 +3661,60 @@
           }
         },
         "summary": "Patch Seller Profile Route",
+        "tags": [
+          "opportunities"
+        ]
+      }
+    },
+    "/api/v1/opportunities/{opportunity_id}/status": {
+      "post": {
+        "description": "Change le statut, avec motif. Les statuts qui constatent une op\u00e9ration\n\u2014 `purchased`, `sold` \u2014 s'obtiennent en enregistrant l'op\u00e9ration.",
+        "operationId": "change_status_route_api_v1_opportunities__opportunity_id__status_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "opportunity_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Opportunity Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StatusChangeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpportunityResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Change Status Route",
         "tags": [
           "opportunities"
         ]

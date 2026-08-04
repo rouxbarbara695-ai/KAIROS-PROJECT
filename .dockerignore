@@ -1,0 +1,16 @@
+# Ce qui ne doit jamais entrer dans une image.
+#
+# `.venv` et `node_modules` surtout : construits pour la machine de
+# développement, ils écraseraient ceux que l'image vient d'installer pour son
+# propre système. Le symptôme serait un binaire qui ne s'exécute pas, loin de
+# sa cause.
+**/.venv
+**/node_modules
+**/.next
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/htmlcov
+.git

@@ -25,9 +25,22 @@ COPY packages/contracts packages/contracts
 COPY apps/web apps/web
 RUN pnpm --filter @kairos/web build
 
-# Retire ici typescript, eslint, tailwind et vitest : ils n'ont plus rien à
-# faire dans une image qui sert des pages.
-RUN pnpm install --frozen-lockfile --prod
+# Les dépendances de développement — typescript, eslint, tailwind, vitest —
+# restent dans l'image. Ce n'est pas l'idéal, c'est assumé.
+#
+# L'étape d'élagage était `pnpm install --frozen-lockfile --prod`. Elle a
+# échoué au premier déploiement réel : pour ne garder que les dépendances de
+# production, pnpm supprime et reconstruit `node_modules`, et il refuse cette
+# suppression sans confirmation interactive — or une construction Docker n'a
+# pas de terminal.
+#
+#   ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY
+#
+# Un réglage existe pour passer outre. Il n'est pas retenu : le gain est
+# quelques centaines de mégaoctets sur un disque de 75 Go, et le prix serait
+# une option de contournement dans le chemin de construction, à revérifier à
+# chaque montée de version de pnpm. Une image un peu grasse qui se construit
+# vaut mieux qu'une image fine qui casse le déploiement.
 
 
 FROM node:22-slim AS runtime

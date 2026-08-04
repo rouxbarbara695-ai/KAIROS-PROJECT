@@ -32,16 +32,37 @@ le domaine.
    Debian 12 ou Ubuntu, indifféremment : les commandes ci-dessous s'adaptent
    à la distribution installée.
 2. **Un nom de domaine**, acheté chez OVH, Gandi ou Porkbun.
-3. **Un enregistrement DNS de type A** pointant le domaine vers l'adresse IP
-   du serveur. À poser **avant** le premier démarrage : Caddy demande le
-   certificat immédiatement, et Let's Encrypt limite le nombre de tentatives
-   par domaine et par semaine. Vérifier depuis votre poste :
+3. **Deux enregistrements DNS de type A** vers l'adresse IP du serveur : un
+   pour le domaine nu, un pour `www`. À poser **avant** le premier démarrage :
+   Caddy demande les certificats immédiatement, et Let's Encrypt limite le
+   nombre de tentatives par domaine et par semaine.
+
+   | Sous-domaine | Type | Cible |
+   |---|---|---|
+   | *(vide)* | `A` | l'IPv4 du serveur |
+   | `www` | `A` | la même IPv4 |
+
+   **Modifier les enregistrements existants plutôt qu'en ajouter.** Un
+   registrar pose souvent, à l'achat, un `A` vers sa propre page de parking.
+   En ajouter un second sans supprimer le premier donnerait deux adresses pour
+   le même nom, et le navigateur choisirait l'une ou l'autre au hasard : le
+   site fonctionnerait une fois sur deux, ce qui est plus difficile à
+   diagnostiquer qu'une panne franche.
+
+   **Pas d'enregistrement `AAAA`** tant que l'IPv6 du serveur n'a pas été
+   vérifiée. Certains hébergeurs livrent une adresse IPv6 qui demande encore
+   une configuration réseau manuelle : annoncée dans le DNS avant de
+   fonctionner, elle rendrait le site injoignable pour tous les visiteurs dont
+   le fournisseur d'accès préfère l'IPv6 — c'est-à-dire beaucoup.
+
+   Vérifier depuis votre poste, quelques minutes après :
 
    ```bash
    dig +short kairos.exemple.fr
+   dig +short www.kairos.exemple.fr
    ```
 
-   La commande doit répondre l'adresse IP du serveur, et rien d'autre.
+   Chaque commande doit répondre l'adresse IP du serveur, et rien d'autre.
 
 Sans HTTPS, il n'y a pas de connexion possible : le cookie de session est
 marqué `Secure` hors développement local. Le domaine n'est donc pas un confort,

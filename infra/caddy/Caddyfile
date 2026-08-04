@@ -10,6 +10,21 @@
 # hors développement local, donc sans HTTPS la connexion est simplement
 # impossible.
 
+# `www` renvoie vers l'adresse sans préfixe, plutôt que de servir les mêmes
+# pages sous deux adresses.
+#
+# Deux adresses vivantes pour un même site poseraient le cookie de session sur
+# celle qui a servi la connexion : entré par `www`, on serait déconnecté en
+# arrivant sur l'autre, sans rien y comprendre. Une redirection permanente
+# évite ce piège et ne coûte qu'un aller-retour, une seule fois.
+#
+# Elle suppose un enregistrement DNS `www`. S'il manque, Caddy réessaiera
+# d'obtenir un certificat pour cette adresse sans jamais y parvenir : le site
+# principal fonctionne, mais les journaux se remplissent.
+www.{$KAIROS_DOMAIN} {
+	redir https://{$KAIROS_DOMAIN}{uri} permanent
+}
+
 {$KAIROS_DOMAIN} {
 	encode zstd gzip
 

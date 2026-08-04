@@ -68,6 +68,36 @@ Sans HTTPS, il n'y a pas de connexion possible : le cookie de session est
 marqué `Secure` hors développement local. Le domaine n'est donc pas un confort,
 c'est la condition d'accès.
 
+## La voie courte
+
+Tout ce qui suit tient dans un script. En SSH sur le serveur, en root :
+
+```bash
+apt update && apt install -y git
+git clone https://github.com/rouxbarbara695-ai/KAIROS-PROJECT.git /opt/kairos
+bash /opt/kairos/infra/scripts/installation.sh kairos.exemple.fr
+```
+
+Le script installe Docker, ferme le pare-feu, tire les secrets au sort, crée
+la clé de chiffrement des sauvegardes, construit les images, démarre la pile
+et installe la tâche quotidienne. Il **vérifie d'abord que le domaine pointe
+vers ce serveur** et s'arrête sinon : Let's Encrypt limite le nombre de
+tentatives par domaine et par semaine, et découvrir un DNS mal posé après cinq
+échecs coûte une semaine d'attente.
+
+Il est **réexécutable sans dégât**. Une installation s'interrompt — réseau
+coupé, image qui ne se construit pas — et il faut pouvoir relancer sans se
+demander ce qui a déjà été fait. Les secrets ne sont tirés qu'une fois : les
+régénérer rendrait la base existante inaccessible.
+
+Il ne crée pas le compte utilisateur, délibérément : le mot de passe se saisit
+en invite masquée, et un mot de passe passé à un script finirait dans
+l'historique du shell. Le script affiche la commande à lancer ensuite.
+
+Les sections suivantes détaillent ce que le script fait, et **pourquoi**. Les
+lire n'est pas obligatoire pour installer ; ça l'est pour comprendre ce qu'on
+exploite.
+
 ## Installation du serveur
 
 En SSH sur le serveur, en root.

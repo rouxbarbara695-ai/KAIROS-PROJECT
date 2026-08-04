@@ -22,8 +22,15 @@ le domaine.
 
 ## Ce qu'il faut avant de commencer
 
-1. **Un serveur.** Hetzner CX22 (2 vCPU, 4 Go, 40 Go) ou Scaleway DEV1-S
-   conviennent largement. Debian 12 ou Ubuntu 24.04.
+1. **Un serveur.** Quatre cœurs, 8 Go de mémoire, 75 Go de disque — un OVH
+   VPS-2 ou équivalent. Deux cœurs et 4 Go suffisent à *faire tourner* KAIROS,
+   mais pas confortablement à le **construire** : la compilation de
+   l'interface Next.js a lieu sur la machine et réclame près de 2 Go à elle
+   seule, pendant que PostgreSQL tourne déjà. Sur 4 Go, la construction passe
+   parfois et se fait tuer parfois.
+
+   Debian 12 ou Ubuntu, indifféremment : les commandes ci-dessous s'adaptent
+   à la distribution installée.
 2. **Un nom de domaine**, acheté chez OVH, Gandi ou Porkbun.
 3. **Un enregistrement DNS de type A** pointant le domaine vers l'adresse IP
    du serveur. À poser **avant** le premier démarrage : Caddy demande le
@@ -44,18 +51,45 @@ c'est la condition d'accès.
 
 En SSH sur le serveur, en root.
 
+Les commandes ci-dessous lisent la distribution et son nom de code dans
+`/etc/os-release` plutôt que de les écrire en dur. Elles fonctionnent donc
+telles quelles sur Debian comme sur Ubuntu, sans rien adapter — ce que
+l'hébergeur propose à la commande varie, et une commande à corriger à la main
+est une commande qu'on corrige mal.
+
 ```bash
 apt update && apt upgrade -y
 apt install -y ca-certificates curl git ufw
 install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
+
+. /etc/os-release
+curl -fsSL "https://download.docker.com/linux/$ID/gpg" -o /etc/apt/keyrings/docker.asc
 chmod a+r /etc/apt/keyrings/docker.asc
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] \
-  https://download.docker.com/linux/debian $(. /etc/os-release && echo $VERSION_CODENAME) stable" \
+  https://download.docker.com/linux/$ID $VERSION_CODENAME stable" \
   > /etc/apt/sources.list.d/docker.list
+
 apt update
 apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 ```
+
+Si `apt update` se plaint de ne pas trouver le dépôt, c'est que Docker ne
+publie pas encore de paquets pour cette version de la distribution — cela
+arrive avec une version sortie depuis peu. Le vérifier avant de chercher
+ailleurs :
+
+```bash
+. /etc/os-release && curl -s -o /dev/null -w '%{http_code}\n' \
+  "https://download.docker.com/linux/$ID/dists/$VERSION_CODENAME/Release"
+```
+
+`200` signifie que le dépôt existe et que le problème est ailleurs. `404`
+signifie que Docker ne couvre pas encore cette version : réinstaller le
+serveur sur une version précédente depuis l'espace client de l'hébergeur est
+alors plus sûr que de bricoler le dépôt.
+
+Vérifié le 4 août 2026 : `ubuntu/resolute` (26.04), `debian/bookworm` (12) et
+`debian/trixie` (13) répondent tous `200`.
 
 Le pare-feu. Seuls SSH et le web entrent ; tout le reste est refusé. PostgreSQL
 et Redis n'ont de toute façon aucun port publié par Compose — c'est une

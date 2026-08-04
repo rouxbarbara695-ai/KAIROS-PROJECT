@@ -40,6 +40,25 @@ Les réponses modifiables exposent `ETag: "version-n"`. `PATCH` exige
 réponse initiale ; même clé + charge différente retourne
 `409 IDEMPOTENCY_CONFLICT`.
 
+### Limitation de débit
+
+`POST /auth/login` est la seule route publique de l’API. Les échecs y sont
+comptés par adresse IP d’origine et par adresse électronique, sur une fenêtre
+glissante de cinq minutes. Au-delà du seuil, la route retourne
+`429 RATE_LIMITED` avec `details.retry_after_seconds`, **avant** toute
+vérification de mot de passe : Argon2 est lent par construction, et laisser un
+attaquant déclencher ce calcul lui offrirait le déni de service que la
+limitation doit empêcher.
+
+Le seuil par adresse électronique est délibérément beaucoup plus haut que celui
+par adresse IP. KAIROS est mono-organisation : une limite serrée par adresse
+donnerait à n’importe qui le moyen d’enfermer le propriétaire dehors en
+martelant la sienne.
+
+Une connexion réussie remet les compteurs à zéro. Si le compteur est
+injoignable, la connexion reste possible et l’incident est journalisé : la
+frontière de sécurité est le mot de passe, pas le limiteur.
+
 ## Ressources
 
 | Méthode | Route | Fonction |
@@ -244,6 +263,7 @@ et raisons d’échec. Elle est persistée comme toute autre analyse.
 | `FX_RATE_UNAVAILABLE` | 503 | taux absent/expiré |
 | `COLLECTOR_NOT_AUTHORIZED` | 403 | mode d’accès non validé |
 | `COLLECTOR_UNAVAILABLE` | 503 | échec externe |
+| `RATE_LIMITED` | 429 | trop de tentatives |
 | `RULESET_MISSING` | 500 | version non résolue |
 
 Format :

@@ -17,6 +17,8 @@ from app.identity.application.authentication import create_user, log_in
 from app.main import app
 from app.shared.infrastructure.db.session import get_session
 from app.shared.infrastructure.principal_provider import SESSION_COOKIE
+from app.shared.infrastructure.redis_client import get_redis
+from tests.fake_redis import FakeRedis
 
 _ADMIN_DSN = "postgresql://kairos:kairos@localhost:5432/postgres"
 _TEST_DB_NAME = "kairos_test"
@@ -113,6 +115,22 @@ async def _clean_database(request: pytest.FixtureRequest) -> AsyncIterator[None]
         await conn.execute(
             text(f"TRUNCATE TABLE {', '.join(_TRUNCATE_TABLES)} CASCADE")
         )
+
+
+@pytest.fixture(autouse=True)
+def fake_redis() -> Iterator[FakeRedis]:
+    """Un compteur d'échecs neuf pour chaque test.
+
+    Automatique et non facultatif : sans cela, les tests qui vérifient un refus
+    de mot de passe alimenteraient un compteur partagé et finiraient par se
+    faire limiter les uns les autres, pour une raison qui n'aurait rien à voir
+    avec ce qu'ils vérifient.
+    """
+
+    redis = FakeRedis()
+    app.dependency_overrides[get_redis] = lambda: redis
+    yield redis
+    app.dependency_overrides.pop(get_redis, None)
 
 
 @pytest_asyncio.fixture

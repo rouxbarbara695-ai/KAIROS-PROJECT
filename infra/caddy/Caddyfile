@@ -1,0 +1,65 @@
+# Frontière publique de KAIROS.
+#
+# Caddy est le **seul** service exposé sur Internet. PostgreSQL, Redis, l'API
+# et l'interface n'ont aucun port publié : ils ne se parlent que par le réseau
+# interne de Docker. Une base de données joignable depuis l'extérieur est la
+# manière la plus courante de perdre ses données.
+#
+# Le certificat TLS est obtenu et renouvelé automatiquement auprès de Let's
+# Encrypt. Ce n'est pas un confort : le cookie de session est marqué `Secure`
+# hors développement local, donc sans HTTPS la connexion est simplement
+# impossible.
+
+{$KAIROS_DOMAIN} {
+	encode zstd gzip
+
+	# `/api/*` va directement à l'API, sans passer par Next.
+	#
+	# Next sait réécrire vers l'API — c'est le chemin du développement local —
+	# mais cela ajouterait un relais entre le navigateur et l'API, donc un
+	# doute sur l'adresse d'origine transmise. Or la limitation de débit compte
+	# les échecs de connexion par adresse IP : mal transmise, elle
+	# attribuerait toutes les tentatives au même relais et limiterait tout le
+	# monde d'un coup. Un seul saut, c'est une adresse certaine.
+	#
+	# Le cookie reste sur la même origine dans les deux cas : c'est le domaine
+	# qui compte, pas le service qui répond.
+	#
+	# Caddy **remplace** `X-Forwarded-For` par l'adresse réelle du client au
+	# lieu d'y ajouter la sienne, tant qu'aucun `trusted_proxies` n'est
+	# déclaré. Un client qui envoie un en-tête inventé pour se donner une
+	# nouvelle adresse à chaque essai ne contourne donc pas la limitation :
+	# vérifié, un `X-Forwarded-For: 9.9.9.9` forgé n'atteint pas l'API.
+	# Ne déclarer `trusted_proxies` que le jour où un vrai relais se place
+	# devant Caddy — ce serait sinon rouvrir exactement ce trou.
+	handle /api/* {
+		reverse_proxy api:8000
+	}
+
+	handle {
+		reverse_proxy web:3000
+	}
+
+	header {
+		# Le navigateur refuse le HTTP en clair sur ce domaine pendant un an,
+		# y compris à la première visite après expiration du cache.
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		# Interdit d'interpréter une réponse selon un type deviné plutôt que
+		# déclaré.
+		X-Content-Type-Options "nosniff"
+		# KAIROS ne s'affiche dans aucun cadre : rien à encadrer, donc rien à
+		# détourner par superposition.
+		X-Frame-Options "DENY"
+		# Une URL de KAIROS ne part pas vers un site tiers.
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	# Les journaux d'accès conservent la méthode et le chemin, jamais le corps
+	# des requêtes. Aucun numéro de série ne circule dans une URL (règle 11) :
+	# c'est ce qui rend ces journaux sûrs à conserver.
+	log {
+		output stdout
+		format json
+	}
+}

@@ -1,0 +1,140 @@
+# Déploiement de production sur une machine unique (Q-02).
+#
+# Un seul utilisateur, aucun problème de charge à résoudre : une machine, un
+# réseau interne, une sauvegarde. Les seuls ports ouverts sur Internet sont
+# ceux de Caddy.
+#
+#   docker compose -f infra/docker-compose.prod.yml up -d --build
+#
+# Toutes les valeurs sensibles viennent de `infra/.env.production`, qui n'est
+# pas versionné. Chacune est déclarée `${VAR:?...}` : une variable oubliée
+# arrête le démarrage au lieu de laisser passer une valeur par défaut, ce qui
+# est exactement ce qu'on veut d'un mot de passe de base de données.
+
+name: kairos
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: kairos
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?mot de passe PostgreSQL manquant}
+      POSTGRES_DB: kairos
+    volumes:
+      - kairos_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kairos -d kairos"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    # Aucune persistance : Redis ne porte que les compteurs d'échecs de
+    # connexion, dont la fenêtre est de cinq minutes. Les écrire sur disque
+    # coûterait des entrées-sorties pour une donnée qui doit disparaître.
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  # Les migrations tournent dans leur propre conteneur, qui s'arrête ensuite.
+  # Les faire jouer au démarrage de l'API les rejouerait à chaque
+  # redémarrage, et deux instances les joueraient en même temps.
+  migrate:
+    build:
+      context: ..
+      dockerfile: infra/docker/api.Dockerfile
+    restart: "no"
+    environment:
+      ENVIRONMENT: production
+      DATABASE_URL: postgresql+psycopg://kairos:${POSTGRES_PASSWORD:?}@postgres:5432/kairos
+      REDIS_URL: redis://redis:6379/0
+      CURSOR_SECRET: ${CURSOR_SECRET:?secret de curseur manquant}
+      CORS_ALLOWED_ORIGINS: '["https://${KAIROS_DOMAIN:?domaine manquant}"]'
+    command: ["alembic", "-c", "alembic.ini", "upgrade", "head"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    build:
+      context: ..
+      dockerfile: infra/docker/api.Dockerfile
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: production
+      DATABASE_URL: postgresql+psycopg://kairos:${POSTGRES_PASSWORD:?}@postgres:5432/kairos
+      REDIS_URL: redis://redis:6379/0
+      CURSOR_SECRET: ${CURSOR_SECRET:?secret de curseur manquant}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      ACTIVE_RULESET_VERSION: ${ACTIVE_RULESET_VERSION:-1.2.0}
+      # Le navigateur ne parle qu'à l'origine de l'interface : CORS ne sert
+      # jamais en pratique. La configuration l'exige quand même hors local, et
+      # elle a raison — une origine locale laissée en place autoriserait des
+      # requêtes authentifiées depuis n'importe quel poste.
+      CORS_ALLOWED_ORIGINS: '["https://${KAIROS_DOMAIN:?domaine manquant}"]'
+    # `--proxy-headers` : sans cela, uvicorn ignore `X-Forwarded-For` et la
+    # limitation de débit attribuerait tous les échecs à Caddy. La liste
+    # d'adresses de confiance est restreinte au réseau interne de Docker :
+    # l'en-tête n'est cru que s'il vient de notre propre relais.
+    command:
+      - uvicorn
+      - app.main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --proxy-headers
+      - --forwarded-allow-ips
+      - 172.16.0.0/12
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  web:
+    build:
+      context: ..
+      dockerfile: infra/docker/web.Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      # Les composants serveur appellent l'API directement par le réseau
+      # interne : passer par Caddy leur ferait faire un aller-retour sur
+      # Internet pour se parler à eux-mêmes.
+      API_INTERNAL_URL: http://api:8000
+    depends_on:
+      - api
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      KAIROS_DOMAIN: ${KAIROS_DOMAIN:?domaine manquant}
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # Les certificats survivent aux redémarrages. Sans ce volume, chaque
+      # redéploiement en redemanderait un, et Let's Encrypt limite le nombre
+      # de demandes par semaine et par domaine.
+      - kairos_caddy_data:/data
+      - kairos_caddy_config:/config
+    depends_on:
+      - web
+      - api
+
+volumes:
+  kairos_postgres_data:
+  kairos_caddy_data:
+  kairos_caddy_config:

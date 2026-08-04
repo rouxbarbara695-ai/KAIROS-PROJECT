@@ -21,6 +21,12 @@ next-env.d.ts
 .env
 .env.*
 !.env.example
+!.env.production.example
+
+# Clés de sauvegarde. Elles vivent sur le serveur, dans /etc/kairos, jamais
+# ici : une clé versionnée rend le chiffrement de la sauvegarde décoratif.
+*.key
+backup.key
 
 # OS / editors
 .DS_Store

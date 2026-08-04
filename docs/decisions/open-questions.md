@@ -5,8 +5,8 @@ configurations, mais ne doit ni activer ni inventer une réponse.
 
 | ID | Question | Valeur V1 conservatrice | Bloque |
 |---|---|---|---|
-| Q-01 | fournisseur d’authentification | aucun en local | exposition Internet |
-| Q-02 | hébergement et stockage objet | ports abstraits | déploiement |
+| Q-01 | fournisseur d’authentification | **tranchée : aucun fournisseur tiers** — mots de passe Argon2id et sessions opaques révocables, comptes créés en ligne de commande (POL-040) | — |
+| Q-02 | hébergement et stockage objet | **tranchée, voir ci-dessous** | — |
 | Q-03 | fournisseur de taux FX | port + taux EUR=1 en test | calcul réel non EUR — **dépriorisé, voir ci-dessous** |
 | Q-04 | accès Chrono24 | manuel uniquement | KAI-405 Chrono24 |
 | Q-05 | accès Catawiki | manuel uniquement | KAI-405 Catawiki |
@@ -21,6 +21,38 @@ configurations, mais ne doit ni activer ni inventer une réponse.
 
 Une décision modifiant un calcul crée un nouveau ruleset. Une décision d’accès
 plateforme crée une nouvelle `PlatformRule`; elle ne modifie pas l’historique.
+
+## Q-02 — hébergement
+
+**Arbitrage retenu : une machine unique**, chez un hébergeur européen
+(Hetzner ou Scaleway), avec Docker Compose et Caddy. Procédure complète dans
+`docs/delivery/deploiement.md`.
+
+KAIROS sert un utilisateur : il n’y a aucun problème de charge à résoudre,
+donc rien à gagner à payer de l’élasticité. Une plateforme managée facturerait
+PostgreSQL et Redis séparément là où ce sont ici deux conteneurs, pour un coût
+qui dériverait avec l’usage. Et les données en jeu — registre de trésorerie,
+analyses publiées, historique d’audit — sont immuables et sans double : une
+machine, une sauvegarde, aucun tiers.
+
+**Contrepartie assumée et non négociable** : les sauvegardes appartiennent au
+propriétaire. Un dump chiffré quotidien, relu après écriture, avec rotation sur
+quatorze jours, est livré avec le déploiement, ainsi qu’un script de
+restauration à essayer **avant** d’en avoir besoin.
+
+**Conséquence sur l’exposition** : Caddy est le seul service joignable depuis
+Internet. PostgreSQL et Redis n’ont aucun port publié. Le certificat TLS est
+automatique, ce qui n’est pas un confort : le cookie de session est marqué
+`Secure` hors développement local, donc sans HTTPS il n’y a pas de connexion.
+
+**Stockage objet : toujours sans objet.** Aucune image ni page brute n’est
+conservée par défaut (Q-08), donc rien à stocker ailleurs que dans PostgreSQL.
+La question se rouvrira le jour où l’import externe conservera des pièces
+jointes.
+
+**Ce que cela ne couvre pas** : aucune supervision, aucun envoi de courrier. Un
+contrôle externe sur `/api/v1/health` est recommandé ; le mot de passe se
+change en ligne de commande sur le serveur.
 
 ## Q-03 — précisions
 

@@ -49,9 +49,17 @@ def _client_ip(request: Request) -> str:
     l'en-tête transmis par le proxy, en ne gardant que la première adresse,
     celle du client d'origine.
 
-    Cet en-tête est falsifiable par le client. C'est acceptable ici : il ne
-    donne aucun accès, il ne fait que répartir un compteur — et le compteur par
-    adresse électronique reste, lui, insensible à cette falsification.
+    Lu seul, cet en-tête serait falsifiable : il suffirait d'en inventer un
+    nouveau à chaque essai pour repartir d'un compteur vierge. Ce qui l'empêche
+    n'est pas ici mais devant — Caddy remplace `X-Forwarded-For` par l'adresse
+    réelle du client au lieu d'y ajouter la sienne (voir
+    `infra/caddy/Caddyfile`). La garantie appartient donc au relais, et elle
+    tombe si l'on place KAIROS derrière un relais qui, lui, se contente
+    d'ajouter.
+
+    Même dans ce cas la limitation ne s'effondre pas : le compteur par adresse
+    électronique reste insensible à la falsification, et cet en-tête ne donne
+    jamais d'accès — il ne fait que répartir un compteur.
     """
 
     forwarded = request.headers.get("x-forwarded-for")

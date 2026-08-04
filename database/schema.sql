@@ -43,8 +43,27 @@ create type ledger_entry_kind as enum
 create table users (
   id uuid primary key default gen_random_uuid(),
   email text not null unique,
+  -- Empreinte Argon2id. Nulle tant qu'aucun mot de passe n'a été défini :
+  -- un tel compte ne peut pas se connecter, ce qui est le bon défaut.
+  password_hash text,
   created_at timestamptz not null default now()
 );
+
+-- Sessions opaques. Le jeton n'est jamais stocké, seule son empreinte l'est :
+-- une base lue par un tiers ne doit pas lui donner de sessions utilisables.
+create table user_sessions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id),
+  token_fingerprint text not null unique,
+  issued_at timestamptz not null default now(),
+  expires_at timestamptz not null,
+  last_seen_at timestamptz not null default now(),
+  revoked_at timestamptz,
+  check (expires_at > issued_at),
+  check (revoked_at is null or revoked_at >= issued_at)
+);
+
+create index user_sessions_user_idx on user_sessions (user_id);
 
 create table portfolios (
   id uuid primary key default gen_random_uuid(),

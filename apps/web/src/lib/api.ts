@@ -7,8 +7,23 @@ export type AuditEventResponse = components["schemas"]["AuditEventResponse"];
 export type AuditEventPage = components["schemas"]["AuditEventPage"];
 export type PriceInputCreate = components["schemas"]["PriceInputCreate"];
 
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
+/**
+ * Deux adresses pour une seule API, et c'est voulu.
+ *
+ * Le navigateur passe par l'origine de l'interface (`/api/v1`), réécrite vers
+ * l'API par Next : c'est ce qui permet au cookie de session d'appartenir à
+ * cette origine, donc d'être lisible par le middleware et par les composants
+ * serveur.
+ *
+ * Le serveur Next, lui, appelle l'API directement — passer par lui-même
+ * ferait un aller-retour réseau pour rien — et joint le cookie à la main.
+ */
+const BROWSER_BASE_URL = "/api/v1";
+const SERVER_BASE_URL = `${process.env.API_INTERNAL_URL ?? "http://127.0.0.1:8000"}/api/v1`;
+
+function baseUrl(): string {
+  return typeof window === "undefined" ? SERVER_BASE_URL : BROWSER_BASE_URL;
+}
 
 type ErrorEnvelope = {
   error?: {
@@ -42,11 +57,30 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Transmet le cookie de session à l'API.
+ *
+ * Deux chemins, parce que les pages s'exécutent des deux côtés. Dans le
+ * navigateur, `credentials: "include"` suffit : le cookie part tout seul. Sur
+ * le serveur Next, il n'y a pas de navigateur pour le joindre — il faut le
+ * relire de la requête entrante et le recopier, faute de quoi tout composant
+ * serveur recevrait un 401 alors que l'utilisateur est bien connecté.
+ */
+async function sessionHeaders(): Promise<Record<string, string>> {
+  if (typeof window !== "undefined") return {};
+  const { cookies } = await import("next/headers");
+  const jar = await cookies();
+  const token = jar.get("kairos_session")?.value;
+  return token ? { cookie: `kairos_session=${token}` } : {};
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${BASE_URL}${path}`, {
+  const response = await fetch(`${baseUrl()}${path}`, {
     ...init,
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
+      ...(await sessionHeaders()),
       ...init?.headers,
     },
     cache: "no-store",
@@ -370,4 +404,15 @@ export function recordPayout(
     method: "POST",
     body: JSON.stringify(body),
   });
+}
+
+export function login(email: string, password: string): Promise<unknown> {
+  return request("/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  });
+}
+
+export function logout(): Promise<unknown> {
+  return request("/auth/logout", { method: "POST" });
 }

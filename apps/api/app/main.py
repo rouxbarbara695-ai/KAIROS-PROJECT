@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.errors import register_error_handlers
 from app.api.v1.routes.analyses import router as analyses_router
+from app.api.v1.routes.auth import router as auth_router
 from app.api.v1.routes.comparables import router as comparables_router
 from app.api.v1.routes.health import router as health_router
 from app.api.v1.routes.me import router as me_router
@@ -24,7 +25,9 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_allowed_origins,
-        allow_credentials=False,
+        # Les sessions voyagent en cookie : sans cela, le navigateur ne
+        # l'enverrait jamais à une API servie sur une autre origine.
+        allow_credentials=True,
         allow_methods=["GET", "POST", "PATCH"],
         allow_headers=["*"],
     )
@@ -32,6 +35,7 @@ def create_app() -> FastAPI:
     register_error_handlers(app)
 
     app.include_router(health_router, prefix="/api/v1")
+    app.include_router(auth_router, prefix="/api/v1")
     app.include_router(me_router, prefix="/api/v1")
     app.include_router(opportunities_router, prefix="/api/v1")
     app.include_router(platforms_router, prefix="/api/v1")

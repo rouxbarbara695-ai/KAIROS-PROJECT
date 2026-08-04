@@ -18,12 +18,14 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.identity.adapters.attempt_log import LoginAttemptLog
 from app.identity.domain.credentials import (
     fingerprint,
     hash_password,
     new_session_token,
     verify_password,
 )
+from app.identity.domain.throttle import evaluate
 from app.shared.domain.errors import DomainError, ErrorCode
 from app.shared.domain.principal import Principal
 from app.shared.infrastructure.db.models.accounts import (
@@ -103,6 +105,8 @@ async def log_in(
     email: str,
     password: str,
     lifetime: timedelta = _DEFAULT_LIFETIME,
+    attempts: LoginAttemptLog | None = None,
+    client_ip: str = "inconnue",
 ) -> str:
     """Vérifie les identifiants et ouvre une session. Retourne le jeton clair.
 
@@ -115,11 +119,27 @@ async def log_in(
     """
 
     normalised = email.strip().lower()
+
+    # La limite est évaluée **avant** toute vérification : Argon2 est lent par
+    # construction, et laisser l'attaquant déclencher ce calcul reviendrait à
+    # lui offrir le déni de service que la limitation doit empêcher.
+    if attempts is not None:
+        from_ip, for_email = await attempts.failures(ip=client_ip, email=normalised)
+        verdict = evaluate(failures_from_ip=from_ip, failures_for_email=for_email)
+        if not verdict.allowed:
+            raise DomainError(
+                ErrorCode.RATE_LIMITED,
+                "Trop de tentatives de connexion. Réessayez dans quelques minutes.",
+                details={"retry_after_seconds": verdict.retry_after_seconds},
+            )
+
     user = (
         await session.execute(select(User).where(User.email == normalised))
     ).scalar_one_or_none()
 
     if not verify_password(password, None if user is None else user.password_hash):
+        if attempts is not None:
+            await attempts.record_failure(ip=client_ip, email=normalised)
         raise DomainError(ErrorCode.UNAUTHORIZED, "Adresse ou mot de passe incorrect.")
 
     assert user is not None  # verify_password échoue toujours sans utilisateur
@@ -136,6 +156,12 @@ async def log_in(
         )
     )
     await session.commit()
+
+    # Quelques fautes de frappe suivies d'une connexion réussie ne doivent pas
+    # amputer le budget des cinq minutes suivantes.
+    if attempts is not None:
+        await attempts.clear(ip=client_ip, email=normalised)
+
     return token
 
 

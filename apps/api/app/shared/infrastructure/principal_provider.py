@@ -1,61 +1,35 @@
 from __future__ import annotations
 
-from fastapi import Depends
-from sqlalchemy import select
+from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.shared.config import Settings, get_settings
+from app.identity.application.authentication import resolve_session
+from app.shared.domain.errors import DomainError, ErrorCode
 from app.shared.domain.principal import Principal
-from app.shared.infrastructure.db.models.accounts import (
-    Portfolio,
-    PortfolioMember,
-    User,
-)
 from app.shared.infrastructure.db.session import get_session
 
-_DEFAULT_PORTFOLIO_NAME = "Portefeuille par défaut"
+SESSION_COOKIE = "kairos_session"
 
 
 async def get_current_principal(
+    request: Request,
     session: AsyncSession = Depends(get_session),
-    settings: Settings = Depends(get_settings),
 ) -> Principal:
-    """Résout l'utilisateur de développement unique (Q-01) et garantit
-    l'existence d'un portefeuille par défaut dont il est membre. Un
-    adaptateur d'authentification réel remplacera cette fonction sans
-    changer la forme de `Principal` consommée par les routes."""
+    """Résout le mandataire depuis le cookie de session.
 
-    email = settings.dev_principal_email
-    user = (
-        await session.execute(select(User).where(User.email == email))
-    ).scalar_one_or_none()
-    if user is None:
-        user = User(email=email)
-        session.add(user)
-        await session.flush()
+    Il n'y a plus de mandataire de développement créé à la volée depuis une
+    adresse de configuration : c'était commode tant que KAIROS tournait sur un
+    poste, et c'était une porte ouverte dès la première mise en ligne. Un
+    compte se crée en ligne de commande sur la machine qui héberge la base
+    (`python -m app.create_user`).
 
-    membership_rows = (
-        (
-            await session.execute(
-                select(PortfolioMember.portfolio_id).where(
-                    PortfolioMember.user_id == user.id
-                )
-            )
-        )
-        .scalars()
-        .all()
-    )
+    Le jeton est lu dans un cookie et non dans un en-tête `Authorization` : un
+    cookie `HttpOnly` n'est pas lisible par du JavaScript, donc pas
+    exfiltrable par une injection dans l'interface.
+    """
 
-    if not membership_rows:
-        portfolio = Portfolio(name=_DEFAULT_PORTFOLIO_NAME)
-        session.add(portfolio)
-        await session.flush()
-        session.add(
-            PortfolioMember(portfolio_id=portfolio.id, user_id=user.id, role="owner")
-        )
-        await session.flush()
-        membership_rows = [portfolio.id]
+    token = request.cookies.get(SESSION_COOKIE)
+    if not token:
+        raise DomainError(ErrorCode.UNAUTHORIZED, "Authentification requise.")
 
-    await session.commit()
-
-    return Principal(user_id=user.id, portfolio_ids=frozenset(membership_rows))
+    return await resolve_session(session, token)

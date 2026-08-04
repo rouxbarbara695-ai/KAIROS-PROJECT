@@ -13,8 +13,10 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from app.identity.application.authentication import create_user, log_in
 from app.main import app
 from app.shared.infrastructure.db.session import get_session
+from app.shared.infrastructure.principal_provider import SESSION_COOKIE
 
 _ADMIN_DSN = "postgresql://kairos:kairos@localhost:5432/postgres"
 _TEST_DB_NAME = "kairos_test"
@@ -120,8 +122,66 @@ async def db_session(_engine) -> AsyncIterator[AsyncSession]:
         yield session
 
 
+# Compte de test unique, créé une fois pour la session. Les tests passent par
+# la vraie authentification plutôt que par une dérogation : un contournement
+# réservé aux tests laisserait la porte qu'ils sont censés vérifier fermée
+# nulle part ailleurs.
+TEST_EMAIL = "tests@kairos.local"
+TEST_PASSWORD = "mot-de-passe-de-test-suffisamment-long"
+
+
+@pytest_asyncio.fixture(scope="session")
+async def _test_user(_engine) -> None:
+    """Crée le compte de test une fois pour la suite.
+
+    Séparé de l'ouverture de session parce que les tests anonymes en ont
+    besoin aussi : sans compte, une connexion échouerait pour la mauvaise
+    raison.
+    """
+
+    factory = async_sessionmaker(bind=_engine, expire_on_commit=False)
+    async with factory() as session:
+        await create_user(session, email=TEST_EMAIL, password=TEST_PASSWORD)
+
+
+@pytest_asyncio.fixture(scope="session")
+async def _session_token(_engine, _test_user: None) -> str:
+    """Ouvre une session une fois pour toute la suite.
+
+    Argon2 est lent par construction — c'est sa raison d'être. Rehacher et
+    revérifier un mot de passe à chaque test coûterait une trentaine de
+    secondes sans rien prouver de plus : la connexion réelle est vérifiée par
+    les tests qui la visent.
+    """
+
+    factory = async_sessionmaker(bind=_engine, expire_on_commit=False)
+    async with factory() as session:
+        return await log_in(session, email=TEST_EMAIL, password=TEST_PASSWORD)
+
+
 @pytest_asyncio.fixture
-async def client(_engine) -> AsyncIterator[AsyncClient]:
+async def client(_engine, _session_token: str) -> AsyncIterator[AsyncClient]:
+    factory = async_sessionmaker(bind=_engine, expire_on_commit=False)
+
+    async def _override_get_session() -> AsyncIterator[AsyncSession]:
+        async with factory() as session:
+            yield session
+
+    app.dependency_overrides[get_session] = _override_get_session
+    transport = ASGITransport(app=app)
+    async with AsyncClient(
+        transport=transport,
+        base_url="http://test",
+        cookies={SESSION_COOKIE: _session_token},
+    ) as ac:
+        yield ac
+    app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture
+async def anonymous_client(_engine, _test_user: None) -> AsyncIterator[AsyncClient]:
+    """Un client sans session, pour vérifier ce qui doit être refusé."""
+
     factory = async_sessionmaker(bind=_engine, expire_on_commit=False)
 
     async def _override_get_session() -> AsyncIterator[AsyncSession]:
@@ -139,25 +199,26 @@ async def client(_engine) -> AsyncIterator[AsyncClient]:
 async def default_portfolio_id(
     client: AsyncClient, db_session: AsyncSession
 ) -> uuid.UUID:
-    """Déclenche le bootstrap du principal de développement (première requête
-    authentifiée) puis relit l'identifiant de son portefeuille par défaut.
+    """Portefeuille du compte de test, retrouvé par son appartenance.
 
-    Filtré par nom : `users`/`portfolios` ne sont pas réinitialisés entre les
-    tests (voir `_TRUNCATE_TABLES`), et certains tests de
-    `test_migrations.py` insèrent leurs propres portefeuilles isolés — un
-    `select(Portfolio.id)` sans filtre choisirait une ligne arbitraire."""
+    Par l'appartenance et non par le nom : `users`/`portfolios` ne sont pas
+    réinitialisés entre les tests (voir `_TRUNCATE_TABLES`), et d'autres
+    comptes — ceux des tests d'authentification, ceux de `test_migrations.py`
+    — possèdent leur propre « Portefeuille par défaut ». Filtrer par nom
+    choisirait l'un d'eux au hasard."""
 
     from sqlalchemy import select
 
-    from app.shared.infrastructure.db.models.accounts import Portfolio
-    from app.shared.infrastructure.principal_provider import _DEFAULT_PORTFOLIO_NAME
+    from app.shared.infrastructure.db.models.accounts import PortfolioMember, User
 
     response = await client.get("/api/v1/opportunities")
     assert response.status_code == 200
 
     portfolio_id = (
         await db_session.execute(
-            select(Portfolio.id).where(Portfolio.name == _DEFAULT_PORTFOLIO_NAME)
+            select(PortfolioMember.portfolio_id)
+            .join(User, User.id == PortfolioMember.user_id)
+            .where(User.email == TEST_EMAIL)
         )
     ).scalar_one_or_none()
     assert portfolio_id is not None

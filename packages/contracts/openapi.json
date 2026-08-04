@@ -788,6 +788,77 @@
         "title": "CreateOpportunityRequest",
         "type": "object"
       },
+      "FeeBasisIn": {
+        "description": "Sur quoi la commission se calcule.",
+        "enum": [
+          "price",
+          "price_and_shipping"
+        ],
+        "title": "FeeBasisIn",
+        "type": "string"
+      },
+      "FeeTierIn-Input": {
+        "description": "Une tranche de bar\u00e8me, appliqu\u00e9e marginalement.\n\n`up_to` vide marque la derni\u00e8re tranche, celle qui couvre tout le reste.\nSans elle, un montant au-del\u00e0 du dernier palier ne saurait pas se calculer,\net extrapoler au dernier taux serait inventer une r\u00e8gle.",
+        "properties": {
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              }
+            ],
+            "title": "Rate"
+          },
+          "up_to": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Up To"
+          }
+        },
+        "required": [
+          "rate"
+        ],
+        "title": "FeeTierIn",
+        "type": "object"
+      },
+      "FeeTierIn-Output": {
+        "description": "Une tranche de bar\u00e8me, appliqu\u00e9e marginalement.\n\n`up_to` vide marque la derni\u00e8re tranche, celle qui couvre tout le reste.\nSans elle, un montant au-del\u00e0 du dernier palier ne saurait pas se calculer,\net extrapoler au dernier taux serait inventer une r\u00e8gle.",
+        "properties": {
+          "rate": {
+            "title": "Rate",
+            "type": "string"
+          },
+          "up_to": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Up To"
+          }
+        },
+        "required": [
+          "rate"
+        ],
+        "title": "FeeTierIn",
+        "type": "object"
+      },
       "GateResultResponse": {
         "properties": {
           "blocking": {
@@ -1365,6 +1436,10 @@
       "PlatformRuleCreate": {
         "description": "Grille de frais saisie \u00e0 la main.\n\nAucun champ n'a de valeur par d\u00e9faut : inventer une commission fausserait\ntous les profits d'un portefeuille sans que rien ne le signale. Tout\nlaisser vide est accept\u00e9 \u2014 c'est une plateforme sans frais, et c'est un\nconstat, pas un oubli.\n\n`provenance_url` est obligatoire : une grille qu'on ne peut pas v\u00e9rifier\nne vaut pas mieux qu'une grille invent\u00e9e.",
         "properties": {
+          "buyer_fee_basis": {
+            "$ref": "#/components/schemas/FeeBasisIn",
+            "default": "price"
+          },
           "buyer_fee_fixed": {
             "anyOf": [
               {
@@ -1424,6 +1499,13 @@
               }
             ],
             "title": "Buyer Fee Rate"
+          },
+          "buyer_fee_tiers": {
+            "items": {
+              "$ref": "#/components/schemas/FeeTierIn-Input"
+            },
+            "title": "Buyer Fee Tiers",
+            "type": "array"
           },
           "buyer_fee_vat_rate": {
             "anyOf": [
@@ -1472,6 +1554,10 @@
             "title": "Region Code",
             "type": "string"
           },
+          "seller_fee_basis": {
+            "$ref": "#/components/schemas/FeeBasisIn",
+            "default": "price"
+          },
           "seller_fee_fixed": {
             "anyOf": [
               {
@@ -1532,6 +1618,13 @@
             ],
             "title": "Seller Fee Rate"
           },
+          "seller_fee_tiers": {
+            "items": {
+              "$ref": "#/components/schemas/FeeTierIn-Input"
+            },
+            "title": "Seller Fee Tiers",
+            "type": "array"
+          },
           "seller_fee_vat_rate": {
             "anyOf": [
               {
@@ -1563,6 +1656,10 @@
           "access_method": {
             "title": "Access Method",
             "type": "string"
+          },
+          "buyer_fee_basis": {
+            "$ref": "#/components/schemas/FeeBasisIn",
+            "default": "price"
           },
           "buyer_fee_fixed": {
             "anyOf": [
@@ -1607,6 +1704,13 @@
               }
             ],
             "title": "Buyer Fee Rate"
+          },
+          "buyer_fee_tiers": {
+            "items": {
+              "$ref": "#/components/schemas/FeeTierIn-Output"
+            },
+            "title": "Buyer Fee Tiers",
+            "type": "array"
           },
           "buyer_fee_vat_rate": {
             "anyOf": [
@@ -1654,6 +1758,10 @@
             "title": "Region Code",
             "type": "string"
           },
+          "seller_fee_basis": {
+            "$ref": "#/components/schemas/FeeBasisIn",
+            "default": "price"
+          },
           "seller_fee_fixed": {
             "anyOf": [
               {
@@ -1697,6 +1805,13 @@
               }
             ],
             "title": "Seller Fee Rate"
+          },
+          "seller_fee_tiers": {
+            "items": {
+              "$ref": "#/components/schemas/FeeTierIn-Output"
+            },
+            "title": "Seller Fee Tiers",
+            "type": "array"
           },
           "seller_fee_vat_rate": {
             "anyOf": [

@@ -224,12 +224,22 @@ def test_the_maximum_price_is_rounded_down_to_its_increment(
     assert maximum.value_eur % maximum.increment_eur == 0
 
 
-def test_bounded_buyer_fees_switch_the_solver(ruleset: Ruleset) -> None:
-    """Un plafond de commission détruit la linéarité : la forme fermée cesse
-    d'être valide et le solveur binaire doit prendre le relais."""
+def test_the_closed_form_is_reserved_to_platforms_without_buyer_fees(
+    ruleset: Ruleset,
+) -> None:
+    """Dès qu'un frais acheteur existe, c'est la fonction de coût qui fait foi.
+
+    On ne tente plus de deviner si les frais sont « linéaires » : un barème par
+    tranches, un plancher ou un plafond les rendent non linéaires, et deux
+    implémentations du même coût finiraient par diverger. La forme fermée reste
+    pour le seul cas où il n'y a rien à recalculer.
+    """
+
+    free = _analyse(ruleset, transaction_costs=_costs(PlatformFees()))
+    assert free.max_purchase.solver == "closed_form"
 
     linear = _analyse(ruleset)
-    assert linear.max_purchase.solver == "closed_form"
+    assert linear.max_purchase.solver == "binary_search"
 
     bounded_fees = PlatformFees(
         buyer_fee_rate=Decimal("0.05"),
@@ -260,7 +270,7 @@ def test_platform_fees_are_never_counted_twice(ruleset: Ruleset) -> None:
     closed = _analyse(ruleset, transaction_costs=_costs(uncapped))
 
     assert binary.max_purchase.solver == "binary_search"
-    assert closed.max_purchase.solver == "closed_form"
+    assert closed.max_purchase.solver == "binary_search"
     assert binary.max_purchase.value_eur == closed.max_purchase.value_eur
 
 

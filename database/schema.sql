@@ -140,18 +140,26 @@ create table platform_rules (
   buyer_fee_rate numeric(18,10),
   buyer_fee_fixed numeric(16,2),
   buyer_fee_currency char(3),
-  buyer_fee_basis text,
+  -- 'price' ou 'price_and_shipping' : eBay commissionne le port, pas
+  -- Chrono24.
+  buyer_fee_basis text not null default 'price',
   buyer_fee_min numeric(16,2),
   buyer_fee_max numeric(16,2),
   buyer_fee_vat_rate numeric(18,10),
+  -- Barème par tranches, appliqué marginalement. Remplace le taux unique
+  -- quand il existe : eBay prélève 10 % sur les 2 000 premiers euros puis 2 %
+  -- au-delà, ce qu'aucun taux unique ne représente sans se tromper du simple
+  -- au double selon le montant.
+  buyer_fee_tiers jsonb not null default '[]'::jsonb,
 
   seller_fee_rate numeric(18,10),
   seller_fee_fixed numeric(16,2),
   seller_fee_currency char(3),
-  seller_fee_basis text,
+  seller_fee_basis text not null default 'price',
   seller_fee_min numeric(16,2),
   seller_fee_max numeric(16,2),
   seller_fee_vat_rate numeric(18,10),
+  seller_fee_tiers jsonb not null default '[]'::jsonb,
 
   -- Frais de traitement du paiement prélevés au vendeur, en plus de la
   -- commission. Séparés parce qu'ils ne portent pas de TVA et qu'ils
@@ -190,6 +198,10 @@ create table platform_rules (
   check (buyer_fee_vat_rate is null or (buyer_fee_vat_rate >= 0 and buyer_fee_vat_rate <= 1)),
   check (seller_fee_vat_rate is null or (seller_fee_vat_rate >= 0 and seller_fee_vat_rate <= 1)),
   check (payment_fee_rate is null or (payment_fee_rate >= 0 and payment_fee_rate <= 1)),
+  check (buyer_fee_basis in ('price', 'price_and_shipping')),
+  check (seller_fee_basis in ('price', 'price_and_shipping')),
+  check (jsonb_typeof(buyer_fee_tiers) = 'array'),
+  check (jsonb_typeof(seller_fee_tiers) = 'array'),
   check (buyer_fee_min is null or buyer_fee_max is null or buyer_fee_min <= buyer_fee_max),
   check (seller_fee_min is null or seller_fee_max is null or seller_fee_min <= seller_fee_max),
   check (buyer_fee_fixed is null or buyer_fee_currency is not null),

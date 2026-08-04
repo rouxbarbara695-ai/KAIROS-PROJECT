@@ -813,6 +813,40 @@ export interface components {
             source: components["schemas"]["SourceCreate"];
             watch: components["schemas"]["WatchCreate"];
         };
+        /**
+         * FeeBasisIn
+         * @description Sur quoi la commission se calcule.
+         * @enum {string}
+         */
+        FeeBasisIn: "price" | "price_and_shipping";
+        /**
+         * FeeTierIn
+         * @description Une tranche de barème, appliquée marginalement.
+         *
+         *     `up_to` vide marque la dernière tranche, celle qui couvre tout le reste.
+         *     Sans elle, un montant au-delà du dernier palier ne saurait pas se calculer,
+         *     et extrapoler au dernier taux serait inventer une règle.
+         */
+        "FeeTierIn-Input": {
+            /** Rate */
+            rate: number | string;
+            /** Up To */
+            up_to?: number | string | null;
+        };
+        /**
+         * FeeTierIn
+         * @description Une tranche de barème, appliquée marginalement.
+         *
+         *     `up_to` vide marque la dernière tranche, celle qui couvre tout le reste.
+         *     Sans elle, un montant au-delà du dernier palier ne saurait pas se calculer,
+         *     et extrapoler au dernier taux serait inventer une règle.
+         */
+        "FeeTierIn-Output": {
+            /** Rate */
+            rate: string;
+            /** Up To */
+            up_to?: string | null;
+        };
         /** GateResultResponse */
         GateResultResponse: {
             /** Blocking */
@@ -1058,6 +1092,8 @@ export interface components {
          *     ne vaut pas mieux qu'une grille inventée.
          */
         PlatformRuleCreate: {
+            /** @default price */
+            buyer_fee_basis: components["schemas"]["FeeBasisIn"];
             /** Buyer Fee Fixed */
             buyer_fee_fixed?: number | string | null;
             /** Buyer Fee Max */
@@ -1066,6 +1102,8 @@ export interface components {
             buyer_fee_min?: number | string | null;
             /** Buyer Fee Rate */
             buyer_fee_rate?: number | string | null;
+            /** Buyer Fee Tiers */
+            buyer_fee_tiers?: components["schemas"]["FeeTierIn-Input"][];
             /** Buyer Fee Vat Rate */
             buyer_fee_vat_rate?: number | string | null;
             /**
@@ -1082,6 +1120,8 @@ export interface components {
              * @default *
              */
             region_code: string;
+            /** @default price */
+            seller_fee_basis: components["schemas"]["FeeBasisIn"];
             /** Seller Fee Fixed */
             seller_fee_fixed?: number | string | null;
             /** Seller Fee Max */
@@ -1090,6 +1130,8 @@ export interface components {
             seller_fee_min?: number | string | null;
             /** Seller Fee Rate */
             seller_fee_rate?: number | string | null;
+            /** Seller Fee Tiers */
+            seller_fee_tiers?: components["schemas"]["FeeTierIn-Input"][];
             /** Seller Fee Vat Rate */
             seller_fee_vat_rate?: number | string | null;
         };
@@ -1099,6 +1141,8 @@ export interface components {
             access_authorized: boolean;
             /** Access Method */
             access_method: string;
+            /** @default price */
+            buyer_fee_basis: components["schemas"]["FeeBasisIn"];
             /** Buyer Fee Fixed */
             buyer_fee_fixed?: string | null;
             /** Buyer Fee Max */
@@ -1107,6 +1151,8 @@ export interface components {
             buyer_fee_min?: string | null;
             /** Buyer Fee Rate */
             buyer_fee_rate?: string | null;
+            /** Buyer Fee Tiers */
+            buyer_fee_tiers?: components["schemas"]["FeeTierIn-Output"][];
             /** Buyer Fee Vat Rate */
             buyer_fee_vat_rate?: string | null;
             /**
@@ -1122,6 +1168,8 @@ export interface components {
             provenance_url?: string | null;
             /** Region Code */
             region_code: string;
+            /** @default price */
+            seller_fee_basis: components["schemas"]["FeeBasisIn"];
             /** Seller Fee Fixed */
             seller_fee_fixed?: string | null;
             /** Seller Fee Max */
@@ -1130,6 +1178,8 @@ export interface components {
             seller_fee_min?: string | null;
             /** Seller Fee Rate */
             seller_fee_rate?: string | null;
+            /** Seller Fee Tiers */
+            seller_fee_tiers?: components["schemas"]["FeeTierIn-Output"][];
             /** Seller Fee Vat Rate */
             seller_fee_vat_rate?: string | null;
             /**

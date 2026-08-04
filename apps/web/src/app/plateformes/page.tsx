@@ -146,6 +146,8 @@ export default async function PlatformsPage() {
                             buyerFeeVatRate: rule.buyer_fee_vat_rate,
                             sellerFeeVatRate: rule.seller_fee_vat_rate,
                             paymentFeeRate: rule.payment_fee_rate,
+                            sellerFeeBasis: rule.seller_fee_basis,
+                            sellerFeeTiers: rule.seller_fee_tiers,
                             provenanceUrl: rule.provenance_url,
                           }
                         : null

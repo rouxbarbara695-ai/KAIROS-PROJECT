@@ -42,6 +42,9 @@ PLATFORM_CODE = "catawiki"
 # texte. L'URL fait foi : elle est fournie séparément et ne dépend pas de la
 # langue d'affichage.
 _LOT_IN_URL = re.compile(r"/l/(\d{5,})")
+
+#: « 1990-1999 », « 2010–2020 » : une fourchette, jamais un millésime.
+_PERIOD = re.compile(r"^\s*\d{4}\s*[-–—]\s*\d{4}\s*$")
 _LOT_IN_TEXT = re.compile(
     r"(?i)\b(?:num[ée]ro\s+de\s+lot|lot\s*(?:number|nummer|n[°o]?)|kavelnummer)\s*[:#]?\s*(\d{5,})"
 )
@@ -105,6 +108,20 @@ _SPEC_LABELS: dict[str, tuple[str, ...]] = {
         "onderhoud",
     ),
     "seller_country": ("pays", "country", "land", "pays du vendeur"),
+    # Constatées sur des lots réels : Catawiki publie garantie et assurance
+    # comme des lignes à part entière.
+    "warranty": (
+        "original warranty included",
+        "garantie d'origine incluse",
+        "garantie incluse",
+        "originele garantie inbegrepen",
+    ),
+    "insurance": (
+        "shipped insured",
+        "envoi assuré",
+        "expédition assurée",
+        "verzekerd verzonden",
+    ),
 }
 
 # Boîte et papiers : lus **séparément**, et seulement sur une étiquette qui les
@@ -299,8 +316,118 @@ _DATE_NUMERIC = re.compile(
 _TIMEZONE = re.compile(
     r"(?i)\b(CES?T|UTC|GMT|BST|WEST|WET)\b|\b(?:UTC|GMT)\s*([+-]\d{1,2})(?::?(\d{2}))?"
 )
-_COUNTDOWN = re.compile(
-    r"(?i)\b\d+\s*(?:j(?:ours?)?|d(?:ays?)?|dagen?)\b[^\n]{0,20}?\d+\s*(?:h|u(?:ur)?)\b"
+# Catawiki n'affiche **jamais** de date de clôture absolue : il montre un
+# compte à rebours (« Closes in 23h 28m 23s »), un décompte éclaté sur
+# plusieurs lignes (« 00 / days / 23 / hours »), ou un repère relatif
+# (« Tomorrow 20:26 », « Thursday 21:58 »). Aucun n'est convertible sans
+# supposer l'instant du collage — et une fin d'enchère fausse d'une heure se
+# rate. On les reconnaît pour **le dire**, pas pour les convertir.
+_COUNTDOWN_PATTERNS = (
+    re.compile(r"(?i)\bcloses?\s+in\b"),
+    re.compile(r"(?i)\b(?:se\s+termine|fin)\s+dans\b"),
+    re.compile(r"(?i)\b\d+\s*d\s*\d+\s*[mh]\b"),
+    re.compile(r"(?i)\b\d+\s*h\s*\d+\s*m\b"),
+    re.compile(r"(?i)^(?:days?|hours?|minutes?|seconds?|jours?|heures?)$"),
+)
+_RELATIVE_DAY = re.compile(
+    r"(?i)^((?:tomorrow|today|aujourd'hui|demain"
+    r"|mon|tues|wednes|thurs|fri|satur|sun)[a-zéû]*"
+    r"|lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)\s+(\d{1,2}:\d{2})$"
+)
+
+
+def _countdown_seen(lines: list[str]) -> str | None:
+    """Repère relatif affiché, s'il y en a un. Rendu tel quel, jamais converti."""
+
+    for line in lines:
+        if _RELATIVE_DAY.match(line):
+            return line
+        for pattern in _COUNTDOWN_PATTERNS:
+            if pattern.search(line):
+                return line
+    return None
+
+
+_SECTION_END = (
+    "seller's story",
+    "show more",
+    "details",
+    "shipping",
+    "l'histoire du vendeur",
+    "voir plus",
+    "caractéristiques",
+)
+_DESCRIPTION_START = (
+    "description from the seller",
+    "description du vendeur",
+    "beschrijving van de verkoper",
+    "description",
+)
+
+
+def _title_line(lines: list[str], brand: object) -> str | None:
+    """Ligne de titre du lot, reconnue par la marque et le gabarit à tirets.
+
+    La première ligne du collage est du menu (« Search for brand, model,
+    artist… ») : la prendre pour un titre remplirait le dossier avec du
+    chrome. Sans marque connue, on rend `None` — une absence vaut mieux qu'un
+    morceau d'interface.
+    """
+
+    if not isinstance(brand, str) or not brand:
+        return None
+    prefix = brand.lower()
+    for line in lines:
+        lowered = line.lower()
+        if lowered.startswith(prefix) and " - " in line and "#" not in line:
+            return line
+    return None
+
+
+def _seller_description(lines: list[str]) -> str | None:
+    """Section écrite par le vendeur, sans le reste de la page.
+
+    S'arrête à « Seller's Story » — la présentation commerciale de la
+    boutique, qui ne dit rien de la montre — et aux repères de section
+    suivants. Sans cette borne, la description emporterait le menu,
+    l'historique des enchères et les autres lots du vendeur.
+    """
+
+    start: int | None = None
+    for index, line in enumerate(lines):
+        if line.strip().lower().rstrip(":") in _DESCRIPTION_START:
+            start = index + 1
+            break
+    if start is None:
+        return None
+
+    body: list[str] = []
+    for line in lines[start:]:
+        if line.strip().lower() in _SECTION_END:
+            break
+        body.append(line)
+    text = "\n".join(body).strip()
+    return text or None
+
+
+_BUYER_FEE = re.compile(
+    r"(?i)(?:buyer\s+protection\s+fee|frais\s+de\s+protection|commission\s+acheteur)"
+    r"\s*:?\s*(\d{1,2}(?:[.,]\d+)?)\s*%"
+    r"(?:\s*\+\s*(€|EUR|\$|£)?\s*(\d+(?:[.,]\d{1,2})?))?"
+)
+
+_SHIPS_FROM = re.compile(r"(?i)^ships?\s+from\s+([A-Z]{2})$")
+_PROFESSIONAL = re.compile(
+    r"(?i)sold\s+by\s+a\s+professional\s+seller"
+    r"|vendu\s+par\s+un\s+(?:vendeur\s+)?professionnel"
+)
+
+#: Contradiction fréquente : la fiche technique arrondit le diamètre
+#: (« 21 mm ») là où la description du vendeur donne la mesure réelle
+#: (« 20,7 mm »). On signale, on n'arbitre pas.
+_DIAMETER_IN_TEXT = re.compile(
+    r"(?i)(?:case\s+diameter|diam[èe]tre\s+(?:du\s+)?bo[îi]tier)[^\n\d]{0,40}"
+    r"(\d{2}(?:[.,]\d)?)\s*mm"
 )
 
 
@@ -349,6 +476,52 @@ def _value_after(line: str) -> str | None:
 
 def _matches(label: str, candidates: tuple[str, ...]) -> bool:
     return any(label == candidate for candidate in candidates)
+
+
+#: Début de la fiche technique de Catawiki. Ce qui suit est **structuré** :
+#: des champs que la plateforme impose au vendeur, pas de la prose.
+_DETAILS_MARKERS = ("details", "caractéristiques", "kenmerken", "détails")
+
+
+def _details_section(lines: list[str]) -> list[str]:
+    """Lignes de la fiche technique, si la page en publie une."""
+
+    for index, line in enumerate(lines):
+        if line.strip().lower() in _DETAILS_MARKERS:
+            return lines[index + 1 :]
+    return []
+
+
+def find_value(
+    lines: list[str], candidates: tuple[str, ...]
+) -> tuple[str | None, str | None]:
+    """Valeur de la fiche technique, et celle de la description si elle diffère.
+
+    **La fiche technique l'emporte.** Le vendeur écrit aussi « Movement: … »
+    dans sa prose, souvent en plus bavard (« High-precision Swiss quartz,
+    Caliber Omega 1456 (as indicated on the pictogram card) ») là où la fiche
+    dit « Quartz ». Prendre la prose parce qu'elle apparaît plus haut dans la
+    page remplirait le formulaire de phrases.
+
+    Quand les deux existent et divergent, la seconde est rendue comme
+    **contradiction** : elle est signalée, jamais arbitrée. C'est le cas du
+    diamètre, que la fiche arrondit (« 22 mm ») et que la description donne au
+    dixième (« 22.5 mm »).
+    """
+
+    structured = _details_section(lines)
+    from_details = _find_labelled(structured, candidates) if structured else None
+    from_anywhere = _find_labelled(lines, candidates)
+
+    if from_details is None:
+        return from_anywhere, None
+    if from_anywhere is None or _same(from_details, from_anywhere):
+        return from_details, None
+    return from_details, from_anywhere
+
+
+def _same(left: str, right: str) -> bool:
+    return left.strip().lower().rstrip(".") == right.strip().lower().rstrip(".")
 
 
 def _find_labelled(lines: list[str], candidates: tuple[str, ...]) -> str | None:
@@ -461,12 +634,23 @@ def _closing(lines: list[str], text: str) -> tuple[Imported, Imported, list[str]
     zone = zone_match.group(0).strip() if zone_match else None
 
     if parsed is None:
-        if _COUNTDOWN.search(text):
+        countdown = _countdown_seen(lines)
+        if countdown is not None:
             warnings.append(
-                "L'annonce affiche un compte à rebours (« 2 j 03 h ») et non "
-                "une date. Il n'est pas converti : le collage peut dater d'une "
-                "heure, et une fin d'enchère fausse d'une heure se rate. "
-                "Saisir la date de clôture à la main."
+                f"Clôture affichée en relatif (« {countdown} »), pas en date. "
+                "Elle n'est pas convertie : le collage peut dater d'une heure, "
+                "et une fin d'enchère fausse d'une heure se rate. La date "
+                "exacte est sur Catawiki, à saisir à la main."
+            )
+            return (
+                Imported(
+                    raw=countdown,
+                    value=None,
+                    provenance=Provenance.ASSISTED,
+                    source="repère relatif affiché, non converti",
+                ),
+                absent("aucun fuseau affiché"),
+                warnings,
             )
         return (
             absent("date de clôture non trouvée"),
@@ -674,6 +858,9 @@ def extract(text: str, url: str) -> ListingDraft:
         "warranty",
         "returns",
         "shipping",
+        "buyer_fee_rate",
+        "buyer_fee_fixed",
+        "buyer_fee_currency",
     ):
         setattr(draft, name, absent("non affiché par l'annonce"))
 
@@ -704,14 +891,24 @@ def extract(text: str, url: str) -> ListingDraft:
 
     # --- Caractéristiques ---------------------------------------------------
     for name, labels in _SPEC_LABELS.items():
-        value = _find_labelled(lines, labels)
+        value, disagreement = find_value(lines, labels)
         if value is None:
             setattr(draft, name, absent("non affiché par l'annonce"))
             continue
 
         normalised: object = value
-        if name == "year":
-            normalised = norm.year_of(value)
+        if name == "reference":
+            # Les vendeurs ajoutent un qualificatif dans le champ référence —
+            # « 266.1.44 - Serviced ». Ce n'est pas la référence, et une
+            # référence ainsi polluée ne retrouverait aucun comparable. Le
+            # qualificatif est retiré de la valeur ; le brut reste consultable,
+            # et la référence reste « à confirmer » de toute façon.
+            normalised = value.split(" - ", 1)[0].strip() or None
+        elif name == "year":
+            # « 1990-1999 » est une **période**, pas une année. En retenir la
+            # borne basse inventerait une précision que la page ne donne pas ;
+            # la valeur brute reste consultable et l'utilisateur tranche.
+            normalised = None if _PERIOD.match(value) else norm.year_of(value)
         elif name == "case_diameter_mm":
             normalised = norm.diameter_mm_of(value)
         elif name == "seller_country":
@@ -721,6 +918,9 @@ def extract(text: str, url: str) -> ListingDraft:
             # en note cosmétique : « bon état » n'est pas un constat.
             normalised = None
 
+        if name in ("warranty", "insurance"):
+            normalised = _yes_no(value)
+
         setattr(
             draft,
             name,
@@ -729,8 +929,37 @@ def extract(text: str, url: str) -> ListingDraft:
                 value=normalised,
                 provenance=provenance,
                 source=f"caractéristique « {labels[0]} »",
+                conflicts=(
+                    (f"« {disagreement} » dans la description du vendeur",)
+                    if disagreement is not None
+                    else ()
+                ),
             ),
         )
+        if disagreement is not None:
+            warnings.append(
+                f"La fiche technique et la description ne disent pas la même "
+                f"chose sur « {labels[0]} » : « {value} » contre "
+                f"« {disagreement} ». Les deux sont conservées, aucune n'est "
+                "choisie."
+            )
+
+    stated = _DIAMETER_IN_TEXT.search(joined)
+    if stated is not None and draft.case_diameter_mm.value is not None:
+        described = norm.diameter_mm_of(stated.group(0))
+        if described is not None and described != draft.case_diameter_mm.value:
+            draft.case_diameter_mm = Imported(
+                raw=draft.case_diameter_mm.raw,
+                value=draft.case_diameter_mm.value,
+                provenance=draft.case_diameter_mm.provenance,
+                source=draft.case_diameter_mm.source,
+                conflicts=(f"{described} mm dans la description du vendeur",),
+            )
+            warnings.append(
+                f"Diamètre contradictoire : la fiche annonce "
+                f"{draft.case_diameter_mm.value} mm, la description "
+                f"{described} mm. Les deux sont conservés, aucun n'est choisi."
+            )
 
     if draft.declared_condition.raw:
         warnings.append(
@@ -744,8 +973,8 @@ def extract(text: str, url: str) -> ListingDraft:
         )
 
     # --- Boîte et papiers, séparément ---------------------------------------
-    box = _yes_no(_find_labelled(lines, _BOX_LABELS))
-    papers = _yes_no(_find_labelled(lines, _PAPERS_LABELS))
+    box = _yes_no(find_value(lines, _BOX_LABELS)[0])
+    papers = _yes_no(find_value(lines, _PAPERS_LABELS)[0])
     draft.box = (
         Imported(raw=None, value=box, provenance=provenance, source="ligne « boîte »")
         if box is not None
@@ -836,6 +1065,43 @@ def extract(text: str, url: str) -> ListingDraft:
             "veut pas dire qu'il n'y en a pas."
         )
 
+    # --- Commission acheteur -------------------------------------------------
+    fee = _BUYER_FEE.search(joined)
+    if fee is not None:
+        rate = norm.amount_of(fee.group(1))
+        draft.buyer_fee_rate = (
+            Imported(
+                raw=fee.group(0),
+                value=(rate / Decimal(100)) if rate is not None else None,
+                provenance=provenance,
+                source="commission acheteur affichée",
+            )
+            if rate is not None
+            else absent("commission acheteur illisible")
+        )
+        fixed = norm.amount_of(fee.group(3)) if fee.group(3) else None
+        currency = norm.currency_of(fee.group(2)) if fee.group(2) else None
+        draft.buyer_fee_fixed = (
+            Imported(
+                raw=fee.group(0),
+                value=fixed,
+                provenance=provenance,
+                source="commission acheteur affichée",
+            )
+            if fixed is not None
+            else absent("aucune part fixe annoncée")
+        )
+        draft.buyer_fee_currency = (
+            Imported(
+                raw=currency,
+                value=currency,
+                provenance=provenance,
+                source="commission acheteur affichée",
+            )
+            if currency is not None
+            else absent("devise de la commission non annoncée")
+        )
+
     # --- Livraison ----------------------------------------------------------
     (
         draft.shipping_cost_amount,
@@ -849,6 +1115,21 @@ def extract(text: str, url: str) -> ListingDraft:
     # --- Vendeur ------------------------------------------------------------
     seller = _find_labelled(lines, _SELLER_LABELS)
     draft.seller_name = _imported(seller, seller, "vendeur affiché", provenance)
+
+    # Catawiki n'étiquette pas le pays du vendeur : il l'écrit en clair dans
+    # le bloc vendeur, et donne séparément « Ships from XX ». On lit les deux,
+    # en préférant le pays du vendeur à celui de l'expédition — « Ships from
+    # EU » n'est pas un pays.
+    if not draft.seller_country.is_present:
+        draft.seller_country = _seller_country(lines)
+
+    if _PROFESSIONAL.search(joined):
+        draft.seller_type = Imported(
+            raw="professional seller",
+            value="professional",
+            provenance=provenance,
+            source="mention explicite d'un vendeur professionnel",
+        )
     since = _SELLER_SINCE.search(joined)
     draft.seller_since = (
         Imported(
@@ -862,23 +1143,37 @@ def extract(text: str, url: str) -> ListingDraft:
     )
 
     # --- Titre et description ------------------------------------------------
+    # Le titre n'est pas la première ligne du collage : celle-ci est du
+    # chrome de navigation (« Search for brand, model, artist… »). Le vrai
+    # titre est la première ligne qui commence par la marque et porte les
+    # tirets du gabarit Catawiki. Sans marque connue, on préfère l'absence à
+    # un morceau de menu.
+    title = _title_line(lines, draft.brand.value)
     draft.title = (
         Imported(
-            raw=lines[0],
-            value=lines[0],
+            raw=title,
+            value=title,
             provenance=provenance,
-            source="première ligne du texte collé",
+            source="ligne de titre du lot",
         )
-        if lines
-        else absent("texte vide")
+        if title
+        else absent("titre non identifié dans le texte collé")
     )
 
-    description, serial_seen = strip_serials(joined)
-    draft.description = Imported(
-        raw=description[:8000],
-        value=description[:8000],
-        provenance=provenance,
-        source="texte collé de l'annonce",
+    # La description du vendeur est une **section**. Recopier tout le collage
+    # y ferait entrer le menu, l'historique des enchères et les autres lots du
+    # vendeur — du bruit qui noierait ce que le vendeur a réellement écrit.
+    body = _seller_description(lines) or joined
+    description, serial_seen = strip_serials(body)
+    draft.description = (
+        Imported(
+            raw=description[:8000],
+            value=description[:8000],
+            provenance=provenance,
+            source="description du vendeur",
+        )
+        if description
+        else absent("description non trouvée")
     )
     if serial_seen:
         warnings.append(
@@ -895,3 +1190,43 @@ def extract(text: str, url: str) -> ListingDraft:
 
     draft.warnings = tuple(dict.fromkeys(warnings))
     return draft
+
+
+def _seller_country(lines: list[str]) -> Imported:
+    """Pays du vendeur, lu dans son bloc.
+
+    Deux sources, dans cet ordre : un nom de pays écrit en clair après
+    « Sold by », puis « Ships from XX ». La seconde est un repli — le pays
+    d'expédition n'est pas celui du vendeur, et « Ships from EU » n'est pas
+    un pays du tout.
+    """
+
+    start: int | None = None
+    for index, line in enumerate(lines):
+        if _label_of(line) in _SELLER_LABELS:
+            start = index
+            break
+    window = lines[start : start + 12] if start is not None else lines
+
+    for line in window:
+        code = _COUNTRY_NAMES.get(line.strip().lower())
+        if code is not None:
+            return Imported(
+                raw=line,
+                value=code,
+                provenance=Provenance.ASSISTED,
+                source="pays affiché dans le bloc vendeur",
+            )
+
+    for line in window:
+        shipped = _SHIPS_FROM.match(line.strip())
+        # « EU » est une zone, pas un pays : on ne la retient pas.
+        if shipped is not None and shipped.group(1).upper() != "EU":
+            return Imported(
+                raw=line,
+                value=shipped.group(1).upper(),
+                provenance=Provenance.ASSISTED,
+                source="pays d'expédition affiché",
+            )
+
+    return absent("pays du vendeur non affiché")

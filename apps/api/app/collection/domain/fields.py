@@ -188,6 +188,13 @@ class ListingDraft:
 
     seller_since: Imported = field(default_factory=absent)
 
+    #: Commission acheteur annoncée sur la page du lot. Reprise parce qu'elle
+    #: est affichée noir sur blanc et qu'elle pèse sur le coût de revient —
+    #: jamais devinée quand la page se tait (« n'invente aucun frais absent »).
+    buyer_fee_rate: Imported = field(default_factory=absent)
+    buyer_fee_fixed: Imported = field(default_factory=absent)
+    buyer_fee_currency: Imported = field(default_factory=absent)
+
     photos: tuple[str, ...] = ()
 
     #: Ce que l'extraction n'a pas pu faire, dit en clair à l'utilisateur.

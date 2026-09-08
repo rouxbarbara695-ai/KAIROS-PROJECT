@@ -200,8 +200,12 @@ def test_a_countdown_is_never_converted_into_a_date() -> None:
 
     draft = catawiki_text.extract("Rolex\nSe termine dans 2 j 03 h 15 min\n", _FR_URL)
 
-    assert draft.closing_at.provenance is Provenance.ABSENT
-    assert any("compte à rebours" in warning for warning in draft.warnings)
+    # Aucune date n'est produite, mais ce que la page affichait est conservé :
+    # l'utilisateur sait quoi aller vérifier.
+    assert draft.closing_at.value is None
+    assert draft.closing_at.raw == "Se termine dans 2 j 03 h 15 min"
+    assert draft.closing_timezone.provenance is Provenance.ABSENT
+    assert any("relatif" in warning for warning in draft.warnings)
 
 
 def test_box_and_papers_are_read_separately() -> None:

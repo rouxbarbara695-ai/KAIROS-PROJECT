@@ -34,6 +34,7 @@ typecheck:
 
 test:
 	cd $(API_DIR) && uv run pytest
+	pnpm --filter @kairos/web test
 
 contracts:
 	cd $(API_DIR) && uv run python -m app.export_openapi ../../packages/contracts/openapi.json

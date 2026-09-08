@@ -10,6 +10,7 @@ import {
   recordSale,
   recordSaleListing,
 } from "@/lib/api";
+import { useActionKeys } from "@/lib/idempotency";
 
 const inputClass =
   "w-full rounded-md border border-border bg-surface px-3 py-1.5 text-sm outline-none focus:border-accent";
@@ -43,7 +44,10 @@ const STATUS_ACTIONS: Record<string, { target: string; label: string }[]> = {
     { target: "listed_for_sale", label: "L'acheteur s'est désisté" },
   ],
   awaiting_payout: [
-    { target: "listed_for_sale", label: "La vente a échoué, remettre en vente" },
+    {
+      target: "listed_for_sale",
+      label: "La vente a échoué, remettre en vente",
+    },
   ],
   abandoned: [{ target: "watching", label: "Rouvrir" }],
 };
@@ -90,14 +94,24 @@ export function OperationPanel({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const { keyFor, settle } = useActionKeys();
 
   const actions = STATUS_ACTIONS[status] ?? [];
 
-  function run(action: () => Promise<unknown>) {
+  /**
+   * Exécute un geste sous sa clé d'idempotence.
+   *
+   * `name` identifie le geste, pas l'envoi : tant qu'il n'a pas abouti, tous
+   * ses renvois portent la même clé, et l'API n'écrit qu'une fois. La clé
+   * n'est oubliée qu'au succès — un échec est justement le moment où
+   * l'utilisateur réappuie sans savoir ce qui a été écrit.
+   */
+  function run(name: string, action: (key: string) => Promise<unknown>) {
     setError(null);
     startTransition(async () => {
       try {
-        await action();
+        await action(keyFor(name));
+        settle(name);
         router.refresh();
       } catch (err) {
         setError(
@@ -109,11 +123,12 @@ export function OperationPanel({
 
   function submit(
     event: React.FormEvent<HTMLFormElement>,
-    handler: (data: FormData) => Promise<unknown>,
+    name: string,
+    handler: (data: FormData, key: string) => Promise<unknown>,
   ) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
-    run(() => handler(data));
+    run(name, (key) => handler(data, key));
   }
 
   const optional = (data: FormData, key: string): string | undefined => {
@@ -126,12 +141,16 @@ export function OperationPanel({
       {(status === "buy" || status === "auction") && (
         <form
           onSubmit={(event) =>
-            submit(event, (data) =>
-              recordPurchase(opportunityId, {
-                amount: String(data.get("amount")),
-                currency: "EUR",
-                reason: String(data.get("reason")),
-              }),
+            submit(event, "purchase", (data, key) =>
+              recordPurchase(
+                opportunityId,
+                {
+                  amount: String(data.get("amount")),
+                  currency: "EUR",
+                  reason: String(data.get("reason")),
+                },
+                { idempotencyKey: key },
+              ),
             )
           }
           className="space-y-3"
@@ -164,14 +183,18 @@ export function OperationPanel({
       {status === "in_stock" && (
         <form
           onSubmit={(event) =>
-            submit(event, (data) =>
-              recordSaleListing(opportunityId, {
-                asking_amount: String(data.get("asking_amount")),
-                currency: "EUR",
-                platform_code: optional(data, "platform_code") ?? null,
-                external_url: optional(data, "external_url") ?? null,
-                reason: String(data.get("reason")),
-              }),
+            submit(event, "sale-listing", (data, key) =>
+              recordSaleListing(
+                opportunityId,
+                {
+                  asking_amount: String(data.get("asking_amount")),
+                  currency: "EUR",
+                  platform_code: optional(data, "platform_code") ?? null,
+                  external_url: optional(data, "external_url") ?? null,
+                  reason: String(data.get("reason")),
+                },
+                { idempotencyKey: key },
+              ),
             )
           }
           className="space-y-3"
@@ -204,12 +227,16 @@ export function OperationPanel({
       {status === "awaiting_buyer_payment" && (
         <form
           onSubmit={(event) =>
-            submit(event, (data) =>
-              recordSale(opportunityId, {
-                realized_amount: String(data.get("realized_amount")),
-                currency: "EUR",
-                reason: String(data.get("reason")),
-              }),
+            submit(event, "sale", (data, key) =>
+              recordSale(
+                opportunityId,
+                {
+                  realized_amount: String(data.get("realized_amount")),
+                  currency: "EUR",
+                  reason: String(data.get("reason")),
+                },
+                { idempotencyKey: key },
+              ),
             )
           }
           className="space-y-3"
@@ -225,8 +252,8 @@ export function OperationPanel({
             {isPending ? "Enregistrement…" : "Enregistrer la vente"}
           </button>
           <p className="text-xs text-fg-muted">
-            La trésorerie ne bouge pas encore : les fonds sont retenus jusqu&apos;à
-            l&apos;encaissement.
+            La trésorerie ne bouge pas encore : les fonds sont retenus
+            jusqu&apos;à l&apos;encaissement.
           </p>
         </form>
       )}
@@ -234,12 +261,16 @@ export function OperationPanel({
       {status === "awaiting_payout" && (
         <form
           onSubmit={(event) =>
-            submit(event, (data) =>
-              recordPayout(opportunityId, {
-                amount: optional(data, "amount") ?? null,
-                currency: "EUR",
-                reason: String(data.get("reason")),
-              }),
+            submit(event, "payout", (data, key) =>
+              recordPayout(
+                opportunityId,
+                {
+                  amount: optional(data, "amount") ?? null,
+                  currency: "EUR",
+                  reason: String(data.get("reason")),
+                },
+                { idempotencyKey: key },
+              ),
             )
           }
           className="space-y-3"
@@ -278,11 +309,12 @@ export function OperationPanel({
                   `Motif du geste « ${action.label} » :`,
                 );
                 if (!reason?.trim()) return;
-                run(() =>
-                  changeStatus(opportunityId, {
-                    status: action.target,
-                    reason,
-                  }),
+                run(`status:${action.target}`, (key) =>
+                  changeStatus(
+                    opportunityId,
+                    { status: action.target, reason },
+                    { idempotencyKey: key },
+                  ),
                 );
               }}
               className="rounded-md border border-border px-3 py-1.5 text-sm disabled:opacity-50"

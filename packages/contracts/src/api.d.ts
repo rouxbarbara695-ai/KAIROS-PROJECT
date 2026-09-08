@@ -1835,7 +1835,10 @@ export interface operations {
     create_opportunity_route_api_v1_opportunities_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Clé fournie par l'appelant pour qu'un renvoi de la même requête ne répète pas ses effets. Le renvoi rend la réponse d'origine ; la même clé sur une requête différente est refusée. */
+                "Idempotency-Key"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2134,7 +2137,10 @@ export interface operations {
     record_payout_route_api_v1_opportunities__opportunity_id__payout_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Clé fournie par l'appelant pour qu'un renvoi de la même requête ne répète pas ses effets. Le renvoi rend la réponse d'origine ; la même clé sur une requête différente est refusée. */
+                "Idempotency-Key"?: string | null;
+            };
             path: {
                 opportunity_id: string;
             };
@@ -2208,7 +2214,10 @@ export interface operations {
     record_purchase_route_api_v1_opportunities__opportunity_id__purchase_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Clé fournie par l'appelant pour qu'un renvoi de la même requête ne répète pas ses effets. Le renvoi rend la réponse d'origine ; la même clé sur une requête différente est refusée. */
+                "Idempotency-Key"?: string | null;
+            };
             path: {
                 opportunity_id: string;
             };
@@ -2280,7 +2289,10 @@ export interface operations {
     record_sale_route_api_v1_opportunities__opportunity_id__sale_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Clé fournie par l'appelant pour qu'un renvoi de la même requête ne répète pas ses effets. Le renvoi rend la réponse d'origine ; la même clé sur une requête différente est refusée. */
+                "Idempotency-Key"?: string | null;
+            };
             path: {
                 opportunity_id: string;
             };
@@ -2317,7 +2329,10 @@ export interface operations {
     record_sale_listing_route_api_v1_opportunities__opportunity_id__sale_listing_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Clé fournie par l'appelant pour qu'un renvoi de la même requête ne répète pas ses effets. Le renvoi rend la réponse d'origine ; la même clé sur une requête différente est refusée. */
+                "Idempotency-Key"?: string | null;
+            };
             path: {
                 opportunity_id: string;
             };
@@ -2389,7 +2404,10 @@ export interface operations {
     change_status_route_api_v1_opportunities__opportunity_id__status_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Clé fournie par l'appelant pour qu'un renvoi de la même requête ne répète pas ses effets. Le renvoi rend la réponse d'origine ; la même clé sur une requête différente est refusée. */
+                "Idempotency-Key"?: string | null;
+            };
             path: {
                 opportunity_id: string;
             };
@@ -2612,7 +2630,10 @@ export interface operations {
     create_ledger_entry_route_api_v1_portfolios__portfolio_id__ledger_entries_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Clé fournie par l'appelant pour qu'un renvoi de la même requête ne répète pas ses effets. Le renvoi rend la réponse d'origine ; la même clé sur une requête différente est refusée. */
+                "Idempotency-Key"?: string | null;
+            };
             path: {
                 portfolio_id: string;
             };

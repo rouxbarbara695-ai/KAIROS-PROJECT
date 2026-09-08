@@ -40,6 +40,54 @@ Les réponses modifiables exposent `ETag: "version-n"`. `PATCH` exige
 réponse initiale ; même clé + charge différente retourne
 `409 IDEMPOTENCY_CONFLICT`.
 
+**Routes concernées.** L’en-tête est déclaré dans l’OpenAPI des routes
+suivantes ; partout ailleurs il est ignoré.
+
+| Route | Effet protégé |
+|---|---|
+| `POST /opportunities` | ouverture d’un dossier |
+| `POST /opportunities/{id}/status` | transition de statut |
+| `POST /opportunities/{id}/purchase` | achat + sortie de trésorerie |
+| `POST /opportunities/{id}/sale-listing` | mise en vente |
+| `POST /opportunities/{id}/sale` | vente |
+| `POST /opportunities/{id}/payout` | encaissement + entrée de trésorerie |
+| `POST /portfolios/{id}/ledger-entries` | mouvement de trésorerie |
+
+**Portée.** La clé est unique par `(portefeuille, clé)`. Le portefeuille est
+celui de la ressource visée — déduit de l’opportunité pour les routes qui la
+nomment, du chemin ou du corps pour les autres. Deux portefeuilles peuvent donc
+employer la même chaîne sans se gêner, et une clé ne peut jamais rejouer la
+réponse d’un portefeuille voisin. La méthode et le chemin font partie de
+l’empreinte comparée : réemployer une clé sur une autre route est un conflit,
+pas un rejeu.
+
+**Empreinte.** SHA-256 des octets bruts du corps reçu, pas d’un objet
+ré-encodé : deux sérialisations du même contenu peuvent différer par l’ordre
+des clés, et l’empreinte doit refuser exactement ce que l’appelant a refusé
+d’envoyer deux fois.
+
+**Conservation.** Vingt-quatre heures. Au-delà, la clé redevient libre. Un
+renvoi honnête suit l’original de quelques secondes ; ce délai couvre
+l’utilisateur qui reprend le lendemain matin après une coupure, sans condamner
+indéfiniment une chaîne qu’une opération légitime réemploierait plus tard.
+
+**Requêtes simultanées.** La place est prise par un `insert … on conflict do
+nothing` : c’est l’index unique qui désigne le gagnant, jamais une lecture
+préalable. Tant que la première requête n’a pas répondu, les suivantes
+reçoivent `409 IDEMPOTENCY_CONFLICT` avec `details.reason = "in_progress"` ; un
+conflit de charge porte `details.reason = "payload_mismatch"` et rappelle la
+méthode et le chemin d’origine.
+
+**Échec.** Une opération qui lève **libère** sa clé : rien n’a été écrit, et
+l’appelant doit pouvoir réessayer avec la même chaîne. Une réservation restée
+sans réponse plus de cinq minutes est tenue pour abandonnée et récupérée, faute
+de quoi un processus interrompu condamnerait la clé pour vingt-quatre heures.
+
+**Côté client.** Une nouvelle action reçoit une clé neuve ; tous ses renvois
+gardent la même tant qu’elle n’a pas abouti. La clé n’est oubliée qu’au succès
+— c’est après un échec que l’utilisateur réappuie, et c’est le seul moment où
+l’issue de l’appel précédent est inconnue.
+
 ### Limitation de débit
 
 `POST /auth/login` est la seule route publique de l’API. Les échecs y sont

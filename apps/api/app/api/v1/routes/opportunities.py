@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.v1.idempotency import Idempotency, IdempotencyKey, get_idempotency
 from app.api.v1.schemas.common import DecimalString
 from app.api.v1.schemas.events import (
     AuditEventPage,
@@ -44,11 +45,13 @@ from app.opportunities.application.list_opportunities import (
 from app.opportunities.application.patch_opportunity import patch_opportunity
 from app.opportunities.application.presenters import to_opportunity_response
 from app.shared.config import Settings, get_settings
+from app.shared.domain.errors import DomainError, ErrorCode
 from app.shared.domain.page import clamp_limit
 from app.shared.domain.principal import Principal
 from app.shared.infrastructure.db.models.opportunities import Opportunity
 from app.shared.infrastructure.db.models.platforms import Platform
 from app.shared.infrastructure.db.session import get_session
+from app.shared.infrastructure.portfolio_lookup import portfolio_of_opportunity
 from app.shared.infrastructure.principal_provider import get_current_principal
 
 router = APIRouter(tags=["opportunities"])
@@ -85,19 +88,40 @@ def _request_id(request: Request) -> uuid.UUID | None:
 )
 async def create_opportunity_route(
     body: CreateOpportunityRequest,
+    request: Request,
     session: AsyncSession = Depends(get_session),
     principal: Principal = Depends(get_current_principal),
     settings: Settings = Depends(get_settings),
+    idempotency: Idempotency = Depends(get_idempotency),
+    idempotency_key: IdempotencyKey = None,
 ) -> OpportunityResponse:
-    result = await create_opportunity(session, principal, body, settings)
-    return to_opportunity_response(
-        result.opportunity,
-        result.watch,
-        result.reference,
-        result.seller,
-        result.price_input,
-        await _platform_code(session, result.opportunity),
-    )
+    # Le portefeuille vient du corps : à la création, aucune ressource
+    # existante ne peut le fournir. Le contrôle est répété ici, avant la
+    # réservation, pour qu'une clé ne soit jamais consommée sur un
+    # portefeuille étranger. Même code que le cas d'usage, sinon la réponse
+    # changerait selon que l'appel porte une clé ou non.
+    if not principal.owns_portfolio(body.portfolio_id):
+        raise DomainError(
+            ErrorCode.FORBIDDEN, "Ce portefeuille n'appartient pas au principal."
+        )
+
+    async with idempotency.guard(
+        request, body.portfolio_id, OpportunityResponse, idempotency_key
+    ) as place:
+        if place.replay is not None:
+            return place.replay
+
+        result = await create_opportunity(session, principal, body, settings)
+        return place.completed(
+            to_opportunity_response(
+                result.opportunity,
+                result.watch,
+                result.reference,
+                result.seller,
+                result.price_input,
+                await _platform_code(session, result.opportunity),
+            )
+        )
 
 
 @router.get("/opportunities", response_model=OpportunityPage)
@@ -313,28 +337,38 @@ class StatusChangeRequest(BaseModel):
 async def record_purchase_route(
     opportunity_id: uuid.UUID,
     body: PurchaseCreate,
+    request: Request,
     session: AsyncSession = Depends(get_session),
     principal: Principal = Depends(get_current_principal),
     settings: Settings = Depends(get_settings),
+    idempotency: Idempotency = Depends(get_idempotency),
+    idempotency_key: IdempotencyKey = None,
 ) -> dict[str, str]:
     """Enregistre l'achat : ligne d'achat, sortie de trésorerie et passage en
     `purchased`, dans une seule transaction."""
 
-    purchase = await record_purchase(
-        session,
-        principal,
-        opportunity_id,
-        amount=body.amount,
-        currency=body.currency,
-        purchased_at=body.purchased_at,
-        reason=body.reason,
-        settings=settings,
-    )
-    return {
-        "id": str(purchase.id),
-        "amount_eur": str(purchase.amount_eur),
-        "purchased_at": purchase.purchased_at.isoformat(),
-    }
+    portfolio_id = await portfolio_of_opportunity(session, principal, opportunity_id)
+    async with idempotency.guard(request, portfolio_id, dict, idempotency_key) as place:
+        if place.replay is not None:
+            return place.replay
+
+        purchase = await record_purchase(
+            session,
+            principal,
+            opportunity_id,
+            amount=body.amount,
+            currency=body.currency,
+            purchased_at=body.purchased_at,
+            reason=body.reason,
+            settings=settings,
+        )
+        return place.completed(
+            {
+                "id": str(purchase.id),
+                "amount_eur": str(purchase.amount_eur),
+                "purchased_at": purchase.purchased_at.isoformat(),
+            }
+        )
 
 
 @router.post(
@@ -343,26 +377,38 @@ async def record_purchase_route(
 async def change_status_route(
     opportunity_id: uuid.UUID,
     body: StatusChangeRequest,
+    request: Request,
     session: AsyncSession = Depends(get_session),
     principal: Principal = Depends(get_current_principal),
+    idempotency: Idempotency = Depends(get_idempotency),
+    idempotency_key: IdempotencyKey = None,
 ) -> OpportunityResponse:
     """Change le statut, avec motif. Les statuts qui constatent une opération
     — `purchased`, `sold` — s'obtiennent en enregistrant l'opération."""
 
-    await change_status(
-        session, principal, opportunity_id, target=body.status, reason=body.reason
-    )
-    opportunity, watch, reference, seller, latest_price = await get_opportunity(
-        session, principal, opportunity_id
-    )
-    return to_opportunity_response(
-        opportunity,
-        watch,
-        reference,
-        seller,
-        latest_price,
-        await _platform_code(session, opportunity),
-    )
+    portfolio_id = await portfolio_of_opportunity(session, principal, opportunity_id)
+    async with idempotency.guard(
+        request, portfolio_id, OpportunityResponse, idempotency_key
+    ) as place:
+        if place.replay is not None:
+            return place.replay
+
+        await change_status(
+            session, principal, opportunity_id, target=body.status, reason=body.reason
+        )
+        opportunity, watch, reference, seller, latest_price = await get_opportunity(
+            session, principal, opportunity_id
+        )
+        return place.completed(
+            to_opportunity_response(
+                opportunity,
+                watch,
+                reference,
+                seller,
+                latest_price,
+                await _platform_code(session, opportunity),
+            )
+        )
 
 
 class SaleListingCreate(BaseModel):
@@ -412,27 +458,37 @@ class PayoutCreate(BaseModel):
 async def record_sale_listing_route(
     opportunity_id: uuid.UUID,
     body: SaleListingCreate,
+    request: Request,
     session: AsyncSession = Depends(get_session),
     principal: Principal = Depends(get_current_principal),
     settings: Settings = Depends(get_settings),
+    idempotency: Idempotency = Depends(get_idempotency),
+    idempotency_key: IdempotencyKey = None,
 ) -> dict[str, str | None]:
-    listing = await record_sale_listing(
-        session,
-        principal,
-        opportunity_id,
-        asking_amount=body.asking_amount,
-        currency=body.currency,
-        platform_code=body.platform_code,
-        external_url=body.external_url,
-        listed_at=body.listed_at,
-        reason=body.reason,
-        settings=settings,
-    )
-    return {
-        "id": str(listing.id),
-        "asking_amount_eur": str(listing.asking_amount_eur),
-        "listed_at": listing.listed_at.isoformat(),
-    }
+    portfolio_id = await portfolio_of_opportunity(session, principal, opportunity_id)
+    async with idempotency.guard(request, portfolio_id, dict, idempotency_key) as place:
+        if place.replay is not None:
+            return place.replay
+
+        listing = await record_sale_listing(
+            session,
+            principal,
+            opportunity_id,
+            asking_amount=body.asking_amount,
+            currency=body.currency,
+            platform_code=body.platform_code,
+            external_url=body.external_url,
+            listed_at=body.listed_at,
+            reason=body.reason,
+            settings=settings,
+        )
+        return place.completed(
+            {
+                "id": str(listing.id),
+                "asking_amount_eur": str(listing.asking_amount_eur),
+                "listed_at": listing.listed_at.isoformat(),
+            }
+        )
 
 
 @router.post(
@@ -441,55 +497,75 @@ async def record_sale_listing_route(
 async def record_sale_route(
     opportunity_id: uuid.UUID,
     body: SaleCreate,
+    request: Request,
     session: AsyncSession = Depends(get_session),
     principal: Principal = Depends(get_current_principal),
     settings: Settings = Depends(get_settings),
+    idempotency: Idempotency = Depends(get_idempotency),
+    idempotency_key: IdempotencyKey = None,
 ) -> dict[str, str]:
     """Enregistre la vente. Aucune écriture de trésorerie : les fonds sont
     retenus jusqu'à l'encaissement."""
 
-    sale = await record_sale(
-        session,
-        principal,
-        opportunity_id,
-        realized_amount=body.realized_amount,
-        currency=body.currency,
-        sold_at=body.sold_at,
-        reason=body.reason,
-        settings=settings,
-    )
-    return {
-        "id": str(sale.id),
-        "realized_amount_eur": str(sale.realized_amount_eur),
-        "sold_at": sale.sold_at.isoformat(),
-    }
+    portfolio_id = await portfolio_of_opportunity(session, principal, opportunity_id)
+    async with idempotency.guard(request, portfolio_id, dict, idempotency_key) as place:
+        if place.replay is not None:
+            return place.replay
+
+        sale = await record_sale(
+            session,
+            principal,
+            opportunity_id,
+            realized_amount=body.realized_amount,
+            currency=body.currency,
+            sold_at=body.sold_at,
+            reason=body.reason,
+            settings=settings,
+        )
+        return place.completed(
+            {
+                "id": str(sale.id),
+                "realized_amount_eur": str(sale.realized_amount_eur),
+                "sold_at": sale.sold_at.isoformat(),
+            }
+        )
 
 
 @router.post("/opportunities/{opportunity_id}/payout")
 async def record_payout_route(
     opportunity_id: uuid.UUID,
     body: PayoutCreate,
+    request: Request,
     session: AsyncSession = Depends(get_session),
     principal: Principal = Depends(get_current_principal),
     settings: Settings = Depends(get_settings),
+    idempotency: Idempotency = Depends(get_idempotency),
+    idempotency_key: IdempotencyKey = None,
 ) -> dict[str, str | None]:
     """Constate l'encaissement : c'est ici que la trésorerie monte."""
 
-    sale = await record_payout(
-        session,
-        principal,
-        opportunity_id,
-        amount=body.amount,
-        currency=body.currency,
-        received_at=body.received_at,
-        reason=body.reason,
-        settings=settings,
-    )
-    return {
-        "id": str(sale.id),
-        "payout_received_at": (
-            None
-            if sale.payout_received_at is None
-            else sale.payout_received_at.isoformat()
-        ),
-    }
+    portfolio_id = await portfolio_of_opportunity(session, principal, opportunity_id)
+    async with idempotency.guard(request, portfolio_id, dict, idempotency_key) as place:
+        if place.replay is not None:
+            return place.replay
+
+        sale = await record_payout(
+            session,
+            principal,
+            opportunity_id,
+            amount=body.amount,
+            currency=body.currency,
+            received_at=body.received_at,
+            reason=body.reason,
+            settings=settings,
+        )
+        return place.completed(
+            {
+                "id": str(sale.id),
+                "payout_received_at": (
+                    None
+                    if sale.payout_received_at is None
+                    else sale.payout_received_at.isoformat()
+                ),
+            }
+        )

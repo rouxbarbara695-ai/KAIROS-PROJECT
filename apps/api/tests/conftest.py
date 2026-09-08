@@ -13,9 +13,11 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from app.api.v1.idempotency import Idempotency, get_idempotency
 from app.identity.application.authentication import create_user, log_in
 from app.main import app
 from app.shared.infrastructure.db.session import get_session
+from app.shared.infrastructure.idempotency import IdempotencyStore
 from app.shared.infrastructure.principal_provider import SESSION_COOKIE
 from app.shared.infrastructure.redis_client import get_redis
 from tests.fake_redis import FakeRedis
@@ -186,6 +188,12 @@ async def client(_engine, _session_token: str) -> AsyncIterator[AsyncClient]:
             yield session
 
     app.dependency_overrides[get_session] = _override_get_session
+    # Le registre d'idempotence ouvre ses propres sessions, hors de celle de
+    # la requête : sans cette dérogation il écrirait dans la base de
+    # développement au lieu de la base de test.
+    app.dependency_overrides[get_idempotency] = lambda: Idempotency(
+        IdempotencyStore(factory)
+    )
     transport = ASGITransport(app=app)
     async with AsyncClient(
         transport=transport,
@@ -207,6 +215,12 @@ async def anonymous_client(_engine, _test_user: None) -> AsyncIterator[AsyncClie
             yield session
 
     app.dependency_overrides[get_session] = _override_get_session
+    # Le registre d'idempotence ouvre ses propres sessions, hors de celle de
+    # la requête : sans cette dérogation il écrirait dans la base de
+    # développement au lieu de la base de test.
+    app.dependency_overrides[get_idempotency] = lambda: Idempotency(
+        IdempotencyStore(factory)
+    )
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac

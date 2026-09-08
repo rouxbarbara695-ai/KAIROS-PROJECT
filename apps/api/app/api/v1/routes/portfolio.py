@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.v1.idempotency import Idempotency, IdempotencyKey, get_idempotency
 from app.api.v1.schemas.portfolio import (
     HoldingResponse,
     LedgerMovementCreate,
@@ -90,9 +91,12 @@ async def get_portfolio_overview_route(
 async def create_ledger_entry_route(
     portfolio_id: uuid.UUID,
     body: LedgerMovementCreate,
+    request: Request,
     session: AsyncSession = Depends(get_session),
     principal: Principal = Depends(get_current_principal),
     settings: Settings = Depends(get_settings),
+    idempotency: Idempotency = Depends(get_idempotency),
+    idempotency_key: IdempotencyKey = None,
 ) -> LedgerMovementResponse:
     """Ajoute un mouvement de trésorerie.
 
@@ -101,18 +105,29 @@ async def create_ledger_entry_route(
     s'expliquer ligne à ligne.
     """
 
-    entry = await record_movement(
-        session,
-        principal,
-        portfolio_id,
-        kind=body.kind,
-        amount=body.amount,
-        currency=body.currency,
-        occurred_at=body.occurred_at,
-        notes=body.notes,
-        settings=settings,
-    )
-    return _movement(entry)
+    # Avant la réservation : une clé ne doit pas être consommée sur un
+    # portefeuille qui n'appartient pas à l'appelant.
+    if not principal.owns_portfolio(portfolio_id):
+        raise DomainError(ErrorCode.NOT_FOUND, "Portefeuille introuvable.")
+
+    async with idempotency.guard(
+        request, portfolio_id, LedgerMovementResponse, idempotency_key
+    ) as place:
+        if place.replay is not None:
+            return place.replay
+
+        entry = await record_movement(
+            session,
+            principal,
+            portfolio_id,
+            kind=body.kind,
+            amount=body.amount,
+            currency=body.currency,
+            occurred_at=body.occurred_at,
+            notes=body.notes,
+            settings=settings,
+        )
+        return place.completed(_movement(entry))
 
 
 def _strategy(version: StrategyVersion) -> StrategyResponse:

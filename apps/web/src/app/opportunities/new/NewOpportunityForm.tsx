@@ -3,8 +3,13 @@
 import { useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/Card";
-import { ApiError, createOpportunity } from "@/lib/api";
+import {
+  ApiError,
+  createOpportunity,
+  type ListingPrefillResponse,
+} from "@/lib/api";
 import { useActionKeys } from "@/lib/idempotency";
+import { ListingPrefill } from "./ListingPrefill";
 import { labels, options } from "@/lib/labels";
 
 function Field({
@@ -38,6 +43,55 @@ export function NewOpportunityForm({
   const [mode, setMode] = useState<"manual" | "url">("manual");
   const { keyFor, settle } = useActionKeys();
 
+  const [url, setUrl] = useState("");
+  // Valeurs reprises d'une annonce. Elles servent de valeurs par défaut ; ce
+  // que l'utilisateur tape ensuite reste dans le DOM et n'est pas piloté ici.
+  const [imported, setImported] = useState<Record<string, string | boolean>>(
+    {},
+  );
+  // Compteur de remontage : changer la clé d'un champ non contrôlé est la
+  // seule façon de lui redonner une valeur par défaut sans transformer tout
+  // le formulaire en état React.
+  const [importVersion, setImportVersion] = useState(0);
+  const [hasUserEdits, setHasUserEdits] = useState(false);
+
+  function applyPrefill(result: ListingPrefillResponse) {
+    const fields = result.fields ?? {};
+    const value = (name: string): string | boolean | undefined => {
+      const field = fields[name];
+      if (!field || field.provenance === "absent") return undefined;
+      if (field.value === null || field.value === undefined) return undefined;
+      return field.value as string | boolean;
+    };
+
+    const next: Record<string, string | boolean> = {};
+    for (const name of [
+      "brand",
+      "reference",
+      "box",
+      "papers",
+      "seller_country",
+      "seller_type",
+      "price_amount",
+      "price_currency",
+    ]) {
+      const found = value(name);
+      // Un champ absent de l'annonce n'écrase rien et ne pose aucun défaut :
+      // « non renseigné » doit rester « non renseigné ».
+      if (found !== undefined) next[name] = found;
+    }
+
+    setImported(next);
+    setImportVersion((version) => version + 1);
+    setHasUserEdits(false);
+  }
+
+  const text = (name: string): string => {
+    const found = imported[name];
+    return typeof found === "string" ? found : "";
+  };
+  const checked = (name: string): boolean => imported[name] === true;
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
@@ -68,7 +122,7 @@ export function NewOpportunityForm({
                     platform_code:
                       String(data.get("platform_code") ?? "") || null,
                   }
-                : { mode: "url", url: String(data.get("url")) },
+                : { mode: "url", url: url.trim() },
             watch: {
               brand: String(data.get("brand")),
               reference: String(data.get("reference")),
@@ -107,7 +161,12 @@ export function NewOpportunityForm({
 
   return (
     <Card>
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form
+        onSubmit={handleSubmit}
+        onInput={() => setHasUserEdits(true)}
+        onChange={() => setHasUserEdits(true)}
+        className="space-y-5"
+      >
         <div
           role="radiogroup"
           aria-label="Mode de saisie"
@@ -156,25 +215,40 @@ export function NewOpportunityForm({
             </Field>
           </div>
         ) : (
-          <Field label="URL de l'annonce">
-            <input
-              name="url"
-              type="url"
-              required
-              className={inputClass}
-              placeholder="https://exemple.com/annonce/12345"
-            />
-          </Field>
+          <ListingPrefill
+            url={url}
+            onUrlChange={setUrl}
+            onApply={applyPrefill}
+            hasUserEdits={hasUserEdits}
+          />
         )}
 
         <div className="grid grid-cols-2 gap-4">
           <Field label="Marque">
-            <input name="brand" required className={inputClass} />
+            <input
+              key={`brand-${importVersion}`}
+              name="brand"
+              required
+              defaultValue={text("brand")}
+              className={inputClass}
+            />
           </Field>
           <Field label="Référence">
-            <input name="reference" required className={inputClass} />
+            <input
+              key={`reference-${importVersion}`}
+              name="reference"
+              required
+              defaultValue={text("reference")}
+              className={inputClass}
+            />
           </Field>
         </div>
+        {imported.reference !== undefined && (
+          <p className="-mt-3 text-xs text-fg-muted">
+            Référence reprise de l&apos;annonce : elle reste à confirmer, elle
+            n&apos;est pas vérifiée.
+          </p>
+        )}
 
         <div className="grid grid-cols-2 gap-4">
           <Field label="État mécanique">
@@ -199,11 +273,23 @@ export function NewOpportunityForm({
 
         <div className="flex gap-6">
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" name="box" className="accent-accent" />
+            <input
+              key={`box-${importVersion}`}
+              type="checkbox"
+              name="box"
+              defaultChecked={checked("box")}
+              className="accent-accent"
+            />
             Boîte
           </label>
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" name="papers" className="accent-accent" />
+            <input
+              key={`papers-${importVersion}`}
+              type="checkbox"
+              name="papers"
+              defaultChecked={checked("papers")}
+              className="accent-accent"
+            />
             Papiers
           </label>
         </div>
@@ -211,14 +297,21 @@ export function NewOpportunityForm({
         <div className="grid grid-cols-2 gap-4">
           <Field label="Pays du vendeur">
             <input
+              key={`country-${importVersion}`}
               name="country_code"
               maxLength={2}
               placeholder="FR"
+              defaultValue={text("seller_country")}
               className={inputClass}
             />
           </Field>
           <Field label="Type de vendeur">
-            <select name="seller_type" className={inputClass} defaultValue="">
+            <select
+              key={`seller-type-${importVersion}`}
+              name="seller_type"
+              className={inputClass}
+              defaultValue={text("seller_type")}
+            >
               <option value="">—</option>
               {options.sellerType.map((option) => (
                 <option key={option} value={option}>
@@ -232,16 +325,19 @@ export function NewOpportunityForm({
         <div className="grid grid-cols-2 gap-4">
           <Field label="Prix (optionnel)">
             <input
+              key={`amount-${importVersion}`}
               name="amount"
               inputMode="decimal"
               placeholder="1800.00"
+              defaultValue={text("price_amount")}
               className={inputClass}
             />
           </Field>
           <Field label="Devise">
             <input
+              key={`currency-${importVersion}`}
               name="currency"
-              defaultValue="EUR"
+              defaultValue={text("price_currency") || "EUR"}
               maxLength={3}
               className={inputClass}
             />

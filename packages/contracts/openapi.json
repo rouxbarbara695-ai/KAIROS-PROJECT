@@ -219,6 +219,29 @@
         "title": "AnalysisResponse",
         "type": "object"
       },
+      "AssistedPrefillRequest": {
+        "description": "Repli : l'utilisateur fournit lui-m\u00eame le contenu de la page.\n\n`url` reste obligatoire \u2014 c'est elle qui identifie l'annonce et qui\nreconna\u00eet la plateforme. Le contenu ne la remplace pas, il la compl\u00e8te.",
+        "properties": {
+          "content": {
+            "maxLength": 4194304,
+            "minLength": 1,
+            "title": "Content",
+            "type": "string"
+          },
+          "url": {
+            "maxLength": 2048,
+            "minLength": 8,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "content"
+        ],
+        "title": "AssistedPrefillRequest",
+        "type": "object"
+      },
       "AuditEventPage": {
         "properties": {
           "items": {
@@ -950,6 +973,58 @@
         "title": "HoldingResponse",
         "type": "object"
       },
+      "ImportedFieldResponse": {
+        "description": "Une valeur, ce qu'elle \u00e9tait avant normalisation, et d'o\u00f9 elle vient.",
+        "properties": {
+          "conflicts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Conflicts",
+            "type": "array"
+          },
+          "provenance": {
+            "enum": [
+              "imported",
+              "assisted",
+              "user",
+              "absent"
+            ],
+            "title": "Provenance",
+            "type": "string"
+          },
+          "raw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Raw"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "value": {
+            "title": "Value"
+          }
+        },
+        "required": [
+          "provenance"
+        ],
+        "title": "ImportedFieldResponse",
+        "type": "object"
+      },
       "LedgerMovementCreate": {
         "description": "Mouvement de tr\u00e9sorerie saisi par l'utilisateur.\n\nSeules les natures sans contrepartie ailleurs sont accept\u00e9es. Un paiement\nd'achat ou un encaissement de vente a sa ligne dans `purchases` ou\n`sales` : le saisir ici ferait diverger le registre des op\u00e9rations qu'il\nrefl\u00e8te.\n\nLe montant est toujours positif \u2014 c'est la nature qui porte le sens, comme\ndans le registre lui-m\u00eame.",
         "properties": {
@@ -1086,6 +1161,93 @@
           "created_at"
         ],
         "title": "LedgerMovementResponse",
+        "type": "object"
+      },
+      "ListingPrefillResponse": {
+        "description": "Ce que la r\u00e9cup\u00e9ration a donn\u00e9 \u2014 y compris quand elle n'a rien donn\u00e9.\n\n`url` et `platform_code` sont toujours renseign\u00e9s : en cas d'\u00e9chec, le\nformulaire garde le lien et l'utilisateur n'a pas \u00e0 le recoller.",
+        "properties": {
+          "access_mode": {
+            "enum": [
+              "automatic",
+              "assisted",
+              "forbidden"
+            ],
+            "title": "Access Mode",
+            "type": "string"
+          },
+          "canonical_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canonical Url"
+          },
+          "failure": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PrefillFailureResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fetched_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fetched At"
+          },
+          "fields": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ImportedFieldResponse"
+            },
+            "title": "Fields",
+            "type": "object"
+          },
+          "photos": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Photos",
+            "type": "array"
+          },
+          "platform_code": {
+            "title": "Platform Code",
+            "type": "string"
+          },
+          "succeeded": {
+            "title": "Succeeded",
+            "type": "boolean"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "url",
+          "platform_code",
+          "access_mode",
+          "succeeded"
+        ],
+        "title": "ListingPrefillResponse",
         "type": "object"
       },
       "LoginRequest": {
@@ -1418,6 +1580,35 @@
           "reason"
         ],
         "title": "PayoutCreate",
+        "type": "object"
+      },
+      "PlatformAccessResponse": {
+        "description": "Ce que KAIROS a le droit de faire sur une plateforme, et pourquoi.",
+        "properties": {
+          "access_mode": {
+            "enum": [
+              "automatic",
+              "assisted",
+              "forbidden"
+            ],
+            "title": "Access Mode",
+            "type": "string"
+          },
+          "explanation": {
+            "title": "Explanation",
+            "type": "string"
+          },
+          "platform_code": {
+            "title": "Platform Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "platform_code",
+          "access_mode",
+          "explanation"
+        ],
+        "title": "PlatformAccessResponse",
         "type": "object"
       },
       "PlatformResponse": {
@@ -1922,6 +2113,44 @@
           "movements"
         ],
         "title": "PortfolioOverviewResponse",
+        "type": "object"
+      },
+      "PrefillFailureResponse": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "details": {
+            "additionalProperties": true,
+            "title": "Details",
+            "type": "object"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "PrefillFailureResponse",
+        "type": "object"
+      },
+      "PrefillRequest": {
+        "properties": {
+          "url": {
+            "maxLength": 2048,
+            "minLength": 8,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "title": "PrefillRequest",
         "type": "object"
       },
       "PriceCreate": {
@@ -3199,6 +3428,133 @@
         "summary": "Health Ready",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/api/v1/listings/access": {
+      "get": {
+        "description": "Dit, avant toute tentative, ce que KAIROS pourra faire de ce lien.\n\nPermet \u00e0 l'interface d'annoncer \u00ab cette plateforme demande un import\nassist\u00e9 \u00bb au moment o\u00f9 le lien est coll\u00e9, plut\u00f4t que de faire attendre\nl'utilisateur pour un refus pr\u00e9visible.",
+        "operationId": "platform_access_route_api_v1_listings_access_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "url",
+            "required": true,
+            "schema": {
+              "title": "Url",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformAccessResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Platform Access Route",
+        "tags": [
+          "listings"
+        ]
+      }
+    },
+    "/api/v1/listings/prefill": {
+      "post": {
+        "description": "R\u00e9cup\u00e8re une annonce, \u00e0 la demande, et rend un brouillon \u00e0 v\u00e9rifier.\n\nRend `200` m\u00eame en cas d'\u00e9chec de r\u00e9cup\u00e9ration : ce n'est pas une erreur de\nla requ\u00eate, c'est un r\u00e9sultat. Le corps porte `succeeded: false` et dit\npr\u00e9cis\u00e9ment ce qui a bloqu\u00e9, pour que l'interface propose le bon repli\nplut\u00f4t qu'un message g\u00e9n\u00e9rique.",
+        "operationId": "prefill_listing_route_api_v1_listings_prefill_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrefillRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingPrefillResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Prefill Listing Route",
+        "tags": [
+          "listings"
+        ]
+      }
+    },
+    "/api/v1/listings/prefill/assisted": {
+      "post": {
+        "description": "Analyse un contenu fourni par l'utilisateur.\n\nAucune requ\u00eate sortante n'est \u00e9mise : c'est tout l'int\u00e9r\u00eat du repli l\u00e0 o\u00f9\nla plateforme refuse les acc\u00e8s automatis\u00e9s. Le contenu est trait\u00e9 comme une\ndonn\u00e9e, jamais comme une consigne, et n'est pas conserv\u00e9 (Q-08).",
+        "operationId": "prefill_listing_from_content_route_api_v1_listings_prefill_assisted_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssistedPrefillRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingPrefillResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Prefill Listing From Content Route",
+        "tags": [
+          "listings"
         ]
       }
     },

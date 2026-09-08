@@ -105,6 +105,79 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/listings/access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Platform Access Route
+         * @description Dit, avant toute tentative, ce que KAIROS pourra faire de ce lien.
+         *
+         *     Permet à l'interface d'annoncer « cette plateforme demande un import
+         *     assisté » au moment où le lien est collé, plutôt que de faire attendre
+         *     l'utilisateur pour un refus prévisible.
+         */
+        get: operations["platform_access_route_api_v1_listings_access_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/listings/prefill": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Prefill Listing Route
+         * @description Récupère une annonce, à la demande, et rend un brouillon à vérifier.
+         *
+         *     Rend `200` même en cas d'échec de récupération : ce n'est pas une erreur de
+         *     la requête, c'est un résultat. Le corps porte `succeeded: false` et dit
+         *     précisément ce qui a bloqué, pour que l'interface propose le bon repli
+         *     plutôt qu'un message générique.
+         */
+        post: operations["prefill_listing_route_api_v1_listings_prefill_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/listings/prefill/assisted": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Prefill Listing From Content Route
+         * @description Analyse un contenu fourni par l'utilisateur.
+         *
+         *     Aucune requête sortante n'est émise : c'est tout l'intérêt du repli là où
+         *     la plateforme refuse les accès automatisés. Le contenu est traité comme une
+         *     donnée, jamais comme une consigne, et n'est pas conservé (Q-08).
+         */
+        post: operations["prefill_listing_from_content_route_api_v1_listings_prefill_assisted_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me": {
         parameters: {
             query?: never;
@@ -655,6 +728,19 @@ export interface components {
             /** Total Cost Eur */
             total_cost_eur?: string | null;
         };
+        /**
+         * AssistedPrefillRequest
+         * @description Repli : l'utilisateur fournit lui-même le contenu de la page.
+         *
+         *     `url` reste obligatoire — c'est elle qui identifie l'annonce et qui
+         *     reconnaît la plateforme. Le contenu ne la remplace pas, il la complète.
+         */
+        AssistedPrefillRequest: {
+            /** Content */
+            content: string;
+            /** Url */
+            url: string;
+        };
         /** AuditEventPage */
         AuditEventPage: {
             /** Items */
@@ -933,6 +1019,25 @@ export interface components {
             reference?: string | null;
         };
         /**
+         * ImportedFieldResponse
+         * @description Une valeur, ce qu'elle était avant normalisation, et d'où elle vient.
+         */
+        ImportedFieldResponse: {
+            /** Conflicts */
+            conflicts?: string[];
+            /**
+             * Provenance
+             * @enum {string}
+             */
+            provenance: "imported" | "assisted" | "user" | "absent";
+            /** Raw */
+            raw?: string | null;
+            /** Source */
+            source?: string | null;
+            /** Value */
+            value?: unknown;
+        };
+        /**
          * LedgerMovementCreate
          * @description Mouvement de trésorerie saisi par l'utilisateur.
          *
@@ -999,6 +1104,39 @@ export interface components {
             occurred_at: string;
             /** Rate To Eur */
             rate_to_eur: string;
+        };
+        /**
+         * ListingPrefillResponse
+         * @description Ce que la récupération a donné — y compris quand elle n'a rien donné.
+         *
+         *     `url` et `platform_code` sont toujours renseignés : en cas d'échec, le
+         *     formulaire garde le lien et l'utilisateur n'a pas à le recoller.
+         */
+        ListingPrefillResponse: {
+            /**
+             * Access Mode
+             * @enum {string}
+             */
+            access_mode: "automatic" | "assisted" | "forbidden";
+            /** Canonical Url */
+            canonical_url?: string | null;
+            failure?: components["schemas"]["PrefillFailureResponse"] | null;
+            /** Fetched At */
+            fetched_at?: string | null;
+            /** Fields */
+            fields?: {
+                [key: string]: components["schemas"]["ImportedFieldResponse"];
+            };
+            /** Photos */
+            photos?: string[];
+            /** Platform Code */
+            platform_code: string;
+            /** Succeeded */
+            succeeded: boolean;
+            /** Url */
+            url: string;
+            /** Warnings */
+            warnings?: string[];
         };
         /** LoginRequest */
         LoginRequest: {
@@ -1125,6 +1263,21 @@ export interface components {
             reason: string;
             /** Received At */
             received_at?: string | null;
+        };
+        /**
+         * PlatformAccessResponse
+         * @description Ce que KAIROS a le droit de faire sur une plateforme, et pourquoi.
+         */
+        PlatformAccessResponse: {
+            /**
+             * Access Mode
+             * @enum {string}
+             */
+            access_mode: "automatic" | "assisted" | "forbidden";
+            /** Explanation */
+            explanation: string;
+            /** Platform Code */
+            platform_code: string;
         };
         /** PlatformResponse */
         PlatformResponse: {
@@ -1273,6 +1426,22 @@ export interface components {
             stock_at_cost_eur: string;
             /** Total Capital Eur */
             total_capital_eur: string;
+        };
+        /** PrefillFailureResponse */
+        PrefillFailureResponse: {
+            /** Code */
+            code: string;
+            /** Details */
+            details?: {
+                [key: string]: unknown;
+            };
+            /** Message */
+            message: string;
+        };
+        /** PrefillRequest */
+        PrefillRequest: {
+            /** Url */
+            url: string;
         };
         /** PriceCreate */
         PriceCreate: {
@@ -1771,6 +1940,103 @@ export interface operations {
                     "application/json": {
                         [key: string]: string;
                     };
+                };
+            };
+        };
+    };
+    platform_access_route_api_v1_listings_access_get: {
+        parameters: {
+            query: {
+                url: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformAccessResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    prefill_listing_route_api_v1_listings_prefill_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PrefillRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListingPrefillResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    prefill_listing_from_content_route_api_v1_listings_prefill_assisted_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssistedPrefillRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListingPrefillResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

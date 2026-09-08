@@ -1,4 +1,5 @@
-.PHONY: bootstrap up down migrate seed fmt lint typecheck test contracts check
+.PHONY: bootstrap up down migrate seed fmt lint typecheck test contracts \
+        schema-snapshot schema-check check
 
 API_DIR := apps/api
 WEB_DIR := apps/web
@@ -38,4 +39,15 @@ contracts:
 	cd $(API_DIR) && uv run python -m app.export_openapi ../../packages/contracts/openapi.json
 	pnpm --filter @kairos/contracts generate
 
-check: lint typecheck test
+# Photographie l'état du schéma APRÈS toutes les migrations. À ne pas confondre
+# avec database/schema.sql, qui est le schéma initial joué par la migration 0001.
+# La base doit être à jour (`make migrate`) avant l'appel.
+schema-snapshot:
+	cd $(API_DIR) && uv run python -m app.export_schema_snapshot ../../database/schema-after-migrations.json
+
+# Exige une base migrée : c'est une comparaison avec le schéma réel, pas une
+# analyse statique. D'où une cible distincte de `typecheck`.
+schema-check:
+	cd $(API_DIR) && uv run alembic -c alembic.ini check
+
+check: lint typecheck test schema-check

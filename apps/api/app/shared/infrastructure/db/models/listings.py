@@ -4,11 +4,24 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import CHAR, Boolean, ForeignKey, Numeric, Text, UniqueConstraint, text
+from sqlalchemy import (
+    CHAR,
+    Boolean,
+    ForeignKey,
+    Index,
+    Numeric,
+    Text,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.shared.infrastructure.db.base import Base
+from app.shared.infrastructure.db.base import (
+    Base,
+    portfolio_identity_index,
+    same_portfolio_fk,
+)
 from app.shared.infrastructure.db.models.enums import ListingStatus, PriceKind, pg_enum
 
 
@@ -46,9 +59,30 @@ class Listing(Base):
     )
 
     __table_args__ = (
-        UniqueConstraint(
-            "portfolio_id", "canonical_url", name="listings_canonical_url_uq"
+        # Index unique et non `UniqueConstraint` : c'est un index en base, et
+        # les deux ne sont pas interchangeables pour la comparaison de schéma.
+        Index(
+            "listings_canonical_url_uq", "portfolio_id", "canonical_url", unique=True
         ),
+        # Partiel : deux annonces sans identifiant externe doivent pouvoir
+        # coexister. C'est le cas dès qu'une plateforme n'en expose pas.
+        Index(
+            "listings_external_id_uq",
+            "portfolio_id",
+            "platform_id",
+            "external_id",
+            unique=True,
+            postgresql_where=text("external_id is not null"),
+        ),
+        portfolio_identity_index("listings"),
+        Index(
+            "listings_portfolio_watch_identity_uq",
+            "portfolio_id",
+            "id",
+            "watch_id",
+            unique=True,
+        ),
+        same_portfolio_fk("seller_id", "sellers", "listings_seller_same_portfolio_fk"),
     )
 
 
@@ -99,6 +133,17 @@ class ListingObservation(Base):
             "collection_id",
             name="listing_observations_listing_id_collection_id_key",
         ),
+        Index(
+            "listing_observations_latest_idx",
+            "portfolio_id",
+            "listing_id",
+            text("observed_at desc"),
+            text("id desc"),
+        ),
+        portfolio_identity_index("listing_observations"),
+        same_portfolio_fk(
+            "listing_id", "listings", "observations_listing_same_portfolio_fk"
+        ),
     )
 
 
@@ -135,5 +180,10 @@ class ListingObservationPrice(Base):
             "observation_id",
             "kind",
             name="listing_observation_prices_observation_id_kind_key",
+        ),
+        same_portfolio_fk(
+            "observation_id",
+            "listing_observations",
+            "observation_prices_same_portfolio_fk",
         ),
     )

@@ -80,6 +80,8 @@ mais doivent être comblés pour que le parcours soit réellement utilisable.
 | POL-046 | — | **Traité.** La bascule est faite : `0004` est la première migration incrémentale. Elle utilise `add column if not exists` parce que `0001` rejoue `schema.sql` d'un bloc — sur une base neuve la colonne existe déjà, sur une base existante non. |
 | POL-047 | P3 | Couverture à 93 %. Les zones non couvertes sont la résolution de change, la fabrique de session et les opérations arithmétiques de `Money` en cas d'erreur. |
 | POL-048 | P3 | Les actions GitHub utilisées ciblent Node 20, déprécié par les exécuteurs. À relever lors d'une passe d'entretien de la CI. |
+| POL-068 | — | **Traité.** Les modèles SQLAlchemy sous-déclaraient le schéma : `alembic check` relevait 67 divergences (32 index, 30 clés étrangères composées, la colonne `sellers.created_at`). Un `alembic revision --autogenerate` aurait donc produit des `DROP` sur des protections réelles. L'ORM déclare désormais tout ce que la base porte, sans qu'aucune migration soit générée — le schéma reste la référence. `alembic check` est bloquant en CI et dans `make check`. |
+| POL-069 | — | **Traité.** La CI comparait `pg_dump --schema-only` à `database/schema.sql` avec `\|\| true` : jamais bloquant, et surtout dénué de sens — les deux fichiers décrivent des objets différents, le schéma **initial** d'un côté, l'état **après toutes les migrations** de l'autre. Remplacé par `database/schema-after-migrations.json`, instantané structurel (colonnes, contraintes, index, déclencheurs, énumérations) comparé par `tests/integration/test_schema_snapshot.py`. Vérifié : la suppression d'un déclencheur d'immuabilité fait échouer le test. |
 
 ## Hors périmètre assumé
 

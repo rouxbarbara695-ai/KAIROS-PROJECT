@@ -4,11 +4,22 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import ForeignKey, Integer, Numeric, Text, UniqueConstraint, text
+from sqlalchemy import (
+    ForeignKey,
+    Integer,
+    Numeric,
+    Text,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.shared.infrastructure.db.base import Base
+from app.shared.infrastructure.db.base import (
+    Base,
+    portfolio_identity_index,
+    same_portfolio_fk,
+)
 
 
 class Strategy(Base):
@@ -32,6 +43,7 @@ class Strategy(Base):
         UniqueConstraint(
             "portfolio_id", "name", name="strategies_portfolio_id_name_key"
         ),
+        portfolio_identity_index("strategies"),
     )
 
 
@@ -79,5 +91,9 @@ class StrategyVersion(Base):
     __table_args__ = (
         UniqueConstraint(
             "strategy_id", "version", name="strategy_versions_strategy_id_version_key"
+        ),
+        portfolio_identity_index("strategy_versions"),
+        same_portfolio_fk(
+            "strategy_id", "strategies", "strategy_versions_strategy_same_portfolio_fk"
         ),
     )

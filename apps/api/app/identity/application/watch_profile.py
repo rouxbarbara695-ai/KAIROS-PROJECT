@@ -10,6 +10,7 @@ from app.audit.application.audit_log import record_audit_event
 from app.identity.domain import vocabularies as vocab
 from app.shared.domain.errors import DomainError, ErrorCode
 from app.shared.domain.principal import Principal
+from app.shared.domain.versioning import check_version
 from app.shared.infrastructure.db.models.opportunities import Opportunity
 from app.shared.infrastructure.db.models.watches import Watch
 
@@ -20,6 +21,7 @@ async def patch_watch_profile(
     opportunity_id: uuid.UUID,
     request: WatchProfilePatchRequest,
     request_id: uuid.UUID | None,
+    expected_version: int,
 ) -> Watch:
     opportunity = (
         await session.execute(
@@ -31,6 +33,8 @@ async def patch_watch_profile(
     ).scalar_one_or_none()
     if opportunity is None:
         raise DomainError(ErrorCode.NOT_FOUND, "Opportunité introuvable.")
+
+    check_version(expected_version, opportunity.version)
 
     watch = (
         await session.execute(select(Watch).where(Watch.id == opportunity.watch_id))
@@ -88,6 +92,11 @@ async def patch_watch_profile(
     watch.raw_input = raw_input
     watch.condition_data = condition_data
     watch.completeness_data = completeness_data
+    # Le dossier change : sa version aussi. Elle couvre l'opportunité **et** ce
+    # que sa fiche présente — montre, vendeur, référence. C'est cette version
+    # que l'`ETag` publie, et l'`UPDATE` porte `where version = <valeur lue>` :
+    # une correction concurrente est refusée, pas silencieusement écrasée.
+    opportunity.version += 1
 
     after = {
         "condition_data": condition_data,

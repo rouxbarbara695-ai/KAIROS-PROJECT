@@ -20,9 +20,12 @@ function stubFetch(): ReturnType<typeof vi.fn> {
   return fetchMock;
 }
 
-function headersOf(fetchMock: ReturnType<typeof vi.fn>): Record<string, string> {
-  const init = fetchMock.mock.calls[0][1] as RequestInit;
-  return init.headers as Record<string, string>;
+function headersOf(
+  fetchMock: ReturnType<typeof vi.fn>,
+): Record<string, string> {
+  const call = fetchMock.mock.calls[0];
+  if (call === undefined) throw new Error("fetch n'a pas été appelé");
+  return (call[1] as RequestInit).headers as Record<string, string>;
 }
 
 afterEach(() => {
@@ -88,5 +91,34 @@ describe("en-tête d'idempotence", () => {
       expect(headersOf(fetchMock)["Idempotency-Key"]).toBe("k");
       vi.unstubAllGlobals();
     }
+  });
+});
+
+describe("en-tête de version", () => {
+  it("accompagne toute correction", async () => {
+    for (const call of [
+      () => api.patchWatchProfile("op-1", { reason: "r" }, 4),
+      () => api.patchSellerProfile("op-1", { reason: "r" }, 4),
+    ]) {
+      const fetchMock = stubFetch();
+      await call();
+      // Forme exacte attendue par l'API : `"version-<entier>"`, guillemets
+      // compris. Sans eux, l'en-tête est refusé.
+      expect(headersOf(fetchMock)["If-Match"]).toBe('"version-4"');
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("reconnaît le conflit de version renvoyé par l'API", () => {
+    const conflict = new api.ApiError(409, {
+      error: { code: "RESOURCE_VERSION_CONFLICT", message: "…" },
+    });
+    const other = new api.ApiError(409, {
+      error: { code: "IDEMPOTENCY_CONFLICT", message: "…" },
+    });
+
+    expect(api.isVersionConflict(conflict)).toBe(true);
+    expect(api.isVersionConflict(other)).toBe(false);
+    expect(api.isVersionConflict(new Error("réseau"))).toBe(false);
   });
 });

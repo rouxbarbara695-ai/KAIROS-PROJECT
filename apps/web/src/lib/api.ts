@@ -90,6 +90,22 @@ function idempotent(options?: WriteOptions): Record<string, string> {
     : {};
 }
 
+/**
+ * Version du dossier sur laquelle s'appuie une correction.
+ *
+ * Obligatoire : l'API refuse une correction qui ne dit pas ce qu'elle a lu.
+ * Sans cela, deux onglets ouverts sur la même fiche s'écraseraient l'un
+ * l'autre en silence.
+ */
+export function ifMatch(version: number): Record<string, string> {
+  return { "If-Match": `"version-${version}"` };
+}
+
+/** Le serveur dit que la ressource a bougé depuis la lecture. */
+export function isVersionConflict(err: unknown): boolean {
+  return err instanceof ApiError && err.code === "RESOURCE_VERSION_CONFLICT";
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${baseUrl()}${path}`, {
     ...init,
@@ -163,20 +179,22 @@ export function confirmReference(
 export function patchWatchProfile(
   opportunityId: string,
   body: Record<string, unknown>,
+  version: number,
 ): Promise<OpportunityResponse> {
   return request<OpportunityResponse>(
     `/opportunities/${opportunityId}/watch-profile`,
-    { method: "PATCH", body: JSON.stringify(body) },
+    { method: "PATCH", body: JSON.stringify(body), headers: ifMatch(version) },
   );
 }
 
 export function patchSellerProfile(
   opportunityId: string,
   body: Record<string, unknown>,
+  version: number,
 ): Promise<OpportunityResponse> {
   return request<OpportunityResponse>(
     `/opportunities/${opportunityId}/seller-profile`,
-    { method: "PATCH", body: JSON.stringify(body) },
+    { method: "PATCH", body: JSON.stringify(body), headers: ifMatch(version) },
   );
 }
 

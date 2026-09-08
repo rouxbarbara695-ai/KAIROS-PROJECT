@@ -33,6 +33,42 @@ mais le client ne l’interprète pas. `limit=20`, maximum 100.
 Les réponses modifiables exposent `ETag: "version-n"`. `PATCH` exige
 `If-Match`. Un conflit retourne `409 RESOURCE_VERSION_CONFLICT`.
 
+**Ce que couvre la version.** `version` est celle du **dossier**, pas de la
+seule ligne `opportunities` : elle bouge dès que change ce que la fiche
+présente — état de la montre, vendeur, référence, statut. Sans cela, l’`ETag`
+promettrait une fraîcheur que la réponse n’a pas.
+
+**Routes qui exposent l’`ETag`.** Toute réponse portant une opportunité :
+`GET /opportunities/{id}`, les trois `PATCH`, `POST
+/opportunities/{id}/reference-confirmations`, `POST
+/opportunities/{id}/status` et `POST /opportunities`. La création et la
+transition l’exposent aussi, faute de quoi la première correction n’aurait
+aucune version à citer.
+
+**Routes qui exigent `If-Match`.** Les trois corrections :
+`PATCH /opportunities/{id}`, `PATCH /opportunities/{id}/watch-profile`,
+`PATCH /opportunities/{id}/seller-profile`.
+
+**Forme acceptée.** `"version-<entier>"`, guillemets compris, éventuellement
+préfixée `W/`. Toute autre forme retourne `422 VALIDATION_ERROR`. `*` est
+refusé : « n’importe quelle version » est exactement l’écrasement aveugle que
+la protection remplace. L’en-tête absent retourne
+`409 RESOURCE_VERSION_CONFLICT` avec `details.reason = "if_match_required"` —
+une correction qui ne dit pas ce qu’elle a lu n’est pas acceptée par défaut.
+
+**Vérification atomique.** La comparaison de version faite en amont sert à
+rendre l’erreur immédiate et à ne pas engager de travail inutile ; elle ne
+constitue pas la garantie. Chaque `UPDATE` d’opportunité porte
+`where version = <valeur lue>` : si une transaction concurrente a écrit
+entre-temps, aucune ligne ne correspond et la requête est refusée. Le conflit
+constaté à l’écriture porte `details.reason = "concurrent_write"` ; celui
+constaté en amont porte `details.expected_version` et
+`details.current_version`.
+
+**Côté client.** Un conflit **conserve la saisie** et propose de recharger.
+Renvoyer d’office avec la nouvelle version écraserait le travail de l’autre
+onglet — précisément ce que la protection existe pour empêcher.
+
 ### Idempotence
 
 `POST` de création, transitions et écritures financières acceptent
@@ -313,6 +349,7 @@ et raisons d’échec. Elle est persistée comme toute autre analyse.
 | `COLLECTOR_UNAVAILABLE` | 503 | échec externe |
 | `RATE_LIMITED` | 429 | trop de tentatives |
 | `RULESET_MISSING` | 500 | version non résolue |
+| `INTERNAL_ERROR` | 500 | échec d’écriture non traduit |
 
 Format :
 

@@ -23,6 +23,7 @@ class ErrorCode(StrEnum):
     COLLECTOR_UNAVAILABLE = "COLLECTOR_UNAVAILABLE"
     RULESET_MISSING = "RULESET_MISSING"
     RATE_LIMITED = "RATE_LIMITED"
+    INTERNAL_ERROR = "INTERNAL_ERROR"
 
 
 _HTTP_STATUS: dict[ErrorCode, int] = {
@@ -43,6 +44,7 @@ _HTTP_STATUS: dict[ErrorCode, int] = {
     ErrorCode.COLLECTOR_UNAVAILABLE: 503,
     ErrorCode.RATE_LIMITED: 429,
     ErrorCode.RULESET_MISSING: 500,
+    ErrorCode.INTERNAL_ERROR: 500,
 }
 
 
@@ -66,4 +68,8 @@ class DomainError(Exception):
 
     @property
     def http_status(self) -> int:
-        return _HTTP_STATUS[self.code]
+        return http_status(self.code)
+
+
+def http_status(code: ErrorCode) -> int:
+    return _HTTP_STATUS[code]

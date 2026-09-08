@@ -1902,7 +1902,10 @@ export interface operations {
     patch_opportunity_route_api_v1_opportunities__opportunity_id__patch: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Version du dossier sur laquelle s'appuie la correction, telle que l'`ETag` de la dernière lecture l'a donnée. Obligatoire sur les corrections : sans elle, deux modifications concurrentes s'écraseraient en silence. */
+                "If-Match"?: string | null;
+            };
             path: {
                 opportunity_id: string;
             };
@@ -2369,7 +2372,10 @@ export interface operations {
     patch_seller_profile_route_api_v1_opportunities__opportunity_id__seller_profile_patch: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Version du dossier sur laquelle s'appuie la correction, telle que l'`ETag` de la dernière lecture l'a donnée. Obligatoire sur les corrections : sans elle, deux modifications concurrentes s'écraseraient en silence. */
+                "If-Match"?: string | null;
+            };
             path: {
                 opportunity_id: string;
             };
@@ -2504,7 +2510,10 @@ export interface operations {
     patch_watch_profile_route_api_v1_opportunities__opportunity_id__watch_profile_patch: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Version du dossier sur laquelle s'appuie la correction, telle que l'`ETag` de la dernière lecture l'a donnée. Obligatoire sur les corrections : sans elle, deux modifications concurrentes s'écraseraient en silence. */
+                "If-Match"?: string | null;
+            };
             path: {
                 opportunity_id: string;
             };

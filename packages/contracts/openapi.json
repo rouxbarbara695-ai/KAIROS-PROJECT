@@ -3451,6 +3451,24 @@
               "title": "Opportunity Id",
               "type": "string"
             }
+          },
+          {
+            "description": "Version du dossier sur laquelle s'appuie la correction, telle que l'`ETag` de la derni\u00e8re lecture l'a donn\u00e9e. Obligatoire sur les corrections : sans elle, deux modifications concurrentes s'\u00e9craseraient en silence.",
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Version du dossier sur laquelle s'appuie la correction, telle que l'`ETag` de la derni\u00e8re lecture l'a donn\u00e9e. Obligatoire sur les corrections : sans elle, deux modifications concurrentes s'\u00e9craseraient en silence.",
+              "title": "If-Match"
+            }
           }
         ],
         "requestBody": {
@@ -4272,6 +4290,24 @@
               "title": "Opportunity Id",
               "type": "string"
             }
+          },
+          {
+            "description": "Version du dossier sur laquelle s'appuie la correction, telle que l'`ETag` de la derni\u00e8re lecture l'a donn\u00e9e. Obligatoire sur les corrections : sans elle, deux modifications concurrentes s'\u00e9craseraient en silence.",
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Version du dossier sur laquelle s'appuie la correction, telle que l'`ETag` de la derni\u00e8re lecture l'a donn\u00e9e. Obligatoire sur les corrections : sans elle, deux modifications concurrentes s'\u00e9craseraient en silence.",
+              "title": "If-Match"
+            }
           }
         ],
         "requestBody": {
@@ -4484,6 +4520,24 @@
               "format": "uuid",
               "title": "Opportunity Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "Version du dossier sur laquelle s'appuie la correction, telle que l'`ETag` de la derni\u00e8re lecture l'a donn\u00e9e. Obligatoire sur les corrections : sans elle, deux modifications concurrentes s'\u00e9craseraient en silence.",
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Version du dossier sur laquelle s'appuie la correction, telle que l'`ETag` de la derni\u00e8re lecture l'a donn\u00e9e. Obligatoire sur les corrections : sans elle, deux modifications concurrentes s'\u00e9craseraient en silence.",
+              "title": "If-Match"
             }
           }
         ],

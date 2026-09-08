@@ -9,6 +9,7 @@ from app.api.v1.schemas.opportunities import OpportunityPatchRequest
 from app.audit.application.audit_log import record_audit_event
 from app.shared.domain.errors import DomainError, ErrorCode
 from app.shared.domain.principal import Principal
+from app.shared.domain.versioning import check_version
 from app.shared.infrastructure.db.models.opportunities import Opportunity
 from app.shared.infrastructure.db.models.strategies import Strategy
 
@@ -19,6 +20,7 @@ async def patch_opportunity(
     opportunity_id: uuid.UUID,
     request: OpportunityPatchRequest,
     request_id: uuid.UUID | None,
+    expected_version: int,
 ) -> Opportunity:
     """Liste blanche stricte (KAI-103) : seule la stratégie sélectionnée est
     corrigible ici. Référence, état, set, vendeur, prix et données
@@ -34,6 +36,8 @@ async def patch_opportunity(
     ).scalar_one_or_none()
     if opportunity is None:
         raise DomainError(ErrorCode.NOT_FOUND, "Opportunité introuvable.")
+
+    check_version(expected_version, opportunity.version)
 
     if request.strategy_id is not None:
         strategy = (
@@ -55,6 +59,11 @@ async def patch_opportunity(
         "strategy_id": str(opportunity.strategy_id) if opportunity.strategy_id else None
     }
     opportunity.strategy_id = request.strategy_id
+    # Le dossier change : sa version aussi. Elle couvre l'opportunité **et** ce
+    # que sa fiche présente — montre, vendeur, référence. C'est cette version
+    # que l'`ETag` publie, et l'`UPDATE` porte `where version = <valeur lue>` :
+    # une correction concurrente est refusée, pas silencieusement écrasée.
+    opportunity.version += 1
     after = {
         "strategy_id": str(opportunity.strategy_id) if opportunity.strategy_id else None
     }

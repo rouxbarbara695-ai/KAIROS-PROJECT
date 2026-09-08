@@ -30,6 +30,15 @@ async def _create_longines(client: AsyncClient, portfolio_id: uuid.UUID) -> dict
     return response.json()
 
 
+def _if_match(payload: dict) -> dict[str, str]:
+    """En-tête `If-Match` bâti sur la version que la réponse vient de donner.
+
+    Les corrections l'exigent : sans elle, deux modifications concurrentes
+    s'écraseraient en silence."""
+
+    return {"If-Match": f'"version-{payload["version"]}"'}
+
+
 async def test_create_manual_opportunity_without_listing(
     client: AsyncClient, default_portfolio_id: uuid.UUID
 ) -> None:
@@ -227,6 +236,7 @@ async def test_watch_profile_patch_updates_and_audits(
     response = await client.patch(
         f"/api/v1/opportunities/{created['id']}/watch-profile",
         json={"cosmetic_condition": "good", "reason": "Nouvelles photos"},
+        headers=_if_match(created),
     )
     assert response.status_code == 200
     assert response.json()["watch"]["condition_data"]["cosmetic"] == "good"
@@ -244,6 +254,7 @@ async def test_seller_profile_patch(
     response = await client.patch(
         f"/api/v1/opportunities/{created['id']}/seller-profile",
         json={"seller_type": "professional", "reason": "Vendeur identifié marchand"},
+        headers=_if_match(created),
     )
     assert response.status_code == 200
     assert response.json()["seller"]["seller_type"] == "professional"
@@ -292,6 +303,7 @@ async def test_patch_opportunity_unknown_strategy_rejected(
     response = await client.patch(
         f"/api/v1/opportunities/{created['id']}",
         json={"strategy_id": str(uuid.uuid4()), "reason": "test"},
+        headers=_if_match(created),
     )
     assert response.status_code == 422
     assert response.json()["error"]["field"] == "strategy_id"
@@ -321,6 +333,7 @@ async def test_patch_opportunity_selects_own_strategy(
     response = await client.patch(
         f"/api/v1/opportunities/{created['id']}",
         json={"strategy_id": str(strategy_id), "reason": "Stratégie choisie"},
+        headers=_if_match(created),
     )
     assert response.status_code == 200
 
@@ -383,13 +396,17 @@ async def test_events_aggregate_watch_seller_and_opportunity_corrections(
     created = await _create_longines(client, default_portfolio_id)
     opportunity_id = created["id"]
 
-    await client.patch(
+    corrected = await client.patch(
         f"/api/v1/opportunities/{opportunity_id}/watch-profile",
         json={"cosmetic_condition": "good", "reason": "Rayures constatées"},
+        headers=_if_match(created),
     )
+    assert corrected.status_code == 200, corrected.text
+    # La version a bougé : la correction suivante doit citer la nouvelle.
     await client.patch(
         f"/api/v1/opportunities/{opportunity_id}/seller-profile",
         json={"seller_type": "professional", "reason": "Boutique identifiée"},
+        headers=_if_match(corrected.json()),
     )
 
     response = await client.get(f"/api/v1/opportunities/{opportunity_id}/events")

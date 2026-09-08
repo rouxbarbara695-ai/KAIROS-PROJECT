@@ -129,6 +129,26 @@ class Opportunity(Base):
         ),
     )
 
+    # Verrou optimiste. Chaque `UPDATE` émis par l'ORM porte désormais
+    # `where version = <valeur lue>` : si une autre transaction a écrit
+    # entre-temps, aucune ligne ne correspond et SQLAlchemy lève
+    # `StaleDataError`, traduite en `RESOURCE_VERSION_CONFLICT`.
+    #
+    # C'est la condition `where` qui fait la garantie, pas une comparaison
+    # préalable en Python : entre une lecture et une écriture séparées, une
+    # écriture concurrente passe. Ici, PostgreSQL réévalue la condition sur la
+    # ligne réellement verrouillée.
+    #
+    # `version_id_generator=False` parce que le déclencheur `opportunities_touch`
+    # incrémente déjà `version` en base : le générateur de SQLAlchemy et le
+    # déclencheur se disputeraient la valeur. Chaque écriture doit donc poser
+    # `opportunity.version += 1` — ce que le déclencheur recalcule à
+    # l'identique.
+    __mapper_args__ = {
+        "version_id_col": version,
+        "version_id_generator": False,
+    }
+
 
 class OpportunityPriceInput(Base):
     __tablename__ = "opportunity_price_inputs"

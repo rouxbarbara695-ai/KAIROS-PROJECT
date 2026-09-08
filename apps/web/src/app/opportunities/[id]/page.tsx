@@ -16,7 +16,13 @@ import { OperationPanel } from "./OperationPanel";
 import { ValuationPanel } from "./ValuationPanel";
 import { ReferenceConfirmationForm } from "./ReferenceConfirmationForm";
 
-function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
+function DetailRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: React.ReactNode;
+}) {
   return (
     <div className="flex items-center justify-between border-b border-border py-2.5 text-sm last:border-0">
       <span className="text-fg-muted">{label}</span>
@@ -65,9 +71,7 @@ export default async function OpportunityDetailPage({
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
-          <h2 className="mb-3 text-sm font-semibold text-fg-muted">
-            Prix
-          </h2>
+          <h2 className="mb-3 text-sm font-semibold text-fg-muted">Prix</h2>
           <DetailRow
             label="Prix courant"
             value={
@@ -121,6 +125,7 @@ export default async function OpportunityDetailPage({
             <Disclosure summary="Corriger l'état et le set">
               <WatchProfileForm
                 opportunityId={opportunity.id}
+                version={opportunity.version}
                 current={{
                   mechanical: opportunity.watch.condition_data.mechanical as
                     | string
@@ -138,9 +143,7 @@ export default async function OpportunityDetailPage({
         </Card>
 
         <Card>
-          <h2 className="mb-3 text-sm font-semibold text-fg-muted">
-            Vendeur
-          </h2>
+          <h2 className="mb-3 text-sm font-semibold text-fg-muted">Vendeur</h2>
           {opportunity.seller ? (
             <>
               <DetailRow
@@ -153,14 +156,13 @@ export default async function OpportunityDetailPage({
               />
             </>
           ) : (
-            <p className="text-sm text-fg-muted">
-              Aucune information vendeur.
-            </p>
+            <p className="text-sm text-fg-muted">Aucune information vendeur.</p>
           )}
           <div className="mt-4">
             <Disclosure summary="Corriger le vendeur">
               <SellerProfileForm
                 opportunityId={opportunity.id}
+                version={opportunity.version}
                 current={{
                   countryCode: opportunity.seller?.country_code,
                   sellerType: opportunity.seller?.seller_type,

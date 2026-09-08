@@ -3,12 +3,13 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi import APIRouter, Depends, Query, Request, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.idempotency import Idempotency, IdempotencyKey, get_idempotency
+from app.api.v1.preconditions import IfMatch, required_version, tag
 from app.api.v1.schemas.common import DecimalString
 from app.api.v1.schemas.events import (
     AuditEventPage,
@@ -81,6 +82,33 @@ def _request_id(request: Request) -> uuid.UUID | None:
         return None
 
 
+async def _present(
+    session: AsyncSession,
+    principal: Principal,
+    opportunity_id: uuid.UUID,
+    response: Response,
+) -> OpportunityResponse:
+    """Relit le dossier et l'étiquette de sa version.
+
+    Toutes les réponses qui portent une opportunité passent par ici : l'`ETag`
+    doit accompagner **chaque** lecture, sinon le client n'a pas de version à
+    renvoyer dans `If-Match` après la première correction.
+    """
+
+    opportunity, watch, reference, seller, latest_price = await get_opportunity(
+        session, principal, opportunity_id
+    )
+    tag(response, opportunity.version)
+    return to_opportunity_response(
+        opportunity,
+        watch,
+        reference,
+        seller,
+        latest_price,
+        await _platform_code(session, opportunity),
+    )
+
+
 @router.post(
     "/opportunities",
     status_code=status.HTTP_201_CREATED,
@@ -89,6 +117,7 @@ def _request_id(request: Request) -> uuid.UUID | None:
 async def create_opportunity_route(
     body: CreateOpportunityRequest,
     request: Request,
+    response: Response,
     session: AsyncSession = Depends(get_session),
     principal: Principal = Depends(get_current_principal),
     settings: Settings = Depends(get_settings),
@@ -112,6 +141,7 @@ async def create_opportunity_route(
             return place.replay
 
         result = await create_opportunity(session, principal, body, settings)
+        tag(response, result.opportunity.version)
         return place.completed(
             to_opportunity_response(
                 result.opportunity,
@@ -158,20 +188,11 @@ async def list_opportunities_route(
 @router.get("/opportunities/{opportunity_id}", response_model=OpportunityResponse)
 async def get_opportunity_route(
     opportunity_id: uuid.UUID,
+    response: Response,
     session: AsyncSession = Depends(get_session),
     principal: Principal = Depends(get_current_principal),
 ) -> OpportunityResponse:
-    opportunity, watch, reference, seller, latest_price = await get_opportunity(
-        session, principal, opportunity_id
-    )
-    return to_opportunity_response(
-        opportunity,
-        watch,
-        reference,
-        seller,
-        latest_price,
-        await _platform_code(session, opportunity),
-    )
+    return await _present(session, principal, opportunity_id, response)
 
 
 @router.patch("/opportunities/{opportunity_id}", response_model=OpportunityResponse)
@@ -179,23 +200,20 @@ async def patch_opportunity_route(
     opportunity_id: uuid.UUID,
     body: OpportunityPatchRequest,
     request: Request,
+    response: Response,
     session: AsyncSession = Depends(get_session),
     principal: Principal = Depends(get_current_principal),
+    if_match: IfMatch = None,
 ) -> OpportunityResponse:
     await patch_opportunity(
-        session, principal, opportunity_id, body, _request_id(request)
+        session,
+        principal,
+        opportunity_id,
+        body,
+        _request_id(request),
+        required_version(if_match),
     )
-    opportunity, watch, reference, seller, latest_price = await get_opportunity(
-        session, principal, opportunity_id
-    )
-    return to_opportunity_response(
-        opportunity,
-        watch,
-        reference,
-        seller,
-        latest_price,
-        await _platform_code(session, opportunity),
-    )
+    return await _present(session, principal, opportunity_id, response)
 
 
 @router.post(
@@ -206,23 +224,14 @@ async def confirm_reference_route(
     opportunity_id: uuid.UUID,
     body: ReferenceConfirmationRequest,
     request: Request,
+    response: Response,
     session: AsyncSession = Depends(get_session),
     principal: Principal = Depends(get_current_principal),
 ) -> OpportunityResponse:
     await confirm_reference(
         session, principal, opportunity_id, body, _request_id(request)
     )
-    opportunity, watch, reference, seller, latest_price = await get_opportunity(
-        session, principal, opportunity_id
-    )
-    return to_opportunity_response(
-        opportunity,
-        watch,
-        reference,
-        seller,
-        latest_price,
-        await _platform_code(session, opportunity),
-    )
+    return await _present(session, principal, opportunity_id, response)
 
 
 @router.patch(
@@ -232,23 +241,20 @@ async def patch_watch_profile_route(
     opportunity_id: uuid.UUID,
     body: WatchProfilePatchRequest,
     request: Request,
+    response: Response,
     session: AsyncSession = Depends(get_session),
     principal: Principal = Depends(get_current_principal),
+    if_match: IfMatch = None,
 ) -> OpportunityResponse:
     await patch_watch_profile(
-        session, principal, opportunity_id, body, _request_id(request)
+        session,
+        principal,
+        opportunity_id,
+        body,
+        _request_id(request),
+        required_version(if_match),
     )
-    opportunity, watch, reference, seller, latest_price = await get_opportunity(
-        session, principal, opportunity_id
-    )
-    return to_opportunity_response(
-        opportunity,
-        watch,
-        reference,
-        seller,
-        latest_price,
-        await _platform_code(session, opportunity),
-    )
+    return await _present(session, principal, opportunity_id, response)
 
 
 @router.patch(
@@ -258,23 +264,20 @@ async def patch_seller_profile_route(
     opportunity_id: uuid.UUID,
     body: SellerProfilePatchRequest,
     request: Request,
+    response: Response,
     session: AsyncSession = Depends(get_session),
     principal: Principal = Depends(get_current_principal),
+    if_match: IfMatch = None,
 ) -> OpportunityResponse:
     await patch_seller_profile(
-        session, principal, opportunity_id, body, _request_id(request)
+        session,
+        principal,
+        opportunity_id,
+        body,
+        _request_id(request),
+        required_version(if_match),
     )
-    opportunity, watch, reference, seller, latest_price = await get_opportunity(
-        session, principal, opportunity_id
-    )
-    return to_opportunity_response(
-        opportunity,
-        watch,
-        reference,
-        seller,
-        latest_price,
-        await _platform_code(session, opportunity),
-    )
+    return await _present(session, principal, opportunity_id, response)
 
 
 @router.get("/opportunities/{opportunity_id}/events", response_model=AuditEventPage)
@@ -378,6 +381,7 @@ async def change_status_route(
     opportunity_id: uuid.UUID,
     body: StatusChangeRequest,
     request: Request,
+    response: Response,
     session: AsyncSession = Depends(get_session),
     principal: Principal = Depends(get_current_principal),
     idempotency: Idempotency = Depends(get_idempotency),
@@ -396,18 +400,8 @@ async def change_status_route(
         await change_status(
             session, principal, opportunity_id, target=body.status, reason=body.reason
         )
-        opportunity, watch, reference, seller, latest_price = await get_opportunity(
-            session, principal, opportunity_id
-        )
         return place.completed(
-            to_opportunity_response(
-                opportunity,
-                watch,
-                reference,
-                seller,
-                latest_price,
-                await _platform_code(session, opportunity),
-            )
+            await _present(session, principal, opportunity_id, response)
         )
 
 

@@ -121,6 +121,101 @@ jobs:
       - run: pnpm --filter @kairos/web test
       - run: pnpm --filter @kairos/web build
 
+  # Le parcours « Import assisté Catawiki », joué dans un vrai navigateur.
+  #
+  # Séparé de `web-quality` parce qu'il lui faut la pile entière : base, cache,
+  # API et interface construite. C'est le prix d'une vérification que ni les
+  # tests d'API ni les tests client ne peuvent rendre — un import juste côté
+  # serveur mais qui n'atteint pas l'écran ne sert à rien.
+  browser-journey:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: kairos
+          POSTGRES_PASSWORD: kairos
+          POSTGRES_DB: kairos
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U kairos -d kairos"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+      redis:
+        image: redis:7
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      E2E_EMAIL: essai@kairos.local
+      E2E_PASSWORD: mot-de-passe-essai-suffisamment-long
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - working-directory: apps/api
+        run: uv sync --extra dev
+      - working-directory: apps/api
+        run: uv run alembic -c alembic.ini upgrade head
+      - name: Compte d'essai
+        working-directory: apps/api
+        run: |
+          uv run python - <<'PY'
+          import asyncio
+          from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+          from app.identity.application.authentication import create_user
+          async def main():
+              engine = create_async_engine(
+                  "postgresql+psycopg://kairos:kairos@localhost:5432/kairos"
+              )
+              async with async_sessionmaker(bind=engine)() as session:
+                  await create_user(
+                      session,
+                      email="essai@kairos.local",
+                      password="mot-de-passe-essai-suffisamment-long",
+                  )
+              await engine.dispose()
+          asyncio.run(main())
+          PY
+      - name: API
+        working-directory: apps/api
+        run: |
+          uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 &
+          for _ in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8000/api/v1/health && break
+            sleep 1
+          done
+      - run: pnpm --filter @kairos/web build
+      - name: Interface
+        working-directory: apps/web
+        env:
+          API_INTERNAL_URL: http://127.0.0.1:8000
+        run: |
+          pnpm start &
+          for _ in $(seq 1 30); do
+            curl -sf http://127.0.0.1:3000/connexion && break
+            sleep 1
+          done
+      # Le navigateur est téléchargé ici : l'exécuteur GitHub n'en fournit pas.
+      - working-directory: apps/web
+        run: pnpm exec playwright install --with-deps chromium
+      - working-directory: apps/web
+        run: pnpm exec playwright test
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: traces-navigateur
+          path: apps/web/test-results/
+          retention-days: 7
+
   security:
     runs-on: ubuntu-latest
     steps:

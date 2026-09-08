@@ -211,7 +211,13 @@ export function ListingPrefill({
   }
 
   return (
-    <div className="space-y-3 rounded-md border border-border bg-surface p-4">
+    // Marqué pour que le formulaire ne prenne pas la saisie du lien ni le
+    // collage pour des corrections de champs : sans cela, le tout premier
+    // import demanderait de confirmer un écrasement qui n'a pas lieu d'être.
+    <div
+      data-import-panel
+      className="space-y-3 rounded-md border border-border bg-surface p-4"
+    >
       <label className="block space-y-1.5">
         <span className="text-sm font-medium text-fg-muted">
           Lien de l&apos;annonce

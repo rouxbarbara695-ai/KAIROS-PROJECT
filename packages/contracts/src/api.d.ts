@@ -1119,6 +1119,11 @@ export interface components {
             /** Conflicts */
             conflicts?: string[];
             /**
+             * Needs Confirmation
+             * @default false
+             */
+            needs_confirmation: boolean;
+            /**
              * Provenance
              * @enum {string}
              */
@@ -1137,6 +1142,11 @@ export interface components {
         ImportedFieldResponse: {
             /** Conflicts */
             conflicts?: string[];
+            /**
+             * Needs Confirmation
+             * @default false
+             */
+            needs_confirmation: boolean;
             /**
              * Provenance
              * @enum {string}

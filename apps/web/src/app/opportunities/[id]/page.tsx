@@ -1,10 +1,16 @@
 import { notFound } from "next/navigation";
 import { Card } from "@/components/Card";
 import { StatusBadge, ReferenceStatusBadge } from "@/components/Badge";
-import { ApiError, getOpportunity, listOpportunityEvents } from "@/lib/api";
+import {
+  ApiError,
+  getOpportunity,
+  listImportTrace,
+  listOpportunityEvents,
+} from "@/lib/api";
 import { formatAmount, labels } from "@/lib/labels";
 import { Disclosure } from "@/components/Disclosure";
 import { AuditTrail } from "./AuditTrail";
+import { ImportTrace } from "./ImportTrace";
 import {
   PriceInputForm,
   SellerProfileForm,
@@ -49,6 +55,8 @@ export default async function OpportunityDetailPage({
   }
 
   const events = await listOpportunityEvents(id);
+  const importTrace = await listImportTrace(id);
+  const importReadings = importTrace.items ?? [];
 
   return (
     <div className="space-y-6">
@@ -233,6 +241,20 @@ export default async function OpportunityDetailPage({
           )}
         />
       </Card>
+
+      {importReadings.length > 0 && (
+        <Card>
+          <h2 className="mb-1 text-sm font-semibold text-fg-muted">
+            Import assisté Catawiki
+          </h2>
+          <p className="mb-4 text-xs text-fg-muted">
+            Ce que l&apos;annonce affichait au moment de l&apos;import. Ce
+            relevé ne change pas : un nouvel import ajoute une lecture, il
+            n&apos;écrase pas celle-ci.
+          </p>
+          <ImportTrace items={importReadings} />
+        </Card>
+      )}
 
       <Card>
         <h2 className="mb-4 text-sm font-semibold text-fg-muted">

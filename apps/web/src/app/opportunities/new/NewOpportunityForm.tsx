@@ -58,6 +58,20 @@ export function NewOpportunityForm({
   // plus quelle valeur venait de l'annonce et laquelle a été corrigée.
   const [draft, setDraft] = useState<ListingPrefillResponse | null>(null);
 
+  /**
+   * Une frappe dans le panneau d'import n'est pas une correction de champ.
+   *
+   * Le panneau vit à l'intérieur du formulaire : sans cette distinction,
+   * saisir le lien et coller le contenu marquait le dossier comme « corrigé à
+   * la main », et le tout premier import demandait de confirmer un écrasement
+   * qui n'existait pas.
+   */
+  function markUserEdit(event: React.SyntheticEvent) {
+    const target = event.target as HTMLElement | null;
+    if (target?.closest("[data-import-panel]")) return;
+    setHasUserEdits(true);
+  }
+
   function applyPrefill(result: ListingPrefillResponse) {
     const fields = result.fields ?? {};
     const value = (name: string): string | boolean | undefined => {
@@ -196,8 +210,8 @@ export function NewOpportunityForm({
     <Card>
       <form
         onSubmit={handleSubmit}
-        onInput={() => setHasUserEdits(true)}
-        onChange={() => setHasUserEdits(true)}
+        onInput={markUserEdit}
+        onChange={markUserEdit}
         className="space-y-5"
       >
         <div

@@ -59,8 +59,15 @@ class Imported:
     #: Ce qui a permis de lire la valeur : `schema.org/Product.mpn`,
     #: `og:title`… Sert à expliquer une valeur douteuse sans relire la page.
     source: str | None = None
-    #: Autres lectures du même champ, quand elles divergent. Non arbitrées.
+    #: Autres lectures du même champ, quand elles divergent **réellement**.
+    #: Une formulation plus détaillée n'est pas une divergence : « Quartz » et
+    #: « High-precision Swiss quartz, Caliber Omega 1456 » disent la même
+    #: chose, la seconde en plus précis.
     conflicts: tuple[str, ...] = ()
+    #: La valeur est proposée, pas établie. Vrai dès qu'une divergence réelle
+    #: subsiste : la fiche technique sert à **proposer** une valeur, elle ne
+    #: prouve pas qu'elle soit juste. L'utilisateur tranche.
+    needs_confirmation: bool = False
 
     @property
     def is_present(self) -> bool:
@@ -73,6 +80,7 @@ class Imported:
             "provenance": self.provenance.value,
             "source": self.source,
             "conflicts": list(self.conflicts),
+            "needs_confirmation": self.needs_confirmation,
         }
 
 
@@ -117,6 +125,10 @@ class ListingDraft:
     collection: Imported = field(default_factory=absent)
     reference: Imported = field(default_factory=absent)
     year: Imported = field(default_factory=absent)
+    #: « 2010-2020 » tel que Catawiki l'écrit. Conservé à part de `year` :
+    #: c'est une information réelle et utile, qui ne devient pas une année
+    #: exacte pour autant. Enregistrée, affichée, modifiable.
+    production_period: Imported = field(default_factory=absent)
     movement: Imported = field(default_factory=absent)
     calibre: Imported = field(default_factory=absent)
     case_material: Imported = field(default_factory=absent)

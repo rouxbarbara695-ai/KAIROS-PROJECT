@@ -28,6 +28,7 @@ avertissement, pas une valeur.
 from __future__ import annotations
 
 import re
+import unicodedata
 from datetime import UTC, datetime
 from decimal import Decimal
 
@@ -416,6 +417,23 @@ _BUYER_FEE = re.compile(
     r"(?:\s*\+\s*(€|EUR|\$|£)?\s*(\d+(?:[.,]\d{1,2})?))?"
 )
 
+#: Le calibre est rarement une ligne à lui seul : le vendeur l'écrit dans la
+#: phrase de mouvement (« Caliber Omega 1456 », « Calibre JLC 846 »). Le mot
+#: « calibre » suivi d'un identifiant est une déclaration explicite — la lire
+#: n'est pas deviner. Un éventuel nom de marque intercalé est ignoré.
+_CALIBRE_IN_TEXT = re.compile(
+    r"(?i)\b(?:calibre|caliber|kaliber|cal\.)\s*"
+    r"(?:[A-Za-zÀ-ÿ&.-]+\s+){0,2}"
+    r"([0-9][0-9A-Za-z./-]{1,15})\b"
+)
+
+#: Révision **déclarée** par le vendeur. Ni date ni vérification ne s'en
+#: déduisent : « Serviced » dit qu'on l'affirme, pas quand ni par qui.
+_SERVICE_DECLARED = re.compile(
+    r"(?i)\b(serviced|r[ée]vis[ée]e?|overhaul(?:ed)?|onderhouden|"
+    r"service\s+complet|full\s+service)\b"
+)
+
 _SHIPS_FROM = re.compile(r"(?i)^ships?\s+from\s+([A-Z]{2})$")
 _PROFESSIONAL = re.compile(
     r"(?i)sold\s+by\s+a\s+professional\s+seller"
@@ -517,11 +535,77 @@ def find_value(
         return from_anywhere, None
     if from_anywhere is None or _same(from_details, from_anywhere):
         return from_details, None
+    # La description développe la fiche sans la contredire : on garde la
+    # version courte, qui est celle du champ structuré, et on ne signale rien.
+    if _elaborates(from_details, from_anywhere) or _elaborates(
+        from_anywhere, from_details
+    ):
+        return from_details, None
     return from_details, from_anywhere
 
 
+_WORD = re.compile(r"[\w'-]+", re.UNICODE)
+#: Mots vides du vocabulaire horloger : leur absence d'un côté ne dit rien.
+_IGNORED_WORDS = frozenset(
+    {
+        "de",
+        "du",
+        "la",
+        "le",
+        "les",
+        "des",
+        "and",
+        "with",
+        "the",
+        "a",
+        "an",
+        "et",
+        "en",
+        "of",
+        "type",
+        "colour",
+        "color",
+        "material",
+    }
+)
+
+
+def _fold(text: str) -> str:
+    """Minuscule, sans accent ni ponctuation de fin.
+
+    « Must de Cartier Vendôme. » et « Must de Cartier Vendome » sont le même
+    modèle : les traiter comme divergents ferait crier au loup sur un accent.
+    """
+
+    stripped = unicodedata.normalize("NFKD", text)
+    without_accents = "".join(c for c in stripped if not unicodedata.combining(c))
+    return without_accents.strip().lower().rstrip(".").strip()
+
+
+def _words(text: str) -> set[str]:
+    return {word for word in _WORD.findall(_fold(text)) if word not in _IGNORED_WORDS}
+
+
+def _elaborates(summary: str, detail: str) -> bool:
+    """La seconde formulation dit-elle la même chose, en plus détaillé ?
+
+    C'est le cas courant sur Catawiki : la fiche technique impose un mot
+    (« Quartz », « Steel ») et le vendeur développe dans sa prose
+    (« High-precision Swiss quartz, Caliber Omega 1456 », « Stainless steel.
+    Fixed bezel… »). Les deux sont compatibles, et les présenter comme une
+    contradiction apprendrait à l'utilisateur à ignorer les alertes — après
+    quoi il ignorerait aussi les vraies.
+
+    Le critère est mécanique : tous les mots significatifs de la version
+    courte se retrouvent dans la longue.
+    """
+
+    short, long = _words(summary), _words(detail)
+    return bool(short) and short <= long
+
+
 def _same(left: str, right: str) -> bool:
-    return left.strip().lower().rstrip(".") == right.strip().lower().rstrip(".")
+    return _fold(left) == _fold(right)
 
 
 def _find_labelled(lines: list[str], candidates: tuple[str, ...]) -> str | None:
@@ -861,6 +945,7 @@ def extract(text: str, url: str) -> ListingDraft:
         "buyer_fee_rate",
         "buyer_fee_fixed",
         "buyer_fee_currency",
+        "production_period",
     ):
         setattr(draft, name, absent("non affiché par l'annonce"))
 
@@ -908,7 +993,19 @@ def extract(text: str, url: str) -> ListingDraft:
             # « 1990-1999 » est une **période**, pas une année. En retenir la
             # borne basse inventerait une précision que la page ne donne pas ;
             # la valeur brute reste consultable et l'utilisateur tranche.
-            normalised = None if _PERIOD.match(value) else norm.year_of(value)
+            if _PERIOD.match(value):
+                # Information réelle et utile : on la conserve **comme
+                # période**, visible et modifiable, plutôt que de la jeter ou
+                # d'en tirer une année exacte que la page ne donne pas.
+                draft.production_period = Imported(
+                    raw=value,
+                    value=value,
+                    provenance=provenance,
+                    source="période de production affichée",
+                )
+                normalised = None
+            else:
+                normalised = norm.year_of(value)
         elif name == "case_diameter_mm":
             normalised = norm.diameter_mm_of(value)
         elif name == "seller_country":
@@ -934,14 +1031,50 @@ def extract(text: str, url: str) -> ListingDraft:
                     if disagreement is not None
                     else ()
                 ),
+                # La fiche technique sert à **proposer** une valeur ; elle ne
+                # prouve pas qu'elle soit juste. Dès qu'une divergence réelle
+                # subsiste, c'est à l'utilisateur de trancher.
+                needs_confirmation=disagreement is not None,
             ),
         )
         if disagreement is not None:
             warnings.append(
-                f"La fiche technique et la description ne disent pas la même "
-                f"chose sur « {labels[0]} » : « {value} » contre "
-                f"« {disagreement} ». Les deux sont conservées, aucune n'est "
-                "choisie."
+                f"À confirmer — « {labels[0]} » : la fiche technique annonce "
+                f"« {value} », la description du vendeur « {disagreement} ». "
+                "Les deux sont conservées ; la fiche est proposée par défaut, "
+                "sans que cela prouve qu'elle ait raison."
+            )
+
+    # Le calibre n'a pas de ligne à lui : le vendeur l'écrit dans la phrase de
+    # mouvement. Le mot-clé rend la lecture explicite — ce n'est pas deviner.
+    if not draft.calibre.is_present:
+        calibre = _CALIBRE_IN_TEXT.search(joined)
+        if calibre is not None:
+            draft.calibre = Imported(
+                raw=calibre.group(0),
+                value=calibre.group(1),
+                provenance=provenance,
+                source="calibre déclaré dans la description",
+                # Déclaré par le vendeur au fil d'une phrase, pas dans un champ
+                # structuré : proposé, à vérifier.
+                needs_confirmation=True,
+            )
+
+    # « Serviced » dit qu'une révision est **affirmée**. Ni date ni preuve ne
+    # s'en déduisent : le champ porte la mention, pas un fait établi.
+    if not draft.service_history.is_present:
+        service = _SERVICE_DECLARED.search(joined)
+        if service is not None:
+            draft.service_history = Imported(
+                raw=service.group(0),
+                value="declared",
+                provenance=provenance,
+                source="révision déclarée par le vendeur, sans date ni preuve",
+                needs_confirmation=True,
+            )
+            warnings.append(
+                f"Révision déclarée par le vendeur (« {service.group(0)} ») : "
+                "sans date ni justificatif dans l'annonce. À faire confirmer."
             )
 
     stated = _DIAMETER_IN_TEXT.search(joined)
@@ -954,11 +1087,13 @@ def extract(text: str, url: str) -> ListingDraft:
                 provenance=draft.case_diameter_mm.provenance,
                 source=draft.case_diameter_mm.source,
                 conflicts=(f"{described} mm dans la description du vendeur",),
+                needs_confirmation=True,
             )
             warnings.append(
-                f"Diamètre contradictoire : la fiche annonce "
+                f"À confirmer — diamètre : la fiche annonce "
                 f"{draft.case_diameter_mm.value} mm, la description "
-                f"{described} mm. Les deux sont conservés, aucun n'est choisi."
+                f"{described} mm. Les deux sont conservés ; la fiche est "
+                "proposée par défaut, sans que cela prouve qu'elle ait raison."
             )
 
     if draft.declared_condition.raw:
@@ -1100,6 +1235,12 @@ def extract(text: str, url: str) -> ListingDraft:
             )
             if currency is not None
             else absent("devise de la commission non annoncée")
+        )
+        warnings.append(
+            f"Commission acheteur relevée **sur ce lot** : {fee.group(0)}. "
+            "C'est une observation datée, pas une grille de plateforme : elle "
+            "ne remplace pas celle du portefeuille et n'est pas ajoutée aux "
+            "frais de l'analyse."
         )
 
     # --- Livraison ----------------------------------------------------------

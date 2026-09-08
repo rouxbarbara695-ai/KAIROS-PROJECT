@@ -495,6 +495,21 @@ export function platformAccess(url: string): Promise<PlatformAccessResponse> {
   );
 }
 
+export type ImportTraceResponse = components["schemas"]["ImportTraceResponse"];
+export type ImportTracePage = components["schemas"]["ImportTracePage"];
+
+/**
+ * Relevés d'annonce conservés avec le dossier.
+ *
+ * Rendus vides pour une saisie manuelle — il n'y a alors rien à montrer, et
+ * surtout rien à présenter comme venant d'une annonce.
+ */
+export function listImportTrace(
+  opportunityId: string,
+): Promise<ImportTracePage> {
+  return request<ImportTracePage>(`/opportunities/${opportunityId}/import`);
+}
+
 export function login(email: string, password: string): Promise<unknown> {
   return request("/auth/login", {
     method: "POST",

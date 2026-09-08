@@ -1127,6 +1127,11 @@
             "title": "Conflicts",
             "type": "array"
           },
+          "needs_confirmation": {
+            "default": false,
+            "title": "Needs Confirmation",
+            "type": "boolean"
+          },
           "provenance": {
             "enum": [
               "imported",
@@ -1178,6 +1183,11 @@
             },
             "title": "Conflicts",
             "type": "array"
+          },
+          "needs_confirmation": {
+            "default": false,
+            "title": "Needs Confirmation",
+            "type": "boolean"
           },
           "provenance": {
             "enum": [

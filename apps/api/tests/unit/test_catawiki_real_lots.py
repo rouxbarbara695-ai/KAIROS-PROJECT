@@ -180,23 +180,37 @@ def test_the_seller_country_is_read_without_a_label(name: str, country: str) -> 
     assert draft.seller_type.value == "professional"
 
 
-def test_the_specification_table_wins_over_the_seller_prose() -> None:
-    """Le vendeur écrit « Movement: High-precision Swiss quartz, Caliber Omega
-    1456 (as indicated on the pictogram card) » là où la fiche dit « Quartz ».
+def test_a_more_detailed_wording_is_not_a_contradiction() -> None:
+    """« Quartz » et « High-precision Swiss quartz, Caliber Omega 1456 » disent
+    la même chose, la seconde en plus précis.
 
-    La fiche est le champ structuré que Catawiki impose ; la prose est
-    bavarde. Prendre la prose parce qu'elle apparaît plus haut dans la page
-    remplissait le formulaire de phrases.
+    Les présenter comme contradictoires apprendrait à l'utilisateur à ignorer
+    les alertes — après quoi il ignorerait aussi les vraies. La fiche fournit
+    la valeur courte, et rien n'est signalé.
     """
 
     draft = _lot("omega")
 
     assert draft.movement.value == "Quartz"
+    assert draft.movement.conflicts == ()
+    assert draft.movement.needs_confirmation is False
+
     assert draft.case_material.value == "Steel"
-    # La version du vendeur n'est pas perdue pour autant.
-    assert any(
-        "Caliber Omega 1456" in conflict for conflict in draft.movement.conflicts
-    )
+    assert draft.case_material.conflicts == ()
+
+    # Le détail supplémentaire n'est pas perdu : il devient le calibre.
+    assert draft.calibre.value == "1456"
+    assert draft.calibre.needs_confirmation is True
+
+
+def test_an_accent_or_a_full_stop_is_not_a_contradiction() -> None:
+    """« Must de Cartier Vendôme. » et « Must de Cartier Vendome » sont le
+    même modèle."""
+
+    draft = _lot("cartier")
+
+    assert draft.collection.value == "Must de Cartier Vendome"
+    assert draft.collection.conflicts == ()
 
 
 def test_a_contradiction_is_flagged_and_never_arbitrated() -> None:
@@ -210,7 +224,9 @@ def test_a_contradiction_is_flagged_and_never_arbitrated() -> None:
 
     assert draft.case_diameter_mm.value == Decimal("22")
     assert any("22.5" in conflict for conflict in draft.case_diameter_mm.conflicts)
-    assert any("contradictoire" in warning for warning in draft.warnings)
+    # La fiche propose, elle ne prouve pas : l'utilisateur tranche.
+    assert draft.case_diameter_mm.needs_confirmation is True
+    assert any("À confirmer" in warning for warning in draft.warnings)
 
 
 # --- Ce que ces lots confirment sur les règles de fiabilité -----------------

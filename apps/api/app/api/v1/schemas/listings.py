@@ -38,8 +38,13 @@ class ImportedFieldResponse(BaseModel):
     #: Où la valeur a été lue (`schema.org/Product.mpn`…), ou pourquoi elle
     #: manque. Sert à expliquer une valeur douteuse sans relire la page.
     source: str | None = None
-    #: Lectures divergentes du même champ. Signalées, jamais arbitrées.
+    #: Lectures **réellement** divergentes du même champ. Une formulation plus
+    #: détaillée n'en est pas une : « Quartz » et « High-precision Swiss
+    #: quartz, Caliber Omega 1456 » disent la même chose.
     conflicts: list[str] = Field(default_factory=list)
+    #: La valeur est proposée, pas établie. La fiche technique de la
+    #: plateforme sert à proposer ; elle ne prouve pas qu'elle ait raison.
+    needs_confirmation: bool = False
 
 
 class PrefillFailureResponse(BaseModel):

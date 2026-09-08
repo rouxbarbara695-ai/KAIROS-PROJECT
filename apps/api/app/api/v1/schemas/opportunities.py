@@ -96,6 +96,7 @@ class ImportedFieldInput(BaseModel):
     provenance: Literal["imported", "assisted", "user", "absent"]
     source: str | None = None
     conflicts: list[str] = Field(default_factory=list)
+    needs_confirmation: bool = False
 
 
 class ImportDraftInput(BaseModel):

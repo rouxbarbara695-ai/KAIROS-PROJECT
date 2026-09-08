@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -10,7 +10,11 @@ from app.api.v1.schemas.common import DecimalString
 
 
 class SourceCreate(BaseModel):
-    mode: Literal["manual", "url"]
+    #: `assisted_import` quand les valeurs viennent d'un contenu fourni par
+    #: l'utilisateur plutôt que d'une page récupérée par le serveur. La
+    #: distinction est conservée jusqu'en base : la responsabilité de ce qui a
+    #: été collé n'est pas la même.
+    mode: Literal["manual", "url", "assisted_import"]
     manual_identifier: str | None = None
     url: str | None = None
     # En mode manuel, la plateforme d'achat n'est déductible d'aucune URL : sans
@@ -60,6 +64,14 @@ class PriceCreate(BaseModel):
     amount: DecimalString | None = None
     currency: str | None = Field(default=None, min_length=3, max_length=3)
     missing_reason: str | None = None
+    #: Nature du montant (règle 5). `asking` par défaut, parce que c'est le cas
+    #: de la saisie manuelle. Une enchère en cours doit dire `current_bid` :
+    #: elle monte, elle peut ne pas atteindre la réserve, et la confondre avec
+    #: un prix demandé ferait calculer une marge sur un montant qui n'existera
+    #: peut-être jamais.
+    kind: Literal[
+        "asking", "offer", "accepted_offer", "current_bid", "external_estimate"
+    ] = "asking"
 
     @model_validator(mode="after")
     def _check_consistency(self) -> PriceCreate:
@@ -70,12 +82,47 @@ class PriceCreate(BaseModel):
         return self
 
 
+class ImportedFieldInput(BaseModel):
+    """Un champ tel que l'import l'a rendu, renvoyé tel quel à la création.
+
+    Le client ne le reconstruit pas : il rend ce que `POST /listings/prefill`
+    lui a donné, éventuellement amputé des champs que l'utilisateur a corrigés.
+    C'est ce qui permet de savoir, en rouvrant le dossier des semaines plus
+    tard, quelle valeur venait de l'annonce et laquelle a été saisie.
+    """
+
+    raw: str | None = None
+    value: Any = None
+    provenance: Literal["imported", "assisted", "user", "absent"]
+    source: str | None = None
+    conflicts: list[str] = Field(default_factory=list)
+
+
+class ImportDraftInput(BaseModel):
+    """Trace de l'import, conservée avec le dossier.
+
+    Écrite dans une observation d'annonce, qui est **immuable** : c'est un
+    constat daté de ce que l'annonce affichait, pas un état à maintenir. Une
+    seconde récupération ajoutera une observation, elle n'écrasera pas
+    celle-ci.
+    """
+
+    platform_code: str
+    fetched_at: str
+    access_mode: Literal["automatic", "assisted", "forbidden"]
+    fields: dict[str, ImportedFieldInput] = Field(default_factory=dict)
+    warnings: list[str] = Field(default_factory=list)
+
+
 class CreateOpportunityRequest(BaseModel):
     portfolio_id: uuid.UUID
     source: SourceCreate
     watch: WatchCreate
     seller: SellerCreate = SellerCreate()
     price: PriceCreate = PriceCreate()
+    #: Facultatif. Absent pour une saisie manuelle ; présent quand le dossier
+    #: a été prérempli depuis une annonce.
+    import_draft: ImportDraftInput | None = None
 
 
 class OpportunityResponse(BaseModel):

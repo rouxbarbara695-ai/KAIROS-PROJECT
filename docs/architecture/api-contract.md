@@ -176,6 +176,39 @@ produit un `warning` en clair plutôt qu’une valeur.
 **Numéros de série** : retirés de tout texte importé (règle 11). La réponse dit
 qu’il y en avait un, jamais lequel.
 
+**Catawiki : import assisté obligatoire.** Catawiki refuse toute requête
+serveur (`403` Akamai sur tous ses domaines, jusque sur `robots.txt`) et n’offre
+pas d’API publique côté acheteur. C’est pourtant la plateforme d’achat
+principale, donc l’import assisté y est le parcours normal et non un repli.
+L’utilisateur colle le **texte visible** de la page (`Ctrl+A`, `Ctrl+C`) ; ni
+code source ni outils de développement ne sont demandés. L’extraction y est
+pilotée par les étiquettes — français, anglais, néerlandais — et non par la
+position des lignes.
+
+**Champs propres aux enchères.** `lot_number`, `current_bid_amount`,
+`current_bid_currency`, `bid_count`, `closing_at`, `closing_timezone`,
+`estimate_low`, `estimate_high`, `estimate_currency`, `reserve_status`
+(`no_reserve` / `not_met` / `met`), `shipping_cost_amount`,
+`shipping_cost_currency`, `shipping_destination`, `seller_since`.
+
+Trois règles y gouvernent la lecture :
+
+- **une enchère en cours est une enchère.** Elle part en `price.kind =
+  "current_bid"`, jamais `asking` : elle montera, et elle peut ne pas atteindre
+  la réserve ;
+- **l’estimation de la plateforme n’est pas celle de KAIROS.** Elle occupe ses
+  propres champs et n’entre dans aucun calcul ;
+- **l’horodatage du relevé accompagne le montant.** Un prix d’enchère sans
+  l’heure à laquelle il a été lu ne veut rien dire.
+
+**Trace de l’import.** `POST /opportunities` accepte un `import_draft`
+facultatif : les champs tels que le préremplissage les a rendus, avec leur
+provenance. Il est écrit dans une observation d’annonce — **append-only** — et
+relu par `GET /opportunities/{id}/import`. C’est ce qui permet, en rouvrant un
+dossier des semaines plus tard, de distinguer ce qui venait de l’annonce de ce
+qui a été corrigé à la main. Un second import ajoute une observation ; il
+n’écrase pas la précédente.
+
 **Garde-fous de la récupération** : `https` seul, domaines autorisés par
 plateforme, adresses résolues vérifiées comme publiques, redirections
 revalidées une à une (trois au plus), délai de 10 s, corps borné à 2 Mio. Le
@@ -218,6 +251,7 @@ frontière de sécurité est le mot de passe, pas le limiteur.
 | POST | `/listings/prefill` | préremplir depuis un lien, à la demande |
 | POST | `/listings/prefill/assisted` | préremplir depuis un contenu fourni |
 | GET | `/listings/access` | mode d’accès applicable à un lien |
+| GET | `/opportunities/{id}/import` | ce que l’annonce affichait à l’import |
 | POST | `/opportunities/{id}/comparables` | ajouter comparable |
 | POST | `/comparables/{id}/overrides` | corriger/exclure/réintégrer avec motif |
 | POST | `/opportunities/{id}/analyses` | créer/recalculer |

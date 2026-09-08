@@ -321,6 +321,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/opportunities/{opportunity_id}/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Opportunity Import Trace Route
+         * @description Ce que l'annonce affichait quand le dossier a été créé.
+         *
+         *     C'est la moitié manquante du parcours : sans elle, un dossier rouvert six
+         *     semaines plus tard ne dit plus quelle valeur venait de l'annonce et
+         *     laquelle a été corrigée à la main. Les observations sont rendues de la
+         *     plus récente à la plus ancienne — une seconde récupération en ajoute une,
+         *     elle n'écrase rien.
+         */
+        get: operations["opportunity_import_trace_route_api_v1_opportunities__opportunity_id__import_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/opportunities/{opportunity_id}/payout": {
         parameters: {
             query?: never;
@@ -933,6 +959,7 @@ export interface components {
         };
         /** CreateOpportunityRequest */
         CreateOpportunityRequest: {
+            import_draft?: components["schemas"]["ImportDraftInput"] | null;
             /**
              * Portfolio Id
              * Format: uuid
@@ -940,6 +967,7 @@ export interface components {
             portfolio_id: string;
             /**
              * @default {
+             *       "kind": "asking",
              *       "missing_reason": "asking_price_not_provided"
              *     }
              */
@@ -1017,6 +1045,90 @@ export interface components {
             purchased_at: string;
             /** Reference */
             reference?: string | null;
+        };
+        /**
+         * ImportDraftInput
+         * @description Trace de l'import, conservée avec le dossier.
+         *
+         *     Écrite dans une observation d'annonce, qui est **immuable** : c'est un
+         *     constat daté de ce que l'annonce affichait, pas un état à maintenir. Une
+         *     seconde récupération ajoutera une observation, elle n'écrasera pas
+         *     celle-ci.
+         */
+        ImportDraftInput: {
+            /**
+             * Access Mode
+             * @enum {string}
+             */
+            access_mode: "automatic" | "assisted" | "forbidden";
+            /** Fetched At */
+            fetched_at: string;
+            /** Fields */
+            fields?: {
+                [key: string]: components["schemas"]["ImportedFieldInput"];
+            };
+            /** Platform Code */
+            platform_code: string;
+            /** Warnings */
+            warnings?: string[];
+        };
+        /** ImportTracePage */
+        ImportTracePage: {
+            /** Items */
+            items?: components["schemas"]["ImportTraceResponse"][];
+        };
+        /**
+         * ImportTraceResponse
+         * @description Ce que l'annonce affichait au moment de l'import.
+         *
+         *     Rendue en rouvrant un dossier : c'est elle qui permet de dire, des
+         *     semaines plus tard, quelle valeur venait de l'annonce et laquelle a été
+         *     saisie à la main. Immuable — une seconde récupération ajoute une
+         *     observation, elle n'écrase pas celle-ci.
+         */
+        ImportTraceResponse: {
+            /** Access Mode */
+            access_mode?: string | null;
+            /** Auction End At */
+            auction_end_at?: string | null;
+            /** Fetch Status */
+            fetch_status: string;
+            /** Fields */
+            fields?: {
+                [key: string]: components["schemas"]["ImportedFieldResponse"];
+            };
+            /** Observed At */
+            observed_at: string;
+            /** Platform Code */
+            platform_code?: string | null;
+            /** Reserve Met */
+            reserve_met?: boolean | null;
+            /** Warnings */
+            warnings?: string[];
+        };
+        /**
+         * ImportedFieldInput
+         * @description Un champ tel que l'import l'a rendu, renvoyé tel quel à la création.
+         *
+         *     Le client ne le reconstruit pas : il rend ce que `POST /listings/prefill`
+         *     lui a donné, éventuellement amputé des champs que l'utilisateur a corrigés.
+         *     C'est ce qui permet de savoir, en rouvrant le dossier des semaines plus
+         *     tard, quelle valeur venait de l'annonce et laquelle a été saisie.
+         */
+        ImportedFieldInput: {
+            /** Conflicts */
+            conflicts?: string[];
+            /**
+             * Provenance
+             * @enum {string}
+             */
+            provenance: "imported" | "assisted" | "user" | "absent";
+            /** Raw */
+            raw?: string | null;
+            /** Source */
+            source?: string | null;
+            /** Value */
+            value?: unknown;
         };
         /**
          * ImportedFieldResponse
@@ -1449,6 +1561,12 @@ export interface components {
             amount?: number | string | null;
             /** Currency */
             currency?: string | null;
+            /**
+             * Kind
+             * @default asking
+             * @enum {string}
+             */
+            kind: "asking" | "offer" | "accepted_offer" | "current_bid" | "external_estimate";
             /** Missing Reason */
             missing_reason?: string | null;
         };
@@ -1622,7 +1740,7 @@ export interface components {
              * Mode
              * @enum {string}
              */
-            mode: "manual" | "url";
+            mode: "manual" | "url" | "assisted_import";
             /** Platform Code */
             platform_code?: string | null;
             /** Url */
@@ -2390,6 +2508,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AuditEventPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    opportunity_import_trace_route_api_v1_opportunities__opportunity_id__import_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                opportunity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportTracePage"];
                 };
             };
             /** @description Validation Error */

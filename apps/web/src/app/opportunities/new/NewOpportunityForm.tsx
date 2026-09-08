@@ -54,6 +54,9 @@ export function NewOpportunityForm({
   // le formulaire en état React.
   const [importVersion, setImportVersion] = useState(0);
   const [hasUserEdits, setHasUserEdits] = useState(false);
+  // Renvoyé tel quel à la création. Sans lui, le dossier rouvert ne dirait
+  // plus quelle valeur venait de l'annonce et laquelle a été corrigée.
+  const [draft, setDraft] = useState<ListingPrefillResponse | null>(null);
 
   function applyPrefill(result: ListingPrefillResponse) {
     const fields = result.fields ?? {};
@@ -82,6 +85,7 @@ export function NewOpportunityForm({
     }
 
     setImported(next);
+    setDraft(result);
     setImportVersion((version) => version + 1);
     setHasUserEdits(false);
   }
@@ -105,6 +109,9 @@ export function NewOpportunityForm({
     const box = data.get("box") === "on";
     const papers = data.get("papers") === "on";
     const amount = String(data.get("amount") ?? "").trim();
+    const importedKind = draft?.fields?.price_kind?.value;
+    const priceKind =
+      importedKind === "current_bid" ? "current_bid" : ("asking" as const);
 
     startTransition(async () => {
       try {
@@ -122,7 +129,16 @@ export function NewOpportunityForm({
                     platform_code:
                       String(data.get("platform_code") ?? "") || null,
                   }
-                : { mode: "url", url: url.trim() },
+                : {
+                    // `assisted_import` quand les valeurs viennent d'un contenu
+                    // collé : la responsabilité n'est pas la même que pour une
+                    // page récupérée par le serveur.
+                    mode:
+                      draft?.access_mode === "assisted"
+                        ? "assisted_import"
+                        : "url",
+                    url: url.trim(),
+                  },
             watch: {
               brand: String(data.get("brand")),
               reference: String(data.get("reference")),
@@ -137,8 +153,25 @@ export function NewOpportunityForm({
               seller_type: String(data.get("seller_type") || "") || undefined,
             },
             price: amount
-              ? { amount, currency: String(data.get("currency")) }
-              : {},
+              ? {
+                  amount,
+                  currency: String(data.get("currency")),
+                  // Une enchère en cours n'est pas un prix demandé : elle
+                  // montera, et peut ne pas atteindre la réserve.
+                  kind: priceKind,
+                }
+              : { kind: priceKind },
+            ...(draft
+              ? {
+                  import_draft: {
+                    platform_code: draft.platform_code,
+                    fetched_at: draft.fetched_at ?? new Date().toISOString(),
+                    access_mode: draft.access_mode,
+                    fields: draft.fields ?? {},
+                    warnings: draft.warnings ?? [],
+                  },
+                }
+              : {}),
           },
           // Une création renvoyée après une coupure ne doit pas ouvrir un
           // second dossier. La contrainte d'unicité n'y suffit pas : rien

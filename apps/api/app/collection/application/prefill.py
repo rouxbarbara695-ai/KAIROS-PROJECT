@@ -26,7 +26,7 @@ from urllib.parse import urlsplit
 
 import structlog
 
-from app.collection.adapters import structured_data
+from app.collection.adapters import catawiki_text, structured_data
 from app.collection.application.access_policy import (
     AccessMode,
     access_for,
@@ -186,13 +186,21 @@ def prefill_from_content(url: str, content: str) -> PrefillOutcome:
             field="content",
         )
 
-    page = FetchedPage(
-        final_url=url,
-        status_code=200,
-        content_type="text/html",
-        text=content,
-    )
-    draft = structured_data.extract_assisted(page, platform_code)
+    # Catawiki a son propre lecteur, et il ne lit pas la même chose. Le
+    # copier-coller du **texte visible** ne contient aucun `schema.org` : il
+    # n'y a que des étiquettes et des valeurs. Exiger le code source de la
+    # page pour retomber sur l'extracteur générique reviendrait à demander à
+    # l'utilisateur d'ouvrir les outils de développement à chaque lot.
+    if platform_code == catawiki_text.PLATFORM_CODE:
+        draft = catawiki_text.extract(content, url)
+    else:
+        page = FetchedPage(
+            final_url=url,
+            status_code=200,
+            content_type="text/html",
+            text=content,
+        )
+        draft = structured_data.extract_assisted(page, platform_code)
 
     if draft.filled_count == 0:
         draft.warnings = (

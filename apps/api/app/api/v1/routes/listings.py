@@ -16,11 +16,17 @@ n'a jamais créé.
 
 from __future__ import annotations
 
+import uuid
+
 from fastapi import APIRouter, Depends
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.schemas.listings import (
     AssistedPrefillRequest,
     ImportedFieldResponse,
+    ImportTracePage,
+    ImportTraceResponse,
     ListingPrefillResponse,
     PlatformAccessResponse,
     PrefillFailureResponse,
@@ -36,6 +42,10 @@ from app.collection.application.prefill import (
 from app.collection.ports.fetcher import Fetcher
 from app.platforms.application.detect_platform import detect_platform_code
 from app.shared.domain.principal import Principal
+from app.shared.infrastructure.db.models.listings import ListingObservation
+from app.shared.infrastructure.db.models.opportunities import Opportunity
+from app.shared.infrastructure.db.session import get_session
+from app.shared.infrastructure.portfolio_lookup import portfolio_of_opportunity
 from app.shared.infrastructure.principal_provider import get_current_principal
 
 router = APIRouter(tags=["listings"])
@@ -124,3 +134,78 @@ async def platform_access_route(
         access_mode=access.mode.value,
         explanation=access.explanation,
     )
+
+
+@router.get("/opportunities/{opportunity_id}/import", response_model=ImportTracePage)
+async def opportunity_import_trace_route(
+    opportunity_id: uuid.UUID,
+    session: AsyncSession = Depends(get_session),
+    principal: Principal = Depends(get_current_principal),
+) -> ImportTracePage:
+    """Ce que l'annonce affichait quand le dossier a été créé.
+
+    C'est la moitié manquante du parcours : sans elle, un dossier rouvert six
+    semaines plus tard ne dit plus quelle valeur venait de l'annonce et
+    laquelle a été corrigée à la main. Les observations sont rendues de la
+    plus récente à la plus ancienne — une seconde récupération en ajoute une,
+    elle n'écrase rien.
+    """
+
+    await portfolio_of_opportunity(session, principal, opportunity_id)
+
+    observations = (
+        (
+            await session.execute(
+                select(ListingObservation)
+                .join(
+                    Opportunity,
+                    Opportunity.listing_id == ListingObservation.listing_id,
+                )
+                .where(Opportunity.id == opportunity_id)
+                .order_by(ListingObservation.observed_at.desc())
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    items = []
+    for observation in observations:
+        raw = observation.raw_data or {}
+        fields = raw.get("fields") or {}
+        items.append(
+            ImportTraceResponse(
+                observed_at=observation.observed_at.isoformat(),
+                platform_code=_as_text(raw.get("platform_code")),
+                access_mode=_as_text(raw.get("access_mode")),
+                fetch_status=observation.fetch_status,
+                reserve_met=observation.reserve_met,
+                auction_end_at=(
+                    observation.auction_end_at.isoformat()
+                    if observation.auction_end_at
+                    else None
+                ),
+                fields=(
+                    {
+                        name: ImportedFieldResponse(**value)
+                        for name, value in fields.items()
+                        if isinstance(value, dict)
+                    }
+                    if isinstance(fields, dict)
+                    else {}
+                ),
+                warnings=_as_warnings(raw.get("warnings")),
+            )
+        )
+
+    return ImportTracePage(items=items)
+
+
+def _as_text(value: object) -> str | None:
+    return value if isinstance(value, str) else None
+
+
+def _as_warnings(value: object) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, str)]

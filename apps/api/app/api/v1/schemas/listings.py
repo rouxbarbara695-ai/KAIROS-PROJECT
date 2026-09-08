@@ -75,3 +75,26 @@ class PlatformAccessResponse(BaseModel):
     platform_code: str
     access_mode: Literal["automatic", "assisted", "forbidden"]
     explanation: str
+
+
+class ImportTraceResponse(BaseModel):
+    """Ce que l'annonce affichait au moment de l'import.
+
+    Rendue en rouvrant un dossier : c'est elle qui permet de dire, des
+    semaines plus tard, quelle valeur venait de l'annonce et laquelle a été
+    saisie à la main. Immuable — une seconde récupération ajoute une
+    observation, elle n'écrase pas celle-ci.
+    """
+
+    observed_at: str
+    platform_code: str | None = None
+    access_mode: str | None = None
+    fetch_status: str
+    reserve_met: bool | None = None
+    auction_end_at: str | None = None
+    fields: dict[str, ImportedFieldResponse] = Field(default_factory=dict)
+    warnings: list[str] = Field(default_factory=list)
+
+
+class ImportTracePage(BaseModel):
+    items: list[ImportTraceResponse] = Field(default_factory=list)

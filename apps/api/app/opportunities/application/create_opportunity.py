@@ -2,12 +2,16 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.v1.schemas.opportunities import CreateOpportunityRequest
+from app.api.v1.schemas.opportunities import (
+    CreateOpportunityRequest,
+    ImportDraftInput,
+)
 from app.identity.domain import vocabularies as vocab
 from app.identity.domain.seller import reliability_data
 from app.opportunities.domain.canonical_url import canonicalize_url
@@ -15,7 +19,7 @@ from app.platforms.application.detect_platform import detect_platform_code
 from app.shared.config import Settings
 from app.shared.domain.errors import DomainError, ErrorCode
 from app.shared.domain.principal import Principal
-from app.shared.infrastructure.db.models.listings import Listing
+from app.shared.infrastructure.db.models.listings import Listing, ListingObservation
 from app.shared.infrastructure.db.models.opportunities import (
     Opportunity,
     OpportunityPriceInput,
@@ -256,7 +260,11 @@ async def create_opportunity(
             price_input = OpportunityPriceInput(
                 portfolio_id=request.portfolio_id,
                 opportunity_id=opportunity.id,
-                kind="asking",
+                # La nature vient de l'appelant. Une enchère Catawiki arrive
+                # en `current_bid` : elle montera, et la traiter comme un prix
+                # demandé ferait calculer une marge sur un montant qui
+                # n'existera peut-être jamais (règle 5).
+                kind=request.price.kind,
                 amount_source=request.price.amount,
                 currency=request.price.currency.upper(),
                 amount_eur=fx.convert(request.price.amount),
@@ -272,12 +280,17 @@ async def create_opportunity(
         price_input = OpportunityPriceInput(
             portfolio_id=request.portfolio_id,
             opportunity_id=opportunity.id,
-            kind="asking",
+            kind=request.price.kind,
             missing_reason=request.price.missing_reason,
             actor_user_id=principal.user_id,
         )
         session.add(price_input)
         await session.flush()
+
+    if request.import_draft is not None and listing is not None:
+        warnings.extend(
+            await _record_import(session, request, listing, opportunity.portfolio_id)
+        )
 
     await session.commit()
 
@@ -289,3 +302,88 @@ async def create_opportunity(
         price_input=price_input,
         warnings=warnings,
     )
+
+
+_RESERVE_TO_BOOLEAN = {"met": True, "not_met": False}
+
+
+def _draft_value(draft: ImportDraftInput, name: str) -> object:
+    field = draft.fields.get(name)
+    if field is None or field.provenance == "absent":
+        return None
+    return field.value
+
+
+async def _record_import(
+    session: AsyncSession,
+    request: CreateOpportunityRequest,
+    listing: Listing,
+    portfolio_id: uuid.UUID,
+) -> list[str]:
+    """Conserve ce que l'annonce affichait, tel qu'elle l'affichait.
+
+    Écrit dans `listing_observations`, qui est **append-only** : c'est un
+    constat daté, pas un état à tenir à jour. Rouvrir le dossier six semaines
+    plus tard doit permettre de dire « ce 3 250 € venait de l'annonce, ce
+    « Or/acier » a été corrigé à la main » — et une seconde récupération
+    ajoutera une observation plutôt que d'écraser celle-ci.
+
+    La page elle-même n'est pas conservée (Q-08) : seulement les champs
+    extraits, leur valeur brute et leur provenance.
+    """
+
+    draft = request.import_draft
+    assert draft is not None
+    warnings: list[str] = []
+
+    closing_raw = _draft_value(draft, "closing_at")
+    closing_at: datetime | None = None
+    if isinstance(closing_raw, str):
+        try:
+            closing_at = datetime.fromisoformat(closing_raw)
+        except ValueError:  # pragma: no cover - l'extracteur produit de l'ISO
+            closing_at = None
+
+    reserve = _draft_value(draft, "reserve_status")
+    observed_at: datetime
+    try:
+        observed_at = datetime.fromisoformat(draft.fetched_at)
+    except ValueError:
+        observed_at = datetime.now(UTC)
+    if observed_at.tzinfo is None:
+        observed_at = observed_at.replace(tzinfo=UTC)
+
+    observation = ListingObservation(
+        portfolio_id=portfolio_id,
+        listing_id=listing.id,
+        observed_at=observed_at,
+        # `unknown` et non `active` : l'import dit ce que la page affichait,
+        # pas si le lot est encore ouvert au moment de l'enregistrement.
+        status="unknown",
+        reserve_met=(
+            _RESERVE_TO_BOOLEAN.get(str(reserve)) if reserve is not None else None
+        ),
+        auction_end_at=closing_at,
+        raw_data={
+            "platform_code": draft.platform_code,
+            "access_mode": draft.access_mode,
+            "fetched_at": draft.fetched_at,
+            "warnings": list(draft.warnings),
+            "fields": {
+                name: field.model_dump() for name, field in draft.fields.items()
+            },
+        },
+        # `partial` est le cas honnête : une annonce donne rarement tous les
+        # champs, et l'appeler `success` ferait croire à une fiche complète.
+        fetch_status="partial",
+    )
+    session.add(observation)
+    await session.flush()
+
+    if closing_at is None and _draft_value(draft, "current_bid_amount") is not None:
+        warnings.append(
+            "Enchère en cours enregistrée sans date de clôture : la surveiller "
+            "sur Catawiki."
+        )
+
+    return warnings

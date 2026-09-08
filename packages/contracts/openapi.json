@@ -781,6 +781,16 @@
       },
       "CreateOpportunityRequest": {
         "properties": {
+          "import_draft": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ImportDraftInput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "portfolio_id": {
             "format": "uuid",
             "title": "Portfolio Id",
@@ -789,6 +799,7 @@
           "price": {
             "$ref": "#/components/schemas/PriceCreate",
             "default": {
+              "kind": "asking",
               "missing_reason": "asking_price_not_provided"
             }
           },
@@ -971,6 +982,191 @@
           "purchased_at"
         ],
         "title": "HoldingResponse",
+        "type": "object"
+      },
+      "ImportDraftInput": {
+        "description": "Trace de l'import, conserv\u00e9e avec le dossier.\n\n\u00c9crite dans une observation d'annonce, qui est **immuable** : c'est un\nconstat dat\u00e9 de ce que l'annonce affichait, pas un \u00e9tat \u00e0 maintenir. Une\nseconde r\u00e9cup\u00e9ration ajoutera une observation, elle n'\u00e9crasera pas\ncelle-ci.",
+        "properties": {
+          "access_mode": {
+            "enum": [
+              "automatic",
+              "assisted",
+              "forbidden"
+            ],
+            "title": "Access Mode",
+            "type": "string"
+          },
+          "fetched_at": {
+            "title": "Fetched At",
+            "type": "string"
+          },
+          "fields": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ImportedFieldInput"
+            },
+            "title": "Fields",
+            "type": "object"
+          },
+          "platform_code": {
+            "title": "Platform Code",
+            "type": "string"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "platform_code",
+          "fetched_at",
+          "access_mode"
+        ],
+        "title": "ImportDraftInput",
+        "type": "object"
+      },
+      "ImportTracePage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ImportTraceResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "title": "ImportTracePage",
+        "type": "object"
+      },
+      "ImportTraceResponse": {
+        "description": "Ce que l'annonce affichait au moment de l'import.\n\nRendue en rouvrant un dossier : c'est elle qui permet de dire, des\nsemaines plus tard, quelle valeur venait de l'annonce et laquelle a \u00e9t\u00e9\nsaisie \u00e0 la main. Immuable \u2014 une seconde r\u00e9cup\u00e9ration ajoute une\nobservation, elle n'\u00e9crase pas celle-ci.",
+        "properties": {
+          "access_mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Access Mode"
+          },
+          "auction_end_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auction End At"
+          },
+          "fetch_status": {
+            "title": "Fetch Status",
+            "type": "string"
+          },
+          "fields": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ImportedFieldResponse"
+            },
+            "title": "Fields",
+            "type": "object"
+          },
+          "observed_at": {
+            "title": "Observed At",
+            "type": "string"
+          },
+          "platform_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Platform Code"
+          },
+          "reserve_met": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reserve Met"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "observed_at",
+          "fetch_status"
+        ],
+        "title": "ImportTraceResponse",
+        "type": "object"
+      },
+      "ImportedFieldInput": {
+        "description": "Un champ tel que l'import l'a rendu, renvoy\u00e9 tel quel \u00e0 la cr\u00e9ation.\n\nLe client ne le reconstruit pas : il rend ce que `POST /listings/prefill`\nlui a donn\u00e9, \u00e9ventuellement amput\u00e9 des champs que l'utilisateur a corrig\u00e9s.\nC'est ce qui permet de savoir, en rouvrant le dossier des semaines plus\ntard, quelle valeur venait de l'annonce et laquelle a \u00e9t\u00e9 saisie.",
+        "properties": {
+          "conflicts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Conflicts",
+            "type": "array"
+          },
+          "provenance": {
+            "enum": [
+              "imported",
+              "assisted",
+              "user",
+              "absent"
+            ],
+            "title": "Provenance",
+            "type": "string"
+          },
+          "raw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Raw"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "value": {
+            "title": "Value"
+          }
+        },
+        "required": [
+          "provenance"
+        ],
+        "title": "ImportedFieldInput",
         "type": "object"
       },
       "ImportedFieldResponse": {
@@ -2183,6 +2379,18 @@
             ],
             "title": "Currency"
           },
+          "kind": {
+            "default": "asking",
+            "enum": [
+              "asking",
+              "offer",
+              "accepted_offer",
+              "current_bid",
+              "external_estimate"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
           "missing_reason": {
             "anyOf": [
               {
@@ -2741,7 +2949,8 @@
           "mode": {
             "enum": [
               "manual",
-              "url"
+              "url",
+              "assisted_import"
             ],
             "title": "Mode",
             "type": "string"
@@ -4203,6 +4412,50 @@
         "summary": "List Opportunity Events Route",
         "tags": [
           "opportunities"
+        ]
+      }
+    },
+    "/api/v1/opportunities/{opportunity_id}/import": {
+      "get": {
+        "description": "Ce que l'annonce affichait quand le dossier a \u00e9t\u00e9 cr\u00e9\u00e9.\n\nC'est la moiti\u00e9 manquante du parcours : sans elle, un dossier rouvert six\nsemaines plus tard ne dit plus quelle valeur venait de l'annonce et\nlaquelle a \u00e9t\u00e9 corrig\u00e9e \u00e0 la main. Les observations sont rendues de la\nplus r\u00e9cente \u00e0 la plus ancienne \u2014 une seconde r\u00e9cup\u00e9ration en ajoute une,\nelle n'\u00e9crase rien.",
+        "operationId": "opportunity_import_trace_route_api_v1_opportunities__opportunity_id__import_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "opportunity_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Opportunity Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportTracePage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Opportunity Import Trace Route",
+        "tags": [
+          "listings"
         ]
       }
     },

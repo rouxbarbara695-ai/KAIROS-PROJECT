@@ -3,6 +3,7 @@
 import { useState } from "react";
 import {
   ApiError,
+  platformAccess,
   prefillListing,
   prefillListingFromContent,
   type ImportedField,
@@ -49,40 +50,65 @@ function platformLabel(code: string): string {
   return PLATFORM_LABELS[code] ?? code;
 }
 
-/** Champs qui n'ont pas de case dans le formulaire de création. */
-const NOT_IN_FORM = new Set([
+/** Champs trop verbeux ou redondants pour l'aperçu. Ils restent dans la
+ *  trace conservée avec le dossier — ils ne sont simplement pas listés ici. */
+const HIDDEN_IN_PREVIEW = new Set([
   "title",
-  "collection",
-  "movement",
-  "calibre",
-  "case_diameter_mm",
-  "dial",
-  "bracelet_material",
-  "buckle",
-  "declared_condition",
-  "service_history",
-  "replaced_parts",
   "description",
   "external_id",
+  "price_kind",
+  "price_amount",
+  "price_currency",
   "shipping",
   "insurance",
   "warranty",
   "returns",
-  "seller_name",
-  "price_kind",
+  "buckle",
+  "replaced_parts",
+  "service_history",
 ]);
 
 const FIELD_LABELS: Record<string, string> = {
   brand: "Marque",
+  collection: "Modèle",
   reference: "Référence",
   year: "Année",
+  movement: "Mouvement",
+  calibre: "Calibre",
   case_material: "Matériau du boîtier",
+  case_diameter_mm: "Diamètre",
+  dial: "Cadran",
+  bracelet_material: "Bracelet",
   box: "Boîte",
   papers: "Papiers",
   price_amount: "Prix",
   price_currency: "Devise",
   seller_type: "Type de vendeur",
   seller_country: "Pays du vendeur",
+  seller_name: "Vendeur",
+  seller_since: "Vendeur depuis",
+  lot_number: "Numéro de lot",
+  current_bid_amount: "Enchère en cours",
+  current_bid_currency: "Devise de l'enchère",
+  bid_count: "Nombre d'enchères",
+  closing_at: "Clôture",
+  closing_timezone: "Fuseau",
+  estimate_low: "Estimation Catawiki (bas)",
+  estimate_high: "Estimation Catawiki (haut)",
+  estimate_currency: "Devise de l'estimation",
+  reserve_status: "Prix de réserve",
+  shipping_cost_amount: "Livraison vers la France",
+  shipping_destination: "Destination des frais",
+  declared_condition: "État déclaré",
+};
+
+/** Valeurs codées côté API, rendues lisibles à l'écran. */
+const VALUE_LABELS: Record<string, string> = {
+  current_bid: "enchère en cours",
+  asking: "prix demandé",
+  no_reserve: "aucun prix de réserve",
+  not_met: "non atteint",
+  met: "atteint",
 };
 
 function displayValue(field: ImportedField): string {
@@ -91,7 +117,8 @@ function displayValue(field: ImportedField): string {
     return field.raw ?? "Non renseigné";
   }
   if (typeof field.value === "boolean") return field.value ? "Oui" : "Non";
-  return String(field.value);
+  const text = String(field.value);
+  return VALUE_LABELS[text] ?? text;
 }
 
 export function ListingPrefill({
@@ -108,8 +135,34 @@ export function ListingPrefill({
   const [phase, setPhase] = useState<Phase>({ step: "idle" });
   const [pasted, setPasted] = useState("");
   const [showPaste, setShowPaste] = useState(false);
+  const [access, setAccess] = useState<{
+    platform: string;
+    mode: string;
+    explanation: string;
+  } | null>(null);
 
   const busy = phase.step === "detecting" || phase.step === "fetching";
+  // Catawiki est le cas courant : sa page ne se récupère pas, l'import passe
+  // par le collage. Le dire avant que l'utilisateur clique lui épargne un
+  // aller-retour pour un refus dont on connaît déjà l'issue.
+  const pasteOnly = access?.mode === "assisted";
+
+  async function checkAccess(candidate: string) {
+    setAccess(null);
+    if (!candidate.trim().startsWith("http")) return;
+    try {
+      const result = await platformAccess(candidate.trim());
+      setAccess({
+        platform: result.platform_code,
+        mode: result.access_mode,
+        explanation: result.explanation,
+      });
+      setShowPaste(result.access_mode === "assisted");
+    } catch {
+      // Sans réponse, on ne présume rien : le bouton reste disponible.
+      setAccess(null);
+    }
+  }
 
   async function run(fetchIt: () => Promise<ListingPrefillResponse>) {
     setPhase({ step: "detecting" });
@@ -168,19 +221,26 @@ export function ListingPrefill({
             type="url"
             value={url}
             onChange={(event) => onUrlChange(event.target.value)}
+            onBlur={(event) => void checkAccess(event.target.value)}
             className={inputClass}
-            placeholder="https://exemple.com/annonce/12345"
+            placeholder="https://www.catawiki.com/fr/l/12345678-…"
           />
-          <button
-            type="button"
-            onClick={retrieve}
-            disabled={busy || !url.trim()}
-            className="shrink-0 rounded-md bg-accent px-3 py-2 text-sm font-medium text-bg disabled:opacity-50"
-          >
-            {busy ? "Récupération…" : "Récupérer les informations"}
-          </button>
+          {!pasteOnly && (
+            <button
+              type="button"
+              onClick={retrieve}
+              disabled={busy || !url.trim()}
+              className="shrink-0 rounded-md bg-accent px-3 py-2 text-sm font-medium text-bg disabled:opacity-50"
+            >
+              {busy ? "Récupération…" : "Récupérer les informations"}
+            </button>
+          )}
         </div>
       </label>
+
+      {access && pasteOnly && (
+        <p className="text-sm text-fg-muted">{access.explanation}</p>
+      )}
 
       {phase.step === "detecting" && (
         <p className="text-sm text-fg-muted" role="status">
@@ -222,14 +282,23 @@ export function ListingPrefill({
           className="rounded-md border border-border bg-bg p-3"
         >
           <summary className="cursor-pointer text-sm font-medium">
-            Import assisté — coller le contenu de la page
+            {pasteOnly
+              ? "Coller le contenu de l'annonce"
+              : "Import assisté — coller le contenu de la page"}
           </summary>
           <div className="mt-3 space-y-2">
+            <ol className="list-decimal space-y-1 pl-4 text-xs text-fg-muted">
+              <li>Ouvrir le lot dans un autre onglet.</li>
+              <li>
+                Tout sélectionner (<kbd>Ctrl</kbd>+<kbd>A</kbd>), copier (
+                <kbd>Ctrl</kbd>+<kbd>C</kbd>).
+              </li>
+              <li>Coller ci-dessous.</li>
+            </ol>
             <p className="text-xs text-fg-muted">
-              Ouvrir l&apos;annonce dans le navigateur, tout sélectionner
-              (Ctrl+A), copier (Ctrl+C), puis coller ici. KAIROS lit les mêmes
-              champs, et note qu&apos;ils viennent de vous et non d&apos;une
-              récupération automatique.
+              Le texte visible suffit : ni code source, ni outils de
+              développement. Les photos ne suivent pas — elles restent
+              consultables sur la plateforme par le lien.
             </p>
             <textarea
               value={pasted}
@@ -261,7 +330,7 @@ function PrefillPreview({
   onApply: () => void;
 }) {
   const entries = Object.entries(result.fields ?? {}).filter(
-    ([name]) => !NOT_IN_FORM.has(name),
+    ([name]) => !HIDDEN_IN_PREVIEW.has(name),
   );
   const warnings = result.warnings ?? [];
   const read = entries.filter(([, field]) => field.provenance !== "absent");

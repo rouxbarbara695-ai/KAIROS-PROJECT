@@ -151,6 +151,43 @@ class ListingDraft:
     warranty: Imported = field(default_factory=absent)
     returns: Imported = field(default_factory=absent)
 
+    # --- Vente aux enchères -------------------------------------------------
+    #
+    # Séparés du prix ordinaire, et c'est le point important. Une enchère en
+    # cours n'est **ni** un prix d'achat garanti **ni** un prix final : elle
+    # monte, et elle peut ne pas atteindre la réserve. La confondre avec un
+    # prix demandé ferait calculer une marge sur un montant qui n'existera
+    # jamais (règle 5).
+    lot_number: Imported = field(default_factory=absent)
+    current_bid_amount: Imported = field(default_factory=absent)
+    current_bid_currency: Imported = field(default_factory=absent)
+    bid_count: Imported = field(default_factory=absent)
+
+    #: Date et heure de clôture. Sans fuseau explicite, l'heure reste absente :
+    #: se tromper d'une heure sur une fin d'enchère, c'est la rater.
+    closing_at: Imported = field(default_factory=absent)
+    closing_timezone: Imported = field(default_factory=absent)
+
+    #: Estimation **de la plateforme**, conservée à part. Ce n'est pas une
+    #: estimation KAIROS, et elle n'entre dans aucun calcul : le schéma
+    #: distingue d'ailleurs `external_estimate` de `kairos_estimate`.
+    estimate_low: Imported = field(default_factory=absent)
+    estimate_high: Imported = field(default_factory=absent)
+    estimate_currency: Imported = field(default_factory=absent)
+
+    #: `no_reserve`, `not_met`, `met` — uniquement sur mention explicite.
+    #: L'absence de mention ne vaut pas « pas de réserve ».
+    reserve_status: Imported = field(default_factory=absent)
+
+    #: Frais de livraison, **et** la destination à laquelle ils se rapportent.
+    #: Un montant sans destination nommée n'est pas repris : un tarif Pays-Bas
+    #: pris pour un tarif France fausse le coût de revient.
+    shipping_cost_amount: Imported = field(default_factory=absent)
+    shipping_cost_currency: Imported = field(default_factory=absent)
+    shipping_destination: Imported = field(default_factory=absent)
+
+    seller_since: Imported = field(default_factory=absent)
+
     photos: tuple[str, ...] = ()
 
     #: Ce que l'extraction n'a pas pu faire, dit en clair à l'utilisateur.

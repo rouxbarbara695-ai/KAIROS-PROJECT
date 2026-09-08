@@ -267,3 +267,73 @@ def test_useless_text_fills_nothing_rather_than_guessing(text: str) -> None:
     assert draft.brand.provenance is Provenance.ABSENT
     assert draft.current_bid_amount.provenance is Provenance.ABSENT
     assert draft.price_amount.provenance is Provenance.ABSENT
+
+
+# --- La règle d'élaboration ne doit jamais effacer un désaccord --------------
+#
+# `_elaborates` conclut « même chose, en plus détaillé » quand les mots de la
+# version courte se retrouvent dans la longue. Prise seule, cette inclusion
+# efface les négations : « révisée » **est** contenue dans « non révisée ».
+# Ces cas fixent les garde-fous, parce qu'une alerte de trop coûte un regard
+# quand une négation perdue coûte une montre.
+
+
+@pytest.mark.parametrize(
+    ("short", "long"),
+    [
+        # Négation, dans les trois langues servies par Catawiki.
+        ("révisée", "non révisée"),
+        ("Serviced", "not serviced"),
+        ("bracelet d'origine", "bracelet non d'origine"),
+        ("papiers inclus", "sans papiers"),
+        ("papers included", "no papers included"),
+        ("originele doos", "geen originele doos"),
+        ("boîte incluse", "boîte non incluse"),
+        # Quantité : même unité, valeur différente.
+        ("21 mm", "21 mm (crown excluded) 20.7 mm real"),
+        ("12 mois", "24 mois de garantie"),
+        ("0.32 ct", "0.32 ct et 0.50 ct"),
+        ("40 mm", "40 mm de large, 12 mm d'épaisseur, 38 mm entrecorne"),
+    ],
+)
+def test_a_disagreement_is_never_swallowed_by_the_inclusion_rule(
+    short: str, long: str
+) -> None:
+    assert catawiki_text._elaborates(short, long) is False
+    assert catawiki_text._elaborates(long, short) is False
+
+
+@pytest.mark.parametrize(
+    ("short", "long"),
+    [
+        # Vraies élaborations : la fiche dit court, le vendeur développe.
+        ("Quartz", "High-precision Swiss quartz, Caliber Omega 1456"),
+        ("Steel", "Stainless steel. Fixed bezel engraved with Roman numerals"),
+        ("Yellow gold", "18k yellow gold, polished and brushed"),
+        ("24 mm", "Case diameter: 24 mm."),
+        ("Leather", "Leather strap, bright blue, aftermarket"),
+        # Accent et ponctuation ne font pas une divergence.
+        ("Must de Cartier Vendome", "Must de Cartier Vendôme."),
+    ],
+)
+def test_a_genuine_elaboration_is_still_recognised(short: str, long: str) -> None:
+    assert catawiki_text._elaborates(short, long) is True
+
+
+def test_an_ambiguous_pair_keeps_both_and_asks_for_confirmation() -> None:
+    """Le doute ne se tranche pas tout seul : les deux déclarations restent, et
+    le champ demande confirmation."""
+
+    text = (
+        "Rolex\n"
+        "Description from the seller\n"
+        "Case material: acier non plaqué\n"
+        "Details\n"
+        "Case material\n"
+        "acier plaqué\n"
+    )
+    draft = catawiki_text.extract(text, _FR_URL)
+
+    assert draft.case_material.value == "acier plaqué"
+    assert draft.case_material.needs_confirmation is True
+    assert any("non plaqué" in conflict for conflict in draft.case_material.conflicts)

@@ -586,6 +586,62 @@ def _words(text: str) -> set[str]:
     return {word for word in _WORD.findall(_fold(text)) if word not in _IGNORED_WORDS}
 
 
+#: Marqueurs de négation. Leur présence d'un seul côté renverse le sens, et
+#: l'inclusion des mots ne le voit pas : « révisée » est bel et bien contenue
+#: dans « non révisée ».
+_NEGATIONS = frozenset(
+    {
+        "non",
+        "no",
+        "not",
+        "sans",
+        "without",
+        "aucun",
+        "aucune",
+        "jamais",
+        "ni",
+        "pas",
+        "geen",
+        "niet",
+        "zonder",
+        "nee",
+        "absent",
+        "absente",
+        "manquant",
+        "manquante",
+        "missing",
+        "excluded",
+        "exclu",
+        "exclue",
+        "n'",
+        "nein",
+        "ohne",
+        "senza",
+        "sin",
+    }
+)
+
+#: Un nombre suivi de son unité : « 20.7 mm », « 12 mois », « 0.32 ct ».
+_QUANTITY = re.compile(
+    r"(?i)(\d+(?:[.,]\d+)?)\s*"
+    r"(mm|cm|m|g|kg|ct|carats?|mois|months?|ans?|years?|jours?|days?|%|"
+    r"bars?|atm|hz)\b"
+)
+
+
+def _negations(text: str) -> set[str]:
+    return {word for word in _WORD.findall(_fold(text)) if word in _NEGATIONS}
+
+
+def _quantities(text: str) -> dict[str, set[str]]:
+    """Valeurs numériques rangées par unité, virgule et point confondus."""
+
+    found: dict[str, set[str]] = {}
+    for value, unit in _QUANTITY.findall(_fold(text)):
+        found.setdefault(unit, set()).add(value.replace(",", "."))
+    return found
+
+
 def _elaborates(summary: str, detail: str) -> bool:
     """La seconde formulation dit-elle la même chose, en plus détaillé ?
 
@@ -596,12 +652,41 @@ def _elaborates(summary: str, detail: str) -> bool:
     contradiction apprendrait à l'utilisateur à ignorer les alertes — après
     quoi il ignorerait aussi les vraies.
 
-    Le critère est mécanique : tous les mots significatifs de la version
-    courte se retrouvent dans la longue.
+    Le critère de base est l'inclusion des mots significatifs. **Il ne suffit
+    pas**, et deux garde-fous le corrigent :
+
+    - **la négation.** « révisée » est contenue dans « non révisée », et
+      « papiers » dans « sans papiers ». L'inclusion conclurait donc à une
+      simple précision là où le sens est inversé. Dès qu'un marqueur de
+      négation figure d'un seul côté, ce n'est plus une élaboration.
+    - **les quantités.** « 21 mm » est bien inclus dans « 21 mm (couronne
+      exclue) — 20,7 mm réels », mais la seconde valeur serait effacée. Dès
+      que les deux textes portent la même unité avec des valeurs différentes,
+      ce n'est plus une élaboration.
+
+    Dans le doute, on refuse d'élaborer : la divergence est conservée et
+    l'utilisateur tranche. Une alerte de trop coûte un regard ; une négation
+    perdue coûte une montre.
     """
 
     short, long = _words(summary), _words(detail)
-    return bool(short) and short <= long
+    if not short or not (short <= long):
+        return False
+
+    # Négation présente d'un seul côté : le sens est inversé, pas précisé.
+    if _negations(summary) != _negations(detail):
+        return False
+
+    # Même unité, valeurs différentes : la seconde mesure serait perdue.
+    left, right = _quantities(summary), _quantities(detail)
+    for unit, values in left.items():
+        if unit in right and not values <= right[unit]:
+            return False
+    for unit, values in right.items():
+        if unit in left and not values <= left[unit]:
+            return False
+
+    return True
 
 
 def _same(left: str, right: str) -> bool:

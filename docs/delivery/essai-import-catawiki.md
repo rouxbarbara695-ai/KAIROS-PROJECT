@@ -96,7 +96,36 @@ cd apps/web && pnpm build && API_INTERNAL_URL=http://127.0.0.1:8000 pnpm start
 
 Puis `http://127.0.0.1:3000`.
 
-## Procédure d'essai
+## Essai de cinq minutes
+
+Le seul essai qui compte : importer, corriger, enregistrer, rouvrir.
+
+**Avant de commencer** : ouvrez un lot de montre Catawiki dans un onglet à
+côté. N'importe lequel de ceux que vous suivez.
+
+| | Ce que vous faites | Ce que vous devez voir |
+|---|---|---|
+| **1 min** | Connexion, puis **Nouvelle opportunité** → onglet **« Annonce en ligne »**. Collez le lien du lot et cliquez à côté du champ. | Un message dit que Catawiki protège ses pages. La zone de collage s'ouvre toute seule. **Aucun bouton « Récupérer »** — il échouerait. |
+| **1 min** | Sur l'onglet Catawiki : `Ctrl+A`, `Ctrl+C`. Revenez, collez dans la zone, **« Analyser ce contenu »**. | « *N* champs lus sur Catawiki ». La liste de ce qui a été lu, celle de ce qui manque, et les avertissements — dont « ni un prix final » et « photos non reprises ». |
+| **1 min** | **« Reprendre ces valeurs dans le formulaire »**. Vérifiez marque, référence, prix, pays. Corrigez un champ volontairement (par exemple la référence). | Les champs sont remplis. Votre correction remplace la valeur importée. |
+| **1 min** | **« Créer l'opportunité »**. | La fiche s'ouvre. |
+| **1 min** | Revenez à la liste, puis rouvrez la fiche. Descendez jusqu'au bloc **« Import assisté Catawiki »**. | Votre correction est là. À côté, ce que l'annonce disait : chaque valeur avec son origine, sa forme brute quand elle diffère, ce qui reste **à confirmer**, ce que l'annonce ne donnait pas. |
+
+**Ce qu'il faut regarder en particulier** — c'est là que se cachent les erreurs
+coûteuses :
+
+- le montant est-il annoncé comme **enchère en cours**, et non comme prix ?
+- l'**estimation Catawiki** est-elle bien à part, sans se mêler au prix ?
+- le **prix de réserve** est-il celui de l'annonce ?
+- la **période** (« 2010-2020 ») est-elle conservée sans devenir une année ?
+- les frais de **livraison vers la France** correspondent-ils ?
+- les champs **à confirmer** sont-ils ceux que vous auriez vous-même mis en
+  doute ?
+
+Si une valeur est fausse, dites-moi laquelle et sur quel lot : c'est ainsi que
+les trois derniers défauts ont été trouvés.
+
+## Procédure d'essai détaillée
 
 1. **Se connecter** avec le compte créé.
 2. **Nouvelle opportunité** → onglet **« Annonce en ligne »**.

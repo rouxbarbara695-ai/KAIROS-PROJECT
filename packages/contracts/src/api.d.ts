@@ -105,6 +105,79 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/listings/access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Platform Access Route
+         * @description Dit, avant toute tentative, ce que KAIROS pourra faire de ce lien.
+         *
+         *     Permet à l'interface d'annoncer « cette plateforme demande un import
+         *     assisté » au moment où le lien est collé, plutôt que de faire attendre
+         *     l'utilisateur pour un refus prévisible.
+         */
+        get: operations["platform_access_route_api_v1_listings_access_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/listings/prefill": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Prefill Listing Route
+         * @description Récupère une annonce, à la demande, et rend un brouillon à vérifier.
+         *
+         *     Rend `200` même en cas d'échec de récupération : ce n'est pas une erreur de
+         *     la requête, c'est un résultat. Le corps porte `succeeded: false` et dit
+         *     précisément ce qui a bloqué, pour que l'interface propose le bon repli
+         *     plutôt qu'un message générique.
+         */
+        post: operations["prefill_listing_route_api_v1_listings_prefill_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/listings/prefill/assisted": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Prefill Listing From Content Route
+         * @description Analyse un contenu fourni par l'utilisateur.
+         *
+         *     Aucune requête sortante n'est émise : c'est tout l'intérêt du repli là où
+         *     la plateforme refuse les accès automatisés. Le contenu est traité comme une
+         *     donnée, jamais comme une consigne, et n'est pas conservé (Q-08).
+         */
+        post: operations["prefill_listing_from_content_route_api_v1_listings_prefill_assisted_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me": {
         parameters: {
             query?: never;
@@ -240,6 +313,32 @@ export interface paths {
         };
         /** List Opportunity Events Route */
         get: operations["list_opportunity_events_route_api_v1_opportunities__opportunity_id__events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/opportunities/{opportunity_id}/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Opportunity Import Trace Route
+         * @description Ce que l'annonce affichait quand le dossier a été créé.
+         *
+         *     C'est la moitié manquante du parcours : sans elle, un dossier rouvert six
+         *     semaines plus tard ne dit plus quelle valeur venait de l'annonce et
+         *     laquelle a été corrigée à la main. Les observations sont rendues de la
+         *     plus récente à la plus ancienne — une seconde récupération en ajoute une,
+         *     elle n'écrase rien.
+         */
+        get: operations["opportunity_import_trace_route_api_v1_opportunities__opportunity_id__import_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -655,6 +754,19 @@ export interface components {
             /** Total Cost Eur */
             total_cost_eur?: string | null;
         };
+        /**
+         * AssistedPrefillRequest
+         * @description Repli : l'utilisateur fournit lui-même le contenu de la page.
+         *
+         *     `url` reste obligatoire — c'est elle qui identifie l'annonce et qui
+         *     reconnaît la plateforme. Le contenu ne la remplace pas, il la complète.
+         */
+        AssistedPrefillRequest: {
+            /** Content */
+            content: string;
+            /** Url */
+            url: string;
+        };
         /** AuditEventPage */
         AuditEventPage: {
             /** Items */
@@ -847,6 +959,7 @@ export interface components {
         };
         /** CreateOpportunityRequest */
         CreateOpportunityRequest: {
+            import_draft?: components["schemas"]["ImportDraftInput"] | null;
             /**
              * Portfolio Id
              * Format: uuid
@@ -854,6 +967,7 @@ export interface components {
             portfolio_id: string;
             /**
              * @default {
+             *       "kind": "asking",
              *       "missing_reason": "asking_price_not_provided"
              *     }
              */
@@ -933,6 +1047,119 @@ export interface components {
             reference?: string | null;
         };
         /**
+         * ImportDraftInput
+         * @description Trace de l'import, conservée avec le dossier.
+         *
+         *     Écrite dans une observation d'annonce, qui est **immuable** : c'est un
+         *     constat daté de ce que l'annonce affichait, pas un état à maintenir. Une
+         *     seconde récupération ajoutera une observation, elle n'écrasera pas
+         *     celle-ci.
+         */
+        ImportDraftInput: {
+            /**
+             * Access Mode
+             * @enum {string}
+             */
+            access_mode: "automatic" | "assisted" | "forbidden";
+            /** Fetched At */
+            fetched_at: string;
+            /** Fields */
+            fields?: {
+                [key: string]: components["schemas"]["ImportedFieldInput"];
+            };
+            /** Platform Code */
+            platform_code: string;
+            /** Warnings */
+            warnings?: string[];
+        };
+        /** ImportTracePage */
+        ImportTracePage: {
+            /** Items */
+            items?: components["schemas"]["ImportTraceResponse"][];
+        };
+        /**
+         * ImportTraceResponse
+         * @description Ce que l'annonce affichait au moment de l'import.
+         *
+         *     Rendue en rouvrant un dossier : c'est elle qui permet de dire, des
+         *     semaines plus tard, quelle valeur venait de l'annonce et laquelle a été
+         *     saisie à la main. Immuable — une seconde récupération ajoute une
+         *     observation, elle n'écrase pas celle-ci.
+         */
+        ImportTraceResponse: {
+            /** Access Mode */
+            access_mode?: string | null;
+            /** Auction End At */
+            auction_end_at?: string | null;
+            /** Fetch Status */
+            fetch_status: string;
+            /** Fields */
+            fields?: {
+                [key: string]: components["schemas"]["ImportedFieldResponse"];
+            };
+            /** Observed At */
+            observed_at: string;
+            /** Platform Code */
+            platform_code?: string | null;
+            /** Reserve Met */
+            reserve_met?: boolean | null;
+            /** Warnings */
+            warnings?: string[];
+        };
+        /**
+         * ImportedFieldInput
+         * @description Un champ tel que l'import l'a rendu, renvoyé tel quel à la création.
+         *
+         *     Le client ne le reconstruit pas : il rend ce que `POST /listings/prefill`
+         *     lui a donné, éventuellement amputé des champs que l'utilisateur a corrigés.
+         *     C'est ce qui permet de savoir, en rouvrant le dossier des semaines plus
+         *     tard, quelle valeur venait de l'annonce et laquelle a été saisie.
+         */
+        ImportedFieldInput: {
+            /** Conflicts */
+            conflicts?: string[];
+            /**
+             * Needs Confirmation
+             * @default false
+             */
+            needs_confirmation: boolean;
+            /**
+             * Provenance
+             * @enum {string}
+             */
+            provenance: "imported" | "assisted" | "user" | "absent";
+            /** Raw */
+            raw?: string | null;
+            /** Source */
+            source?: string | null;
+            /** Value */
+            value?: unknown;
+        };
+        /**
+         * ImportedFieldResponse
+         * @description Une valeur, ce qu'elle était avant normalisation, et d'où elle vient.
+         */
+        ImportedFieldResponse: {
+            /** Conflicts */
+            conflicts?: string[];
+            /**
+             * Needs Confirmation
+             * @default false
+             */
+            needs_confirmation: boolean;
+            /**
+             * Provenance
+             * @enum {string}
+             */
+            provenance: "imported" | "assisted" | "user" | "absent";
+            /** Raw */
+            raw?: string | null;
+            /** Source */
+            source?: string | null;
+            /** Value */
+            value?: unknown;
+        };
+        /**
          * LedgerMovementCreate
          * @description Mouvement de trésorerie saisi par l'utilisateur.
          *
@@ -999,6 +1226,39 @@ export interface components {
             occurred_at: string;
             /** Rate To Eur */
             rate_to_eur: string;
+        };
+        /**
+         * ListingPrefillResponse
+         * @description Ce que la récupération a donné — y compris quand elle n'a rien donné.
+         *
+         *     `url` et `platform_code` sont toujours renseignés : en cas d'échec, le
+         *     formulaire garde le lien et l'utilisateur n'a pas à le recoller.
+         */
+        ListingPrefillResponse: {
+            /**
+             * Access Mode
+             * @enum {string}
+             */
+            access_mode: "automatic" | "assisted" | "forbidden";
+            /** Canonical Url */
+            canonical_url?: string | null;
+            failure?: components["schemas"]["PrefillFailureResponse"] | null;
+            /** Fetched At */
+            fetched_at?: string | null;
+            /** Fields */
+            fields?: {
+                [key: string]: components["schemas"]["ImportedFieldResponse"];
+            };
+            /** Photos */
+            photos?: string[];
+            /** Platform Code */
+            platform_code: string;
+            /** Succeeded */
+            succeeded: boolean;
+            /** Url */
+            url: string;
+            /** Warnings */
+            warnings?: string[];
         };
         /** LoginRequest */
         LoginRequest: {
@@ -1125,6 +1385,21 @@ export interface components {
             reason: string;
             /** Received At */
             received_at?: string | null;
+        };
+        /**
+         * PlatformAccessResponse
+         * @description Ce que KAIROS a le droit de faire sur une plateforme, et pourquoi.
+         */
+        PlatformAccessResponse: {
+            /**
+             * Access Mode
+             * @enum {string}
+             */
+            access_mode: "automatic" | "assisted" | "forbidden";
+            /** Explanation */
+            explanation: string;
+            /** Platform Code */
+            platform_code: string;
         };
         /** PlatformResponse */
         PlatformResponse: {
@@ -1274,12 +1549,34 @@ export interface components {
             /** Total Capital Eur */
             total_capital_eur: string;
         };
+        /** PrefillFailureResponse */
+        PrefillFailureResponse: {
+            /** Code */
+            code: string;
+            /** Details */
+            details?: {
+                [key: string]: unknown;
+            };
+            /** Message */
+            message: string;
+        };
+        /** PrefillRequest */
+        PrefillRequest: {
+            /** Url */
+            url: string;
+        };
         /** PriceCreate */
         PriceCreate: {
             /** Amount */
             amount?: number | string | null;
             /** Currency */
             currency?: string | null;
+            /**
+             * Kind
+             * @default asking
+             * @enum {string}
+             */
+            kind: "asking" | "offer" | "accepted_offer" | "current_bid" | "external_estimate";
             /** Missing Reason */
             missing_reason?: string | null;
         };
@@ -1453,7 +1750,7 @@ export interface components {
              * Mode
              * @enum {string}
              */
-            mode: "manual" | "url";
+            mode: "manual" | "url" | "assisted_import";
             /** Platform Code */
             platform_code?: string | null;
             /** Url */
@@ -1771,6 +2068,103 @@ export interface operations {
                     "application/json": {
                         [key: string]: string;
                     };
+                };
+            };
+        };
+    };
+    platform_access_route_api_v1_listings_access_get: {
+        parameters: {
+            query: {
+                url: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformAccessResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    prefill_listing_route_api_v1_listings_prefill_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PrefillRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListingPrefillResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    prefill_listing_from_content_route_api_v1_listings_prefill_assisted_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssistedPrefillRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListingPrefillResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -2124,6 +2518,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AuditEventPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    opportunity_import_trace_route_api_v1_opportunities__opportunity_id__import_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                opportunity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportTracePage"];
                 };
             };
             /** @description Validation Error */

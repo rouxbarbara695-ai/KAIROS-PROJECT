@@ -8,6 +8,7 @@ from app.api.v1.routes.analyses import router as analyses_router
 from app.api.v1.routes.auth import router as auth_router
 from app.api.v1.routes.comparables import router as comparables_router
 from app.api.v1.routes.health import router as health_router
+from app.api.v1.routes.listings import router as listings_router
 from app.api.v1.routes.me import router as me_router
 from app.api.v1.routes.opportunities import router as opportunities_router
 from app.api.v1.routes.platforms import router as platforms_router
@@ -42,6 +43,7 @@ def create_app() -> FastAPI:
     app.include_router(comparables_router, prefix="/api/v1")
     app.include_router(analyses_router, prefix="/api/v1")
     app.include_router(portfolio_router, prefix="/api/v1")
+    app.include_router(listings_router, prefix="/api/v1")
 
     return app
 

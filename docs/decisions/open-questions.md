@@ -8,11 +8,11 @@ configurations, mais ne doit ni activer ni inventer une réponse.
 | Q-01 | fournisseur d’authentification | **tranchée : aucun fournisseur tiers** — mots de passe Argon2id et sessions opaques révocables, comptes créés en ligne de commande (POL-040) | — |
 | Q-02 | hébergement et stockage objet | **tranchée, voir ci-dessous** | — |
 | Q-03 | fournisseur de taux FX | port + taux EUR=1 en test | calcul réel non EUR — **dépriorisé, voir ci-dessous** |
-| Q-04 | accès Chrono24 | manuel uniquement | KAI-405 Chrono24 |
-| Q-05 | accès Catawiki | manuel uniquement | KAI-405 Catawiki |
-| Q-06 | accès Vestiaire | manuel uniquement | KAI-405 Vestiaire |
+| Q-04 | accès Chrono24 | **tranchée, voir ci-dessous** — récupération unitaire à la demande autorisée ; Chrono24 bloqué techniquement, donc import assisté | — |
+| Q-05 | accès Catawiki | **tranchée, voir ci-dessous** — récupération unitaire à la demande autorisée ; Catawiki bloqué techniquement, donc import assisté | — |
+| Q-06 | accès Vestiaire | **tranchée, voir ci-dessous** — récupération unitaire à la demande autorisée ; Vestiaire bloqué techniquement, donc import assisté | — |
 | Q-07 | profil fiscal hors UE | `buy` bloqué sans saisie | recommandation extra-UE |
-| Q-08 | conservation des images/pages | aucune page brute par défaut | import externe |
+| Q-08 | conservation des images/pages | aucune page brute par défaut — **confirmé** : l'import n'enregistre que les champs extraits, jamais la page | import externe |
 | Q-09 | seuils de profit par segment | règles V1 globales | calibration bêta |
 | Q-10 | validation des primes de set | +10 % / +20 % versionnées | calibration bêta |
 | Q-11 | méthode de quantile pour `Q1`/`Q3` | charnières de Tukey | repli IQR des anomalies |
@@ -175,3 +175,105 @@ Deux points restent à trancher :
 2. **La TVA sur la vente elle-même.** Hors périmètre : un particulier qui
    revend un bien d'occasion ne collecte pas de TVA. Si le statut change, c'est
    une story à part entière, distincte de la TVA sur commission.
+
+
+## Q-04 / Q-05 / Q-06 — accès aux plateformes : récupération unitaire à la demande
+
+**Validation écrite du propriétaire (8 septembre 2026).** La règle 9 de
+`CLAUDE.md` interdit d'activer un accès automatisé sans validation écrite du
+mode d'accès, des conditions d'utilisation et de la fréquence. Cette validation
+est donnée, et elle est **étroite** :
+
+> Autorisé : la récupération **unitaire** d'une annonce, **à la demande
+> explicite de l'utilisateur**, au moment où il colle un lien.
+> Non autorisé : la surveillance périodique et la collecte de masse.
+> Interdit sans exception : contourner un CAPTCHA, une protection technique
+> ou un contrôle d'accès.
+
+**Fréquence retenue** : une requête par action de l'utilisateur, aucune
+répétition automatique, aucun ordonnanceur. `KAI-405` reste hors périmètre.
+
+Cette autorisation ne dit pas *qu'une plateforme accepte* : elle dit seulement
+que KAIROS a le droit d'essayer là où c'est permis. Chaque plateforme a donc
+été examinée séparément, et le tableau ci-dessous consigne ce qui a été
+**constaté**, le 8 septembre 2026, depuis une adresse de centre de données.
+
+| Plateforme | `access_method` retenu | Constat |
+|---|---|---|
+| Watchfinder | `official_api` (données structurées publiques) | **Essai réel réussi.** `robots.txt` autorise les fiches produit ; la page publie un bloc `schema.org/Product` complet. |
+| Boutique indépendante | `official_api` si la page publie `schema.org`, sinon repli | Même chemin générique. Dépend du site ; aucune garantie. |
+| Chrono24 | `assisted_import` | **Bloqué techniquement.** `HTTP 403`, `server: cloudflare`, `cf-mitigated: challenge`, page « Enable JavaScript and cookies to continue ». Le `robots.txt` autorise pourtant les fiches : le blocage est un contrôle d'accès, pas une interdiction de robots. **Non contourné.** |
+| **Catawiki** — plateforme d'achat principale | `assisted_import` | **Bloqué techniquement, revérifié le 8 septembre 2026.** `HTTP 403`, `server: AkamaiGHost`, sur `catawiki.com`, `catawiki.fr` et `catawiki.nl`, sur la page d'accueil **comme sur une page de lot**, et jusque sur `robots.txt` — la politique d'indexation elle-même est inaccessible. Le refus est identique avec un agent honnête et avec un agent de navigateur : il ne dépend pas de ce qu'on annonce. Aucune API publique côté acheteur ; les « scrapers » tiers disponibles sur le marché contournent précisément cette protection et sont donc exclus. **Non contourné.** |
+| Vestiaire Collective | `assisted_import` | **Bloqué techniquement.** `HTTP 307` derrière Cloudflare, jamais de contenu d'annonce. |
+| eBay | `manual` | **Interdit par ses conditions**, indépendamment de toute faisabilité. Son `robots.txt` énonce : « The use of robots or other automated means to access the eBay site without the express permission of eBay is strictly prohibited », et vise nommément les « LLM-driven bots ». Il renvoie les intégrations à l'**API officielle** sous licence développeur. |
+
+**Ce qui en découle, et qui n'est pas un contournement** : là où la
+récupération serveur est refusée, KAIROS propose un **import assisté** —
+l'utilisateur ouvre l'annonce dans son navigateur, où il est un visiteur
+ordinaire, et fournit lui-même le contenu de la page. KAIROS l'analyse comme
+il analyserait une page récupérée, mais l'origine est enregistrée comme
+`assisted_import` et **jamais** présentée comme une récupération automatique
+réussie. Aucun jeton, aucun cookie de session, aucune signature de navigateur
+n'est rejoué côté serveur.
+
+**Ce qui reste fermé.** L'API eBay Browse est le seul chemin autorisé pour
+eBay ; elle exige des identifiants développeur et l'acceptation de l'*API
+License Agreement*. Tant que ces identifiants n'existent pas, `ebay` reste en
+`manual` et aucune requête automatique n'est émise vers eBay. Rouvrir ce point
+demandera une nouvelle validation écrite, une `PlatformRule` nouvelle, et pas
+une modification de code.
+
+**Ce constat vieillit.** Une protection peut apparaître ou disparaître, une
+condition d'utilisation peut changer. Le tableau est daté pour cette raison :
+il décrit le 8 septembre 2026, pas une propriété permanente des plateformes.
+
+
+## Catawiki — parcours d'import assisté (8 septembre 2026)
+
+**Catawiki devient la plateforme prioritaire** : c'est d'elle que vient
+l'essentiel des achats. Comme sa récupération serveur est impossible et le
+restera tant que la protection Akamai est en place, l'import assisté n'est pas
+un repli de second choix : c'est **le** parcours Catawiki, et il doit être aussi
+bon que si la page avait été récupérée.
+
+**Ce qui est demandé à l'utilisateur** : ouvrir le lot, `Ctrl+A`, `Ctrl+C`,
+coller. Rien d'autre. Pas de code source (`Ctrl+U`), pas d'outils de
+développement — cette exigence serait une façon déguisée de lui faire faire le
+travail d'un robot, et elle ne tiendrait pas dans un usage quotidien.
+
+**Conséquence sur la méthode d'extraction.** Le texte visible ne contient aucun
+bloc `schema.org` : il n'y a que des étiquettes et des valeurs. La lecture est
+donc **pilotée par les étiquettes**, jamais par la position d'une ligne. Les
+étiquettes françaises, anglaises et néerlandaises sont acceptées, parce que
+Catawiki sert le même lot dans la langue du visiteur et que changer la langue de
+son compte pour importer serait absurde.
+
+**Champs repris, quand la page les affiche** : numéro de lot et lien, enchère en
+cours avec sa devise, nombre d'enchères, date et heure de clôture avec fuseau,
+estimation Catawiki (conservée à part), mention explicite du prix de réserve,
+vendeur public, pays, ancienneté, frais de livraison **vers la France**
+uniquement si la destination est nommée, description, état déclaré, boîte et
+papiers séparément, marque, modèle, référence, année, mouvement, calibre,
+matériaux, diamètre, cadran, bracelet.
+
+**Ce qui n'est jamais rempli, et pourquoi**
+
+| Cas | Décision | Raison |
+|---|---|---|
+| Enchère en cours | enregistrée en `current_bid`, jamais `asking` | elle monte ; ce n'est ni un prix d'achat garanti ni un prix final |
+| Estimation Catawiki | champs séparés, `external_estimate` | ce n'est pas une estimation KAIROS et elle n'entre dans aucun calcul |
+| Clôture sans fuseau affiché | heure non reprise, valeur brute conservée | se tromper d'une heure sur une fin d'enchère, c'est la rater |
+| Compte à rebours (« 2 j 03 h ») | jamais converti en date | supposerait que le collage a lieu à l'instant |
+| Aucune mention de réserve | reste inconnu | l'absence de mention ne vaut pas « pas de réserve » |
+| Frais sans destination nommée | non repris | Catawiki affiche le tarif du pays du visiteur |
+| Montant sans devise | non repris | supposer l'euro fausserait un lot facturé en francs suisses |
+| État déclaré | conservé comme déclaration | « bon état » est ce que le vendeur écrit, pas un constat |
+
+**Limite à afficher, pas à taire** : un copier-coller de texte ne transporte pas
+les images. Les photos ne sont donc pas importées et restent consultables sur
+Catawiki par le lien. L'interface le dit à chaque import.
+
+**Chaque montant conserve sa nature et l'horodatage du relevé.** L'import est
+écrit dans une observation d'annonce, qui est append-only : un second relevé
+s'ajoute au premier plutôt que de l'écraser, ce qui permet de voir si une
+enchère s'emballe.

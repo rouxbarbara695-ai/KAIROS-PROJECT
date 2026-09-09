@@ -124,6 +124,97 @@ gardent la même tant qu’elle n’a pas abouti. La clé n’est oubliée qu’
 — c’est après un échec que l’utilisateur réappuie, et c’est le seul moment où
 l’issue de l’appel précédent est inconnue.
 
+### Préremplissage depuis un lien
+
+`POST /listings/prefill` récupère **une** annonce, à la demande explicite de
+l’utilisateur. Aucune surveillance périodique, aucune collecte de masse : la
+validation d’accès est étroite et datée (`docs/decisions/open-questions.md`,
+Q-04/05/06).
+
+**Ces routes n’écrivent rien.** Elles rendent un brouillon ; c’est
+`POST /opportunities` qui crée. Un préremplissage abandonné ne laisse aucune
+trace, et recoller un lien ne provoque pas un conflit de doublon.
+
+**Un refus est un résultat, pas une erreur.** La route rend `200` avec
+`succeeded: false`, le lien conservé, le motif précis et le repli à proposer :
+
+| `access_mode` | Ce que fait KAIROS |
+|---|---|
+| `automatic` | récupère la page |
+| `assisted` | n’émet aucune requête ; propose l’import assisté |
+| `forbidden` | n’émet aucune requête ; les conditions de la plateforme l’interdisent |
+
+`GET /listings/access` rend ce mode **avant** toute tentative, pour que
+l’interface annonce le repli au moment où le lien est collé.
+
+**Chaque champ est un objet**, jamais une valeur nue :
+
+```json
+{
+  "raw": "GBP 7,995",
+  "value": "7995",
+  "provenance": "imported",
+  "source": "schema.org/Offer.price",
+  "conflicts": []
+}
+```
+
+`provenance` vaut `imported` (page récupérée par le serveur), `assisted`
+(contenu fourni par l’utilisateur), `user` (corrigé à la main) ou `absent`.
+**`absent` n’est pas une valeur vide : c’est un constat.** Un champ que
+l’annonce ne donne pas reste `absent` et ne reçoit jamais de défaut favorable.
+Aplatir cette structure ferait perdre exactement ce qui rend le préremplissage
+sûr : la distinction entre une valeur lue et une valeur supposée.
+
+**Ce qui n’est jamais déduit** : l’année, la référence, le diamètre et le
+calibre absents de la page restent absents ; « full set » ne remplit ni la
+boîte ni les papiers, qui se lisent séparément ; « occasion » ne produit aucune
+note cosmétique ; un montant sans devise n’est pas repris ;
+« authenticité garantie » reste une déclaration du vendeur. Chacun de ces cas
+produit un `warning` en clair plutôt qu’une valeur.
+
+**Numéros de série** : retirés de tout texte importé (règle 11). La réponse dit
+qu’il y en avait un, jamais lequel.
+
+**Catawiki : import assisté obligatoire.** Catawiki refuse toute requête
+serveur (`403` Akamai sur tous ses domaines, jusque sur `robots.txt`) et n’offre
+pas d’API publique côté acheteur. C’est pourtant la plateforme d’achat
+principale, donc l’import assisté y est le parcours normal et non un repli.
+L’utilisateur colle le **texte visible** de la page (`Ctrl+A`, `Ctrl+C`) ; ni
+code source ni outils de développement ne sont demandés. L’extraction y est
+pilotée par les étiquettes — français, anglais, néerlandais — et non par la
+position des lignes.
+
+**Champs propres aux enchères.** `lot_number`, `current_bid_amount`,
+`current_bid_currency`, `bid_count`, `closing_at`, `closing_timezone`,
+`estimate_low`, `estimate_high`, `estimate_currency`, `reserve_status`
+(`no_reserve` / `not_met` / `met`), `shipping_cost_amount`,
+`shipping_cost_currency`, `shipping_destination`, `seller_since`.
+
+Trois règles y gouvernent la lecture :
+
+- **une enchère en cours est une enchère.** Elle part en `price.kind =
+  "current_bid"`, jamais `asking` : elle montera, et elle peut ne pas atteindre
+  la réserve ;
+- **l’estimation de la plateforme n’est pas celle de KAIROS.** Elle occupe ses
+  propres champs et n’entre dans aucun calcul ;
+- **l’horodatage du relevé accompagne le montant.** Un prix d’enchère sans
+  l’heure à laquelle il a été lu ne veut rien dire.
+
+**Trace de l’import.** `POST /opportunities` accepte un `import_draft`
+facultatif : les champs tels que le préremplissage les a rendus, avec leur
+provenance. Il est écrit dans une observation d’annonce — **append-only** — et
+relu par `GET /opportunities/{id}/import`. C’est ce qui permet, en rouvrant un
+dossier des semaines plus tard, de distinguer ce qui venait de l’annonce de ce
+qui a été corrigé à la main. Un second import ajoute une observation ; il
+n’écrase pas la précédente.
+
+**Garde-fous de la récupération** : `https` seul, domaines autorisés par
+plateforme, adresses résolues vérifiées comme publiques, redirections
+revalidées une à une (trois au plus), délai de 10 s, corps borné à 2 Mio. Le
+contenu distant est traité comme une donnée : il n’est ni exécuté, ni obéi, et
+il est nettoyé avant d’être stocké ou affiché.
+
 ### Limitation de débit
 
 `POST /auth/login` est la seule route publique de l’API. Les échecs y sont
@@ -157,6 +248,10 @@ frontière de sécurité est le mot de passe, pas le limiteur.
 | POST | `/opportunities/{id}/price-inputs` | ajouter prix manuel/enchère daté |
 | GET | `/opportunities/{id}/events` | historique métier et audit |
 | POST | `/opportunities/{id}/observations` | observation manuelle |
+| POST | `/listings/prefill` | préremplir depuis un lien, à la demande |
+| POST | `/listings/prefill/assisted` | préremplir depuis un contenu fourni |
+| GET | `/listings/access` | mode d’accès applicable à un lien |
+| GET | `/opportunities/{id}/import` | ce que l’annonce affichait à l’import |
 | POST | `/opportunities/{id}/comparables` | ajouter comparable |
 | POST | `/comparables/{id}/overrides` | corriger/exclure/réintégrer avec motif |
 | POST | `/opportunities/{id}/analyses` | créer/recalculer |

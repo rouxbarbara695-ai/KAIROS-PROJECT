@@ -10,10 +10,31 @@ _HOST_TO_PLATFORM_CODE: dict[str, str] = {
     "chrono24.com": "chrono24",
     "chrono24.fr": "chrono24",
     "catawiki.com": "catawiki",
+    "catawiki.fr": "catawiki",
     "vestiairecollective.com": "vestiaire_collective",
     "watchcharts.com": "watchcharts",
     "watchfinder.co.uk": "watchfinder",
     "watchfinder.com": "watchfinder",
+    # Les domaines nationaux d'eBay sont listés un à un, et ce n'est pas du
+    # zèle : une plateforme non reconnue retombe sur `independent_boutique`,
+    # dont le mode d'accès est « tenter la récupération ». Un domaine eBay
+    # oublié ferait donc émettre vers eBay une requête que ses conditions
+    # d'utilisation interdisent — le silence de la table vaudrait
+    # autorisation.
+    "ebay.com": "ebay",
+    "ebay.fr": "ebay",
+    "ebay.co.uk": "ebay",
+    "ebay.de": "ebay",
+    "ebay.it": "ebay",
+    "ebay.es": "ebay",
+    "ebay.nl": "ebay",
+    "ebay.be": "ebay",
+    "ebay.ch": "ebay",
+    "ebay.at": "ebay",
+    "ebay.ie": "ebay",
+    "ebay.pl": "ebay",
+    "ebay.ca": "ebay",
+    "ebay.com.au": "ebay",
 }
 
 _FALLBACK_PLATFORM_CODE = "independent_boutique"

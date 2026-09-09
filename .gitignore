@@ -34,3 +34,7 @@ backup.key
 
 # Local artifacts
 /infra/docker/data/
+
+# Artefacts des essais navigateur (traces, captures) : jamais versionnés.
+apps/web/test-results/
+apps/web/playwright-report/

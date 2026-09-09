@@ -456,6 +456,60 @@ export function recordPayout(
   });
 }
 
+export type ListingPrefillResponse =
+  components["schemas"]["ListingPrefillResponse"];
+export type ImportedField = components["schemas"]["ImportedFieldResponse"];
+export type PlatformAccessResponse =
+  components["schemas"]["PlatformAccessResponse"];
+
+/**
+ * Récupère une annonce à la demande.
+ *
+ * Ne lève pas quand la plateforme refuse : l'API rend `200` avec
+ * `succeeded: false` et le motif. C'est un résultat, pas une panne, et
+ * l'interface doit pouvoir proposer le bon repli plutôt qu'un message
+ * d'échec générique.
+ */
+export function prefillListing(url: string): Promise<ListingPrefillResponse> {
+  return request<ListingPrefillResponse>("/listings/prefill", {
+    method: "POST",
+    body: JSON.stringify({ url }),
+  });
+}
+
+/** Repli : l'utilisateur fournit lui-même le contenu de la page. */
+export function prefillListingFromContent(
+  url: string,
+  content: string,
+): Promise<ListingPrefillResponse> {
+  return request<ListingPrefillResponse>("/listings/prefill/assisted", {
+    method: "POST",
+    body: JSON.stringify({ url, content }),
+  });
+}
+
+/** Ce que KAIROS pourra faire de ce lien, avant même d'essayer. */
+export function platformAccess(url: string): Promise<PlatformAccessResponse> {
+  return request<PlatformAccessResponse>(
+    `/listings/access?url=${encodeURIComponent(url)}`,
+  );
+}
+
+export type ImportTraceResponse = components["schemas"]["ImportTraceResponse"];
+export type ImportTracePage = components["schemas"]["ImportTracePage"];
+
+/**
+ * Relevés d'annonce conservés avec le dossier.
+ *
+ * Rendus vides pour une saisie manuelle — il n'y a alors rien à montrer, et
+ * surtout rien à présenter comme venant d'une annonce.
+ */
+export function listImportTrace(
+  opportunityId: string,
+): Promise<ImportTracePage> {
+  return request<ImportTracePage>(`/opportunities/${opportunityId}/import`);
+}
+
 export function login(email: string, password: string): Promise<unknown> {
   return request("/auth/login", {
     method: "POST",

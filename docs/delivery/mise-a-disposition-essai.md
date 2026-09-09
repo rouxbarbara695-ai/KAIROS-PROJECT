@@ -10,9 +10,13 @@ Les deux lots n'ajoutent **aucune migration**. Le schéma de la base est
 strictement identique avant et après.
 
 ```bash
-git diff --name-status origin/main...HEAD -- infra/migrations/
-# (aucune sortie)
+git diff --name-status 4b3d6ee origin/main -- infra/migrations/ database/
+# A	database/schema-after-migrations.json
 ```
+
+La seule ligne rendue est l'**instantané structurel** ajouté par le lot 1, lu
+par un test d'intégration. Ce n'est pas une migration : il décrit la base, il
+ne la modifie pas. Rien sous `infra/migrations/`.
 
 Trois conséquences directes :
 
@@ -120,24 +124,61 @@ Si vous voulez malgré tout revenir à l'état d'avant :
 | Temps d'indisponibilité | environ 1 à 2 minutes, le temps de la reconstruction |
 | Chemin B | un sous-domaine, ~1 Go de RAM, ~30 min de configuration |
 
-## Ordre de fusion, et le piège à éviter
+## Ordre de fusion, et le piège à éviter — fait le 9 septembre 2026
 
-L'ordre est **#22 puis #23**.
+L'ordre était **#22 puis #23**. Les deux sont fusionnées.
 
-`#23` est basée sur la branche de `#22`. Quand `#22` sera fusionnée, GitHub
-**rebasculera automatiquement la cible de #23 sur `main`**. Ce changement de
-cible n'est **pas** un rebase : les commits de `#23` restent posés sur
-l'ancienne base. Le diff affiché redevient correct parce que les commits de
-`#22` sont désormais dans `main`, mais il faut le **vérifier**, pas le
-supposer :
+### Ce qui s'est réellement passé, et qui contredit ce que ce document annonçait
+
+Ce document affirmait que GitHub **rebasculerait automatiquement** la cible de
+`#23` sur `main` après la fusion de `#22`. **C'est faux, et vérifié comme tel** :
+après la fusion de `#22`, `#23` pointait toujours sur
+`claude/lot1-securisation-donnees`. GitHub ne redirige la cible que lorsque la
+branche de base est **supprimée**, ce qui n'était pas le cas. La cible a donc
+été portée sur `main` par une action explicite.
+
+La leçon reste celle qui était visée, et elle est renforcée : **un changement
+de cible n'est pas un rebase**, et il ne faut pas davantage supposer qu'il a
+lieu.
+
+### La méthode de fusion compte autant que l'ordre
+
+Le dépôt fusionne par **commit de fusion**, pas par écrasement. Ce détail est
+décisif quand une branche est empilée sur une autre :
+
+- par commit de fusion, la tête du lot 1 (`b576f9d`) **reste un ancêtre** de
+  `main`. La base de fusion de `main` et du lot 2 est donc exactement
+  `b576f9d`, et le diff du lot 2 ne contient que le lot 2 ;
+- par écrasement, `main` aurait reçu un commit neuf sans lien de parenté, la
+  base de fusion serait retombée sur `4b3d6ee` — d'avant les deux lots — et le
+  diff du lot 2 aurait réaffiché tout le lot 1, avec les conflits que cela
+  suppose. Il aurait alors fallu **rebaser** la branche du lot 2.
+
+### Les vérifications à rejouer, et ce qu'elles ont donné
 
 ```bash
 git fetch origin
+git merge-base --is-ancestor b576f9d origin/main   # tête du lot 1 dans main ?
+git merge-base origin/main origin/claude/lot2-prefill-annonce
 git log --oneline origin/main..origin/claude/lot2-prefill-annonce
-# doit ne lister que les commits du lot 2
 git diff --stat origin/main...origin/claude/lot2-prefill-annonce
-# ne doit plus contenir les fichiers du lot 1
 ```
 
-Si le diff contient encore du lot 1, c'est que `#22` n'est pas fusionnée, ou
-que la branche du lot 2 doit être mise à jour depuis `main`.
+| Vérification | Résultat constaté |
+|---|---|
+| `b576f9d` ancêtre de `main` | oui — aucun rebase nécessaire |
+| base de fusion `main` / lot 2 | `b576f9d` |
+| commits du lot 2 par rapport à `main` | 5, tous du lot 2 |
+| diff avant / après changement de cible | **identique** : 52 fichiers, +9106/−106 |
+| fichiers du lot 1 dans le diff du lot 2 | aucun |
+
+Le diff resté identique de part et d'autre du changement de cible est la preuve
+recherchée : aucun contenu du lot 1 n'est revenu dans le lot 2.
+
+### Après fusion
+
+`main` est à `2339458`. Son arbre est **identique** à celui de `21a3a48`, le
+commit sur lequel les sept contrôles sont passés : le contenu déployé est donc
+exactement le contenu testé, et non un assemblage jamais éprouvé.
+
+Le point de retour arrière d'avant les deux lots est `4b3d6ee`.

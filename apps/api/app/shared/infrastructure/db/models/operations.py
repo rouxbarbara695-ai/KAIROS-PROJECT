@@ -4,11 +4,15 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import CHAR, ForeignKey, Numeric, Text, text
+from sqlalchemy import CHAR, ForeignKey, Index, Numeric, Text, text
 from sqlalchemy.dialects.postgresql import TIMESTAMP, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.shared.infrastructure.db.base import Base
+from app.shared.infrastructure.db.base import (
+    Base,
+    portfolio_identity_index,
+    same_portfolio_fk,
+)
 from app.shared.infrastructure.db.models.enums import (
     CostBasis,
     CostCalculationMode,
@@ -73,6 +77,23 @@ class OpportunityCost(Base):
         TIMESTAMP(timezone=True), nullable=False, server_default=text("now()")
     )
 
+    __table_args__ = (
+        Index(
+            "opportunity_costs_status_idx",
+            "portfolio_id",
+            "opportunity_id",
+            "status",
+            "phase",
+            "kind",
+        ),
+        same_portfolio_fk(
+            "analysis_id", "analyses", "costs_analysis_same_portfolio_fk"
+        ),
+        same_portfolio_fk(
+            "opportunity_id", "opportunities", "costs_opportunity_same_portfolio_fk"
+        ),
+    )
+
 
 class Purchase(Base):
     __tablename__ = "purchases"
@@ -108,6 +129,12 @@ class Purchase(Base):
     )
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), nullable=False, server_default=text("now()")
+    )
+
+    __table_args__ = (
+        same_portfolio_fk(
+            "opportunity_id", "opportunities", "purchases_opportunity_same_portfolio_fk"
+        ),
     )
 
 
@@ -156,6 +183,15 @@ class SaleListing(Base):
         TIMESTAMP(timezone=True), nullable=False, server_default=text("now()")
     )
 
+    __table_args__ = (
+        portfolio_identity_index("sale_listings"),
+        same_portfolio_fk(
+            "opportunity_id",
+            "opportunities",
+            "sale_listings_opportunity_same_portfolio_fk",
+        ),
+    )
+
 
 class Sale(Base):
     __tablename__ = "sales"
@@ -195,4 +231,13 @@ class Sale(Base):
     )
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), nullable=False, server_default=text("now()")
+    )
+
+    __table_args__ = (
+        same_portfolio_fk(
+            "sale_listing_id", "sale_listings", "sales_listing_same_portfolio_fk"
+        ),
+        same_portfolio_fk(
+            "opportunity_id", "opportunities", "sales_opportunity_same_portfolio_fk"
+        ),
     )

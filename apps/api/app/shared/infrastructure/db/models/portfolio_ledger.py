@@ -4,11 +4,14 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import CHAR, ForeignKey, Numeric, Text, text
+from sqlalchemy import CHAR, ForeignKey, Index, Numeric, Text, text
 from sqlalchemy.dialects.postgresql import TIMESTAMP, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.shared.infrastructure.db.base import Base
+from app.shared.infrastructure.db.base import (
+    Base,
+    same_portfolio_fk,
+)
 from app.shared.infrastructure.db.models.enums import LedgerEntryKind, pg_enum
 
 
@@ -48,4 +51,16 @@ class PortfolioLedgerEntry(Base):
     )
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), nullable=False, server_default=text("now()")
+    )
+
+    __table_args__ = (
+        Index(
+            "ledger_portfolio_date_idx",
+            "portfolio_id",
+            text("occurred_at desc"),
+            text("id desc"),
+        ),
+        same_portfolio_fk(
+            "opportunity_id", "opportunities", "ledger_opportunity_same_portfolio_fk"
+        ),
     )

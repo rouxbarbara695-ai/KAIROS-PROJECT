@@ -265,8 +265,8 @@ cohérentes plutôt que le rejouer tel quel :
 ### Critères de validation
 
 - [ ] `alembic upgrade head` sur une base vierge, puis `downgrade base`, puis `upgrade head` : aucune erreur.
-- [ ] Le `pg_dump --schema-only` d'une base migrée est identique à `database/schema.sql` ; la CI échoue sur tout écart.
-- [ ] `alembic check` ne détecte aucun écart entre les modèles SQLAlchemy et les migrations.
+- [x] ~~Le `pg_dump --schema-only` d'une base migrée est identique à `database/schema.sql` ; la CI échoue sur tout écart.~~ **Critère abandonné (POL-069) : il ne pouvait pas être tenu.** `database/schema.sql` est le schéma *initial*, joué par la migration `0001` ; les migrations suivantes le font évoluer. Exiger l'identité revenait à interdire toute migration. Remplacé par un instantané structurel de l'état **après toutes les migrations**, `database/schema-after-migrations.json`, comparé par `tests/integration/test_schema_snapshot.py`.
+- [x] `alembic check` ne détecte aucun écart entre les modèles SQLAlchemy et les migrations. **Tenu depuis POL-068** ; bloquant en CI et dans `make check`.
 - [ ] Un test d'intégration prouve qu'un `UPDATE`/`DELETE` sur `audit_events`, `market_valuations`, `valuation_comparables`, `listing_observations`, `listing_observation_prices`, `opportunity_price_inputs`, `reference_confirmations`, `opportunity_events`, `rulesets`, `strategy_versions`, `portfolio_ledger_entries` échoue avec `IMMUTABLE_RESOURCE`.
 - [ ] Un test prouve qu'une analyse `draft` reste modifiable et qu'une analyse `published` refuse `UPDATE`/`DELETE`.
 - [ ] Un test prouve qu'insérer deux `platform_rules` à périodes chevauchantes pour la même plateforme/région échoue sur la contrainte d'exclusion.

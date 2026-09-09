@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, Text, text
+from sqlalchemy import ForeignKey, Index, Text, text
 from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -31,4 +31,14 @@ class AuditEvent(Base):
     request_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     occurred_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), nullable=False, server_default=text("now()")
+    )
+
+    __table_args__ = (
+        Index(
+            "audit_events_resource_idx",
+            "portfolio_id",
+            "resource_type",
+            "resource_id",
+            text("occurred_at desc"),
+        ),
     )

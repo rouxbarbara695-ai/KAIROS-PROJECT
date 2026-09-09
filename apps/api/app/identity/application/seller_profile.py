@@ -11,6 +11,7 @@ from app.identity.domain import vocabularies as vocab
 from app.identity.domain.seller import reliability_data
 from app.shared.domain.errors import DomainError, ErrorCode
 from app.shared.domain.principal import Principal
+from app.shared.domain.versioning import check_version
 from app.shared.infrastructure.db.models.opportunities import Opportunity
 from app.shared.infrastructure.db.models.watches import Seller
 
@@ -21,6 +22,7 @@ async def patch_seller_profile(
     opportunity_id: uuid.UUID,
     request: SellerProfilePatchRequest,
     request_id: uuid.UUID | None,
+    expected_version: int,
 ) -> Seller:
     opportunity = (
         await session.execute(
@@ -32,6 +34,8 @@ async def patch_seller_profile(
     ).scalar_one_or_none()
     if opportunity is None:
         raise DomainError(ErrorCode.NOT_FOUND, "Opportunité introuvable.")
+
+    check_version(expected_version, opportunity.version)
 
     seller = None
     if opportunity.seller_id is not None:
@@ -71,6 +75,12 @@ async def patch_seller_profile(
         transaction_protections=request.transaction_protections,
         current=seller.reliability_data,
     )
+
+    # Le dossier change : sa version aussi. Elle couvre l'opportunité **et** ce
+    # que sa fiche présente — montre, vendeur, référence. C'est cette version
+    # que l'`ETag` publie, et l'`UPDATE` porte `where version = <valeur lue>` :
+    # une correction concurrente est refusée, pas silencieusement écrasée.
+    opportunity.version += 1
 
     after = {
         "country_code": seller.country_code,

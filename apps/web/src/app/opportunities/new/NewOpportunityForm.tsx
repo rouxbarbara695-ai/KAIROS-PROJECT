@@ -4,6 +4,7 @@ import { useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/Card";
 import { ApiError, createOpportunity } from "@/lib/api";
+import { useActionKeys } from "@/lib/idempotency";
 import { labels, options } from "@/lib/labels";
 
 function Field({
@@ -15,9 +16,7 @@ function Field({
 }) {
   return (
     <label className="block space-y-1.5">
-      <span className="text-sm font-medium text-fg-muted">
-        {label}
-      </span>
+      <span className="text-sm font-medium text-fg-muted">{label}</span>
       {children}
     </label>
   );
@@ -37,6 +36,7 @@ export function NewOpportunityForm({
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<"manual" | "url">("manual");
+  const { keyFor, settle } = useActionKeys();
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -54,37 +54,44 @@ export function NewOpportunityForm({
 
     startTransition(async () => {
       try {
-        const opportunity = await createOpportunity({
-          portfolio_id: portfolioId,
-          source:
-            mode === "manual"
-              ? {
-                  mode: "manual",
-                  manual_identifier: String(data.get("manual_identifier")),
-                  // Sans plateforme déclarée, l'analyse traiterait l'achat
-                  // comme une vente de particulier à particulier et
-                  // oublierait la commission.
-                  platform_code:
-                    String(data.get("platform_code") ?? "") || null,
-                }
-              : { mode: "url", url: String(data.get("url")) },
-          watch: {
-            brand: String(data.get("brand")),
-            reference: String(data.get("reference")),
-            reference_status: "unconfirmed",
-            mechanical_condition: String(data.get("mechanical_condition")),
-            cosmetic_condition: String(data.get("cosmetic_condition")),
-            box,
-            papers,
+        const opportunity = await createOpportunity(
+          {
+            portfolio_id: portfolioId,
+            source:
+              mode === "manual"
+                ? {
+                    mode: "manual",
+                    manual_identifier: String(data.get("manual_identifier")),
+                    // Sans plateforme déclarée, l'analyse traiterait l'achat
+                    // comme une vente de particulier à particulier et
+                    // oublierait la commission.
+                    platform_code:
+                      String(data.get("platform_code") ?? "") || null,
+                  }
+                : { mode: "url", url: String(data.get("url")) },
+            watch: {
+              brand: String(data.get("brand")),
+              reference: String(data.get("reference")),
+              reference_status: "unconfirmed",
+              mechanical_condition: String(data.get("mechanical_condition")),
+              cosmetic_condition: String(data.get("cosmetic_condition")),
+              box,
+              papers,
+            },
+            seller: {
+              country_code: String(data.get("country_code") || "") || undefined,
+              seller_type: String(data.get("seller_type") || "") || undefined,
+            },
+            price: amount
+              ? { amount, currency: String(data.get("currency")) }
+              : {},
           },
-          seller: {
-            country_code: String(data.get("country_code") || "") || undefined,
-            seller_type: String(data.get("seller_type") || "") || undefined,
-          },
-          price: amount
-            ? { amount, currency: String(data.get("currency")) }
-            : {},
-        });
+          // Une création renvoyée après une coupure ne doit pas ouvrir un
+          // second dossier. La contrainte d'unicité n'y suffit pas : rien
+          // n'oblige à saisir un identifiant manuel ni une URL.
+          { idempotencyKey: keyFor("create-opportunity") },
+        );
+        settle("create-opportunity");
         router.push(`/opportunities/${opportunity.id}`);
       } catch (err) {
         if (err instanceof ApiError && err.code === "OPPORTUNITY_DUPLICATE") {
@@ -196,11 +203,7 @@ export function NewOpportunityForm({
             Boîte
           </label>
           <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              name="papers"
-              className="accent-accent"
-            />
+            <input type="checkbox" name="papers" className="accent-accent" />
             Papiers
           </label>
         </div>

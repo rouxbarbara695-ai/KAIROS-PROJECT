@@ -84,12 +84,16 @@ jobs:
           uv run alembic -c alembic.ini upgrade head
           uv run alembic -c alembic.ini downgrade base
           uv run alembic -c alembic.ini upgrade head
-      - name: Compare schema with database/schema.sql
-        run: |
-          sudo apt-get update && sudo apt-get install -y postgresql-client
-          PGPASSWORD=kairos pg_dump -h localhost -U kairos -d kairos --schema-only --no-owner --no-privileges > /tmp/dumped.sql
-          echo "Comparaison informative — le contrat canonique est database/schema.sql"
-          diff -u database/schema.sql /tmp/dumped.sql || true
+      # Remplace un `diff` de `pg_dump` exécuté avec `|| true`, qui ne pouvait
+      # rien détecter : il opposait deux styles d'écriture, et surtout deux
+      # objets différents — le schéma initial d'un côté, l'état après toutes
+      # les migrations de l'autre.
+      - name: L'ORM reflète-t-il le schéma migré ?
+        working-directory: apps/api
+        run: uv run alembic -c alembic.ini check
+      - name: Le schéma migré correspond-il à l'instantané committé ?
+        working-directory: apps/api
+        run: uv run pytest tests/integration/test_schema_snapshot.py -q --no-cov
 
   contracts:
     runs-on: ubuntu-latest
@@ -114,6 +118,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @kairos/web lint
       - run: pnpm --filter @kairos/web typecheck
+      - run: pnpm --filter @kairos/web test
       - run: pnpm --filter @kairos/web build
 
   security:

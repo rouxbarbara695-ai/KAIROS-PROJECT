@@ -3339,6 +3339,26 @@
       },
       "post": {
         "operationId": "create_opportunity_route_api_v1_opportunities_post",
+        "parameters": [
+          {
+            "description": "Cl\u00e9 fournie par l'appelant pour qu'un renvoi de la m\u00eame requ\u00eate ne r\u00e9p\u00e8te pas ses effets. Le renvoi rend la r\u00e9ponse d'origine ; la m\u00eame cl\u00e9 sur une requ\u00eate diff\u00e9rente est refus\u00e9e.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Cl\u00e9 fournie par l'appelant pour qu'un renvoi de la m\u00eame requ\u00eate ne r\u00e9p\u00e8te pas ses effets. Le renvoi rend la r\u00e9ponse d'origine ; la m\u00eame cl\u00e9 sur une requ\u00eate diff\u00e9rente est refus\u00e9e.",
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -3430,6 +3450,24 @@
               "format": "uuid",
               "title": "Opportunity Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "Version du dossier sur laquelle s'appuie la correction, telle que l'`ETag` de la derni\u00e8re lecture l'a donn\u00e9e. Obligatoire sur les corrections : sans elle, deux modifications concurrentes s'\u00e9craseraient en silence.",
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Version du dossier sur laquelle s'appuie la correction, telle que l'`ETag` de la derni\u00e8re lecture l'a donn\u00e9e. Obligatoire sur les corrections : sans elle, deux modifications concurrentes s'\u00e9craseraient en silence.",
+              "title": "If-Match"
             }
           }
         ],
@@ -3826,6 +3864,24 @@
               "title": "Opportunity Id",
               "type": "string"
             }
+          },
+          {
+            "description": "Cl\u00e9 fournie par l'appelant pour qu'un renvoi de la m\u00eame requ\u00eate ne r\u00e9p\u00e8te pas ses effets. Le renvoi rend la r\u00e9ponse d'origine ; la m\u00eame cl\u00e9 sur une requ\u00eate diff\u00e9rente est refus\u00e9e.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Cl\u00e9 fournie par l'appelant pour qu'un renvoi de la m\u00eame requ\u00eate ne r\u00e9p\u00e8te pas ses effets. Le renvoi rend la r\u00e9ponse d'origine ; la m\u00eame cl\u00e9 sur une requ\u00eate diff\u00e9rente est refus\u00e9e.",
+              "title": "Idempotency-Key"
+            }
           }
         ],
         "requestBody": {
@@ -3948,6 +4004,24 @@
               "title": "Opportunity Id",
               "type": "string"
             }
+          },
+          {
+            "description": "Cl\u00e9 fournie par l'appelant pour qu'un renvoi de la m\u00eame requ\u00eate ne r\u00e9p\u00e8te pas ses effets. Le renvoi rend la r\u00e9ponse d'origine ; la m\u00eame cl\u00e9 sur une requ\u00eate diff\u00e9rente est refus\u00e9e.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Cl\u00e9 fournie par l'appelant pour qu'un renvoi de la m\u00eame requ\u00eate ne r\u00e9p\u00e8te pas ses effets. Le renvoi rend la r\u00e9ponse d'origine ; la m\u00eame cl\u00e9 sur une requ\u00eate diff\u00e9rente est refus\u00e9e.",
+              "title": "Idempotency-Key"
+            }
           }
         ],
         "requestBody": {
@@ -4059,6 +4133,24 @@
               "title": "Opportunity Id",
               "type": "string"
             }
+          },
+          {
+            "description": "Cl\u00e9 fournie par l'appelant pour qu'un renvoi de la m\u00eame requ\u00eate ne r\u00e9p\u00e8te pas ses effets. Le renvoi rend la r\u00e9ponse d'origine ; la m\u00eame cl\u00e9 sur une requ\u00eate diff\u00e9rente est refus\u00e9e.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Cl\u00e9 fournie par l'appelant pour qu'un renvoi de la m\u00eame requ\u00eate ne r\u00e9p\u00e8te pas ses effets. Le renvoi rend la r\u00e9ponse d'origine ; la m\u00eame cl\u00e9 sur une requ\u00eate diff\u00e9rente est refus\u00e9e.",
+              "title": "Idempotency-Key"
+            }
           }
         ],
         "requestBody": {
@@ -4115,6 +4207,24 @@
               "format": "uuid",
               "title": "Opportunity Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "Cl\u00e9 fournie par l'appelant pour qu'un renvoi de la m\u00eame requ\u00eate ne r\u00e9p\u00e8te pas ses effets. Le renvoi rend la r\u00e9ponse d'origine ; la m\u00eame cl\u00e9 sur une requ\u00eate diff\u00e9rente est refus\u00e9e.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Cl\u00e9 fournie par l'appelant pour qu'un renvoi de la m\u00eame requ\u00eate ne r\u00e9p\u00e8te pas ses effets. Le renvoi rend la r\u00e9ponse d'origine ; la m\u00eame cl\u00e9 sur une requ\u00eate diff\u00e9rente est refus\u00e9e.",
+              "title": "Idempotency-Key"
             }
           }
         ],
@@ -4180,6 +4290,24 @@
               "title": "Opportunity Id",
               "type": "string"
             }
+          },
+          {
+            "description": "Version du dossier sur laquelle s'appuie la correction, telle que l'`ETag` de la derni\u00e8re lecture l'a donn\u00e9e. Obligatoire sur les corrections : sans elle, deux modifications concurrentes s'\u00e9craseraient en silence.",
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Version du dossier sur laquelle s'appuie la correction, telle que l'`ETag` de la derni\u00e8re lecture l'a donn\u00e9e. Obligatoire sur les corrections : sans elle, deux modifications concurrentes s'\u00e9craseraient en silence.",
+              "title": "If-Match"
+            }
           }
         ],
         "requestBody": {
@@ -4233,6 +4361,24 @@
               "format": "uuid",
               "title": "Opportunity Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "Cl\u00e9 fournie par l'appelant pour qu'un renvoi de la m\u00eame requ\u00eate ne r\u00e9p\u00e8te pas ses effets. Le renvoi rend la r\u00e9ponse d'origine ; la m\u00eame cl\u00e9 sur une requ\u00eate diff\u00e9rente est refus\u00e9e.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Cl\u00e9 fournie par l'appelant pour qu'un renvoi de la m\u00eame requ\u00eate ne r\u00e9p\u00e8te pas ses effets. Le renvoi rend la r\u00e9ponse d'origine ; la m\u00eame cl\u00e9 sur une requ\u00eate diff\u00e9rente est refus\u00e9e.",
+              "title": "Idempotency-Key"
             }
           }
         ],
@@ -4374,6 +4520,24 @@
               "format": "uuid",
               "title": "Opportunity Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "Version du dossier sur laquelle s'appuie la correction, telle que l'`ETag` de la derni\u00e8re lecture l'a donn\u00e9e. Obligatoire sur les corrections : sans elle, deux modifications concurrentes s'\u00e9craseraient en silence.",
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Version du dossier sur laquelle s'appuie la correction, telle que l'`ETag` de la derni\u00e8re lecture l'a donn\u00e9e. Obligatoire sur les corrections : sans elle, deux modifications concurrentes s'\u00e9craseraient en silence.",
+              "title": "If-Match"
             }
           }
         ],
@@ -4576,6 +4740,24 @@
               "format": "uuid",
               "title": "Portfolio Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "Cl\u00e9 fournie par l'appelant pour qu'un renvoi de la m\u00eame requ\u00eate ne r\u00e9p\u00e8te pas ses effets. Le renvoi rend la r\u00e9ponse d'origine ; la m\u00eame cl\u00e9 sur une requ\u00eate diff\u00e9rente est refus\u00e9e.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Cl\u00e9 fournie par l'appelant pour qu'un renvoi de la m\u00eame requ\u00eate ne r\u00e9p\u00e8te pas ses effets. Le renvoi rend la r\u00e9ponse d'origine ; la m\u00eame cl\u00e9 sur une requ\u00eate diff\u00e9rente est refus\u00e9e.",
+              "title": "Idempotency-Key"
             }
           }
         ],

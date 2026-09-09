@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CHAR, ForeignKey, Text, text
+from sqlalchemy import CHAR, ForeignKey, Index, Text, text
 from sqlalchemy.dialects.postgresql import TIMESTAMP, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -49,6 +49,8 @@ class UserSession(Base):
         TIMESTAMP(timezone=True), nullable=False, server_default=text("now()")
     )
     revoked_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+
+    __table_args__ = (Index("user_sessions_user_idx", "user_id"),)
 
 
 class Portfolio(Base):

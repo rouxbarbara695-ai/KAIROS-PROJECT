@@ -2,7 +2,8 @@ import type { components } from "@kairos/contracts";
 
 export type OpportunityResponse = components["schemas"]["OpportunityResponse"];
 export type OpportunityPage = components["schemas"]["OpportunityPage"];
-export type CreateOpportunityRequest = components["schemas"]["CreateOpportunityRequest"];
+export type CreateOpportunityRequest =
+  components["schemas"]["CreateOpportunityRequest"];
 export type AuditEventResponse = components["schemas"]["AuditEventResponse"];
 export type AuditEventPage = components["schemas"]["AuditEventPage"];
 export type PriceInputCreate = components["schemas"]["PriceInputCreate"];
@@ -74,6 +75,37 @@ async function sessionHeaders(): Promise<Record<string, string>> {
   return token ? { cookie: `kairos_session=${token}` } : {};
 }
 
+/**
+ * Options des écritures protégées par une clé d'idempotence.
+ *
+ * Facultative : sans clé, l'appel se comporte exactement comme avant. Le
+ * serveur ne l'exige pas non plus — c'est l'appelant qui décide qu'un renvoi
+ * ne doit pas compter deux fois.
+ */
+export type WriteOptions = { idempotencyKey?: string };
+
+function idempotent(options?: WriteOptions): Record<string, string> {
+  return options?.idempotencyKey
+    ? { "Idempotency-Key": options.idempotencyKey }
+    : {};
+}
+
+/**
+ * Version du dossier sur laquelle s'appuie une correction.
+ *
+ * Obligatoire : l'API refuse une correction qui ne dit pas ce qu'elle a lu.
+ * Sans cela, deux onglets ouverts sur la même fiche s'écraseraient l'un
+ * l'autre en silence.
+ */
+export function ifMatch(version: number): Record<string, string> {
+  return { "If-Match": `"version-${version}"` };
+}
+
+/** Le serveur dit que la ressource a bougé depuis la lecture. */
+export function isVersionConflict(err: unknown): boolean {
+  return err instanceof ApiError && err.code === "RESOURCE_VERSION_CONFLICT";
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${baseUrl()}${path}`, {
     ...init,
@@ -125,10 +157,12 @@ export function getOpportunity(id: string): Promise<OpportunityResponse> {
 
 export function createOpportunity(
   body: CreateOpportunityRequest,
+  options?: WriteOptions,
 ): Promise<OpportunityResponse> {
   return request<OpportunityResponse>("/opportunities", {
     method: "POST",
     body: JSON.stringify(body),
+    headers: idempotent(options),
   });
 }
 
@@ -145,20 +179,22 @@ export function confirmReference(
 export function patchWatchProfile(
   opportunityId: string,
   body: Record<string, unknown>,
+  version: number,
 ): Promise<OpportunityResponse> {
   return request<OpportunityResponse>(
     `/opportunities/${opportunityId}/watch-profile`,
-    { method: "PATCH", body: JSON.stringify(body) },
+    { method: "PATCH", body: JSON.stringify(body), headers: ifMatch(version) },
   );
 }
 
 export function patchSellerProfile(
   opportunityId: string,
   body: Record<string, unknown>,
+  version: number,
 ): Promise<OpportunityResponse> {
   return request<OpportunityResponse>(
     `/opportunities/${opportunityId}/seller-profile`,
-    { method: "PATCH", body: JSON.stringify(body) },
+    { method: "PATCH", body: JSON.stringify(body), headers: ifMatch(version) },
   );
 }
 
@@ -307,10 +343,15 @@ export function getPortfolioOverview(
 export function createLedgerEntry(
   portfolioId: string,
   body: LedgerMovementCreate,
+  options?: WriteOptions,
 ): Promise<LedgerMovementResponse> {
   return request<LedgerMovementResponse>(
     `/portfolios/${portfolioId}/ledger-entries`,
-    { method: "POST", body: JSON.stringify(body) },
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: idempotent(options),
+    },
   );
 }
 
@@ -349,26 +390,29 @@ export function updateStrategy(
 }
 
 export type PurchaseCreate = components["schemas"]["PurchaseCreate"];
-export type StatusChangeRequest =
-  components["schemas"]["StatusChangeRequest"];
+export type StatusChangeRequest = components["schemas"]["StatusChangeRequest"];
 
 export function recordPurchase(
   opportunityId: string,
   body: PurchaseCreate,
+  options?: WriteOptions,
 ): Promise<{ id: string; amount_eur: string; purchased_at: string }> {
   return request(`/opportunities/${opportunityId}/purchase`, {
     method: "POST",
     body: JSON.stringify(body),
+    headers: idempotent(options),
   });
 }
 
 export function changeStatus(
   opportunityId: string,
   body: StatusChangeRequest,
+  options?: WriteOptions,
 ): Promise<unknown> {
   return request(`/opportunities/${opportunityId}/status`, {
     method: "POST",
     body: JSON.stringify(body),
+    headers: idempotent(options),
   });
 }
 
@@ -379,30 +423,36 @@ export type PayoutCreate = components["schemas"]["PayoutCreate"];
 export function recordSaleListing(
   opportunityId: string,
   body: SaleListingCreate,
+  options?: WriteOptions,
 ): Promise<unknown> {
   return request(`/opportunities/${opportunityId}/sale-listing`, {
     method: "POST",
     body: JSON.stringify(body),
+    headers: idempotent(options),
   });
 }
 
 export function recordSale(
   opportunityId: string,
   body: SaleCreate,
+  options?: WriteOptions,
 ): Promise<unknown> {
   return request(`/opportunities/${opportunityId}/sale`, {
     method: "POST",
     body: JSON.stringify(body),
+    headers: idempotent(options),
   });
 }
 
 export function recordPayout(
   opportunityId: string,
   body: PayoutCreate,
+  options?: WriteOptions,
 ): Promise<unknown> {
   return request(`/opportunities/${opportunityId}/payout`, {
     method: "POST",
     body: JSON.stringify(body),
+    headers: idempotent(options),
   });
 }
 

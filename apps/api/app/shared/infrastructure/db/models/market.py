@@ -4,11 +4,15 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import CHAR, Boolean, ForeignKey, Numeric, Text, text
+from sqlalchemy import CHAR, Boolean, ForeignKey, Index, Numeric, Text, text
 from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.shared.infrastructure.db.base import Base
+from app.shared.infrastructure.db.base import (
+    Base,
+    portfolio_identity_index,
+    same_portfolio_fk,
+)
 from app.shared.infrastructure.db.models.enums import (
     ListingStatus,
     PriceKind,
@@ -88,6 +92,32 @@ class Comparable(Base):
         TIMESTAMP(timezone=True), nullable=False, server_default=text("now()")
     )
 
+    __table_args__ = (
+        portfolio_identity_index("comparables"),
+        Index(
+            "comparables_reference_date_idx",
+            "portfolio_id",
+            "reference_id",
+            text("observed_at desc"),
+            text("id desc"),
+        ),
+        # Partiel : un comparable saisi à la main n'a pas d'identifiant de
+        # source. Sans le `where`, deux saisies manuelles du même type de prix
+        # entreraient en collision.
+        Index(
+            "comparables_source_identity_uq",
+            "portfolio_id",
+            "source_name",
+            "source_external_id",
+            "price_kind",
+            unique=True,
+            postgresql_where=text("source_external_id is not null"),
+        ),
+        same_portfolio_fk(
+            "listing_id", "listings", "comparables_listing_same_portfolio_fk"
+        ),
+    )
+
 
 class ComparableOverride(Base):
     __tablename__ = "comparable_overrides"
@@ -117,6 +147,12 @@ class ComparableOverride(Base):
         TIMESTAMP(timezone=True), nullable=False, server_default=text("now()")
     )
 
+    __table_args__ = (
+        same_portfolio_fk(
+            "comparable_id", "comparables", "overrides_comparable_same_portfolio_fk"
+        ),
+    )
+
 
 class MarketValuation(Base):
     __tablename__ = "market_valuations"
@@ -144,6 +180,15 @@ class MarketValuation(Base):
     ruleset_snapshot: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
     explanation: Mapped[dict[str, object]] = mapped_column(
         JSONB, nullable=False, server_default=text("'{}'::jsonb")
+    )
+
+    __table_args__ = (
+        portfolio_identity_index("market_valuations"),
+        same_portfolio_fk(
+            "opportunity_id",
+            "opportunities",
+            "valuations_opportunity_same_portfolio_fk",
+        ),
     )
 
 

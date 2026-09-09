@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { ApiError, createLedgerEntry } from "@/lib/api";
+import { useActionKeys } from "@/lib/idempotency";
 
 /**
  * Natures saisissables.
@@ -25,20 +26,29 @@ export function MovementForm({ portfolioId }: { portfolioId: string }) {
   const [amount, setAmount] = useState("");
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const { keyFor, settle } = useActionKeys();
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
     startTransition(async () => {
       try {
-        await createLedgerEntry(portfolioId, {
-          kind: kind as "capital_contribution",
-          // Le montant part en chaîne décimale : le passer en nombre JSON
-          // perdrait des centimes que l'API refuse justement de deviner.
-          amount,
-          currency: "EUR",
-          notes: notes.trim() || null,
-        });
+        await createLedgerEntry(
+          portfolioId,
+          {
+            kind: kind as "capital_contribution",
+            // Le montant part en chaîne décimale : le passer en nombre JSON
+            // perdrait des centimes que l'API refuse justement de deviner.
+            amount,
+            currency: "EUR",
+            notes: notes.trim() || null,
+          },
+          // Deux apports identiques le même jour sont un cas légitime : rien
+          // dans la base ne peut les distinguer d'un double clic. La clé le
+          // dit, et elle ne change qu'une fois le mouvement enregistré.
+          { idempotencyKey: keyFor("movement") },
+        );
+        settle("movement");
         setAmount("");
         setNotes("");
         router.refresh();

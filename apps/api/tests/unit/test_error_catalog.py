@@ -22,6 +22,7 @@ _EXPECTED_STATUS = {
     ErrorCode.COLLECTOR_UNAVAILABLE: 503,
     ErrorCode.RATE_LIMITED: 429,
     ErrorCode.RULESET_MISSING: 500,
+    ErrorCode.INTERNAL_ERROR: 500,
 }
 
 

@@ -1,0 +1,3129 @@
+{
+  "description": "\u00c9tat du sch\u00e9ma apr\u00e8s toutes les migrations. R\u00e9g\u00e9n\u00e9rer avec `make schema-snapshot`. Ne pas confondre avec database/schema.sql, qui est le sch\u00e9ma initial ex\u00e9cut\u00e9 par la migration 0001.",
+  "enums": {
+    "analysis_state": [
+      "draft",
+      "published"
+    ],
+    "cost_basis": [
+      "purchase_price",
+      "sale_price"
+    ],
+    "cost_calculation_mode": [
+      "fixed",
+      "rate"
+    ],
+    "cost_kind": [
+      "buyer_fee",
+      "seller_fee",
+      "shipping_in",
+      "shipping_out",
+      "insurance",
+      "customs",
+      "acquisition_tax",
+      "sale_tax",
+      "fx",
+      "authentication",
+      "service",
+      "repair",
+      "battery",
+      "polishing",
+      "accessory",
+      "packaging",
+      "other"
+    ],
+    "cost_phase": [
+      "acquisition",
+      "preparation",
+      "sale"
+    ],
+    "cost_status": [
+      "projected",
+      "actual"
+    ],
+    "gate_status": [
+      "passed",
+      "passed_with_warning",
+      "failed",
+      "not_evaluated"
+    ],
+    "job_status": [
+      "queued",
+      "running",
+      "succeeded",
+      "failed",
+      "partial"
+    ],
+    "ledger_entry_kind": [
+      "capital_contribution",
+      "withdrawal",
+      "purchase_payment",
+      "cost_payment",
+      "sale_receipt",
+      "refund",
+      "positive_adjustment",
+      "negative_adjustment"
+    ],
+    "listing_status": [
+      "active",
+      "sold",
+      "removed",
+      "ended",
+      "unknown"
+    ],
+    "opportunity_source_mode": [
+      "manual",
+      "url",
+      "assisted_import",
+      "connector"
+    ],
+    "opportunity_status": [
+      "watching",
+      "buy",
+      "auction",
+      "purchased",
+      "in_stock",
+      "listed_for_sale",
+      "awaiting_buyer_payment",
+      "awaiting_payout",
+      "sold",
+      "abandoned"
+    ],
+    "platform_access_method": [
+      "manual",
+      "assisted_import",
+      "official_api",
+      "partner"
+    ],
+    "price_kind": [
+      "asking",
+      "offer",
+      "accepted_offer",
+      "current_bid",
+      "hammer",
+      "realized",
+      "external_estimate",
+      "kairos_estimate"
+    ],
+    "recommendation": [
+      "buy",
+      "watch",
+      "pass",
+      "analysis_impossible"
+    ],
+    "reference_confirmation_status": [
+      "unconfirmed",
+      "suggested",
+      "confirmed",
+      "corrected",
+      "unknown"
+    ],
+    "source_reliability_level": [
+      "a",
+      "b",
+      "c",
+      "d",
+      "e"
+    ]
+  },
+  "tables": {
+    "alerts": {
+      "columns": {
+        "alert_type": {
+          "default": null,
+          "nullable": false,
+          "type": "text"
+        },
+        "analysis_id": {
+          "default": null,
+          "nullable": true,
+          "type": "uuid"
+        },
+        "archived_at": {
+          "default": null,
+          "nullable": true,
+          "type": "timestamp with time zone"
+        },
+        "created_at": {
+          "default": "now()",
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "id": {
+          "default": "gen_random_uuid()",
+          "nullable": false,
+          "type": "uuid"
+        },
+        "opportunity_event_id": {
+          "default": null,
+          "nullable": true,
+          "type": "uuid"
+        },
+        "opportunity_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "payload": {
+          "default": "'{}'::jsonb",
+          "nullable": false,
+          "type": "jsonb"
+        },
+        "portfolio_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "read_at": {
+          "default": null,
+          "nullable": true,
+          "type": "timestamp with time zone"
+        },
+        "recipient_user_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "severity": {
+          "default": null,
+          "nullable": false,
+          "type": "text"
+        }
+      },
+      "constraints": {
+        "alerts_analysis_id_fkey": "FOREIGN KEY (analysis_id) REFERENCES analyses(id)",
+        "alerts_analysis_same_portfolio_fk": "FOREIGN KEY (portfolio_id, analysis_id) REFERENCES analyses(portfolio_id, id)",
+        "alerts_check": "CHECK (((analysis_id IS NOT NULL) OR (opportunity_event_id IS NOT NULL)))",
+        "alerts_event_same_portfolio_fk": "FOREIGN KEY (portfolio_id, opportunity_event_id) REFERENCES opportunity_events(portfolio_id, id)",
+        "alerts_opportunity_event_id_fkey": "FOREIGN KEY (opportunity_event_id) REFERENCES opportunity_events(id)",
+        "alerts_opportunity_id_fkey": "FOREIGN KEY (opportunity_id) REFERENCES opportunities(id)",
+        "alerts_opportunity_same_portfolio_fk": "FOREIGN KEY (portfolio_id, opportunity_id) REFERENCES opportunities(portfolio_id, id)",
+        "alerts_pkey": "PRIMARY KEY (id)",
+        "alerts_portfolio_id_fkey": "FOREIGN KEY (portfolio_id) REFERENCES portfolios(id)",
+        "alerts_recipient_user_id_fkey": "FOREIGN KEY (recipient_user_id) REFERENCES users(id)",
+        "alerts_severity_check": "CHECK ((severity = ANY (ARRAY['info'::text, 'warning'::text, 'critical'::text])))"
+      },
+      "indexes": {
+        "alerts_dedup_uq": "CREATE UNIQUE INDEX alerts_dedup_uq ON public.alerts USING btree (portfolio_id, opportunity_id, alert_type, COALESCE(analysis_id, opportunity_event_id, '00000000-0000-0000-0000-000000000000'::uuid))",
+        "alerts_pkey": "CREATE UNIQUE INDEX alerts_pkey ON public.alerts USING btree (id)",
+        "alerts_unread_idx": "CREATE INDEX alerts_unread_idx ON public.alerts USING btree (portfolio_id, recipient_user_id, read_at, created_at DESC)"
+      }
+    },
+    "analyses": {
+      "columns": {
+        "calculated_at": {
+          "default": "now()",
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "caps": {
+          "default": "'[]'::jsonb",
+          "nullable": false,
+          "type": "jsonb"
+        },
+        "current_price_eur": {
+          "default": null,
+          "nullable": true,
+          "type": "numeric(16,2)"
+        },
+        "evidence_quality_score": {
+          "default": null,
+          "nullable": true,
+          "type": "numeric(7,4)"
+        },
+        "expected_days_to_sell": {
+          "default": null,
+          "nullable": true,
+          "type": "integer"
+        },
+        "expected_profit_eur": {
+          "default": null,
+          "nullable": true,
+          "type": "numeric(16,2)"
+        },
+        "expected_roi": {
+          "default": null,
+          "nullable": true,
+          "type": "numeric(18,10)"
+        },
+        "expected_sale_price_eur": {
+          "default": null,
+          "nullable": true,
+          "type": "numeric(16,2)"
+        },
+        "explanation": {
+          "default": "'{}'::jsonb",
+          "nullable": false,
+          "type": "jsonb"
+        },
+        "gates": {
+          "default": "'[]'::jsonb",
+          "nullable": false,
+          "type": "jsonb"
+        },
+        "id": {
+          "default": "gen_random_uuid()",
+          "nullable": false,
+          "type": "uuid"
+        },
+        "max_purchase_price_eur": {
+          "default": null,
+          "nullable": true,
+          "type": "numeric(16,2)"
+        },
+        "opportunity_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "pillars": {
+          "default": null,
+          "nullable": true,
+          "type": "jsonb"
+        },
+        "platform_rule_id": {
+          "default": null,
+          "nullable": true,
+          "type": "uuid"
+        },
+        "platform_rule_snapshot": {
+          "default": null,
+          "nullable": true,
+          "type": "jsonb"
+        },
+        "portfolio_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "portfolio_snapshot": {
+          "default": null,
+          "nullable": true,
+          "type": "jsonb"
+        },
+        "previous_analysis_id": {
+          "default": null,
+          "nullable": true,
+          "type": "uuid"
+        },
+        "published_at": {
+          "default": null,
+          "nullable": true,
+          "type": "timestamp with time zone"
+        },
+        "raw_max_purchase_price_eur": {
+          "default": null,
+          "nullable": true,
+          "type": "numeric(16,8)"
+        },
+        "recommendation": {
+          "default": null,
+          "nullable": false,
+          "type": "recommendation"
+        },
+        "ruleset_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "ruleset_snapshot": {
+          "default": null,
+          "nullable": false,
+          "type": "jsonb"
+        },
+        "scenario_results": {
+          "default": null,
+          "nullable": true,
+          "type": "jsonb"
+        },
+        "score": {
+          "default": null,
+          "nullable": true,
+          "type": "numeric(7,4)"
+        },
+        "state": {
+          "default": "'draft'::analysis_state",
+          "nullable": false,
+          "type": "analysis_state"
+        },
+        "strategy_snapshot": {
+          "default": null,
+          "nullable": true,
+          "type": "jsonb"
+        },
+        "strategy_version_id": {
+          "default": null,
+          "nullable": true,
+          "type": "uuid"
+        },
+        "total_cost_eur": {
+          "default": null,
+          "nullable": true,
+          "type": "numeric(16,2)"
+        },
+        "trigger_type": {
+          "default": null,
+          "nullable": false,
+          "type": "text"
+        },
+        "valuation_id": {
+          "default": null,
+          "nullable": true,
+          "type": "uuid"
+        }
+      },
+      "constraints": {
+        "analyses_check": "CHECK ((((state = 'draft'::analysis_state) AND (published_at IS NULL)) OR ((state = 'published'::analysis_state) AND (published_at IS NOT NULL))))",
+        "analyses_check1": "CHECK (((score IS NULL) OR ((valuation_id IS NOT NULL) AND (strategy_version_id IS NOT NULL) AND (current_price_eur IS NOT NULL) AND (total_cost_eur IS NOT NULL) AND (expected_sale_price_eur IS NOT NULL) AND (max_purchase_price_eur IS NOT NULL) AND (expected_profit_eur IS NOT NULL) AND (expected_roi IS NOT NULL) AND (pillars IS NOT NULL) AND (scenario_results IS NOT NULL))))",
+        "analyses_check2": "CHECK (((recommendation <> ALL (ARRAY['buy'::recommendation, 'watch'::recommendation])) OR (score IS NOT NULL)))",
+        "analyses_evidence_quality_score_check": "CHECK (((evidence_quality_score >= (0)::numeric) AND (evidence_quality_score <= (100)::numeric)))",
+        "analyses_opportunity_id_fkey": "FOREIGN KEY (opportunity_id) REFERENCES opportunities(id)",
+        "analyses_opportunity_same_portfolio_fk": "FOREIGN KEY (portfolio_id, opportunity_id) REFERENCES opportunities(portfolio_id, id)",
+        "analyses_pkey": "PRIMARY KEY (id)",
+        "analyses_platform_rule_id_fkey": "FOREIGN KEY (platform_rule_id) REFERENCES platform_rules(id)",
+        "analyses_portfolio_id_fkey": "FOREIGN KEY (portfolio_id) REFERENCES portfolios(id)",
+        "analyses_previous_analysis_id_fkey": "FOREIGN KEY (previous_analysis_id) REFERENCES analyses(id)",
+        "analyses_ruleset_id_fkey": "FOREIGN KEY (ruleset_id) REFERENCES rulesets(id)",
+        "analyses_score_check": "CHECK (((score >= (0)::numeric) AND (score <= (100)::numeric)))",
+        "analyses_strategy_version_id_fkey": "FOREIGN KEY (strategy_version_id) REFERENCES strategy_versions(id)",
+        "analyses_strategy_version_same_portfolio_fk": "FOREIGN KEY (portfolio_id, strategy_version_id) REFERENCES strategy_versions(portfolio_id, id)",
+        "analyses_valuation_id_fkey": "FOREIGN KEY (valuation_id) REFERENCES market_valuations(id)",
+        "analyses_valuation_same_portfolio_fk": "FOREIGN KEY (portfolio_id, valuation_id) REFERENCES market_valuations(portfolio_id, id)"
+      },
+      "indexes": {
+        "analyses_opportunity_date_idx": "CREATE INDEX analyses_opportunity_date_idx ON public.analyses USING btree (portfolio_id, opportunity_id, calculated_at DESC, id DESC)",
+        "analyses_pkey": "CREATE UNIQUE INDEX analyses_pkey ON public.analyses USING btree (id)",
+        "analyses_portfolio_identity_uq": "CREATE UNIQUE INDEX analyses_portfolio_identity_uq ON public.analyses USING btree (portfolio_id, id)",
+        "analyses_previous_child_uq": "CREATE UNIQUE INDEX analyses_previous_child_uq ON public.analyses USING btree (previous_analysis_id) WHERE (previous_analysis_id IS NOT NULL)"
+      }
+    },
+    "audit_events": {
+      "columns": {
+        "action": {
+          "default": null,
+          "nullable": false,
+          "type": "text"
+        },
+        "actor_user_id": {
+          "default": null,
+          "nullable": true,
+          "type": "uuid"
+        },
+        "after_data": {
+          "default": null,
+          "nullable": true,
+          "type": "jsonb"
+        },
+        "before_data": {
+          "default": null,
+          "nullable": true,
+          "type": "jsonb"
+        },
+        "id": {
+          "default": "gen_random_uuid()",
+          "nullable": false,
+          "type": "uuid"
+        },
+        "occurred_at": {
+          "default": "now()",
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "portfolio_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "reason": {
+          "default": null,
+          "nullable": false,
+          "type": "text"
+        },
+        "request_id": {
+          "default": null,
+          "nullable": true,
+          "type": "uuid"
+        },
+        "resource_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "resource_type": {
+          "default": null,
+          "nullable": false,
+          "type": "text"
+        }
+      },
+      "constraints": {
+        "audit_events_actor_user_id_fkey": "FOREIGN KEY (actor_user_id) REFERENCES users(id)",
+        "audit_events_check": "CHECK (((action <> ALL (ARRAY['correct'::text, 'exclude'::text, 'reinstate'::text])) OR (after_data IS NOT NULL)))",
+        "audit_events_pkey": "PRIMARY KEY (id)",
+        "audit_events_portfolio_id_fkey": "FOREIGN KEY (portfolio_id) REFERENCES portfolios(id)",
+        "audit_events_reason_check": "CHECK ((length(TRIM(BOTH FROM reason)) > 0))"
+      },
+      "indexes": {
+        "audit_events_pkey": "CREATE UNIQUE INDEX audit_events_pkey ON public.audit_events USING btree (id)",
+        "audit_events_resource_idx": "CREATE INDEX audit_events_resource_idx ON public.audit_events USING btree (portfolio_id, resource_type, resource_id, occurred_at DESC)"
+      }
+    },
+    "collection_jobs": {
+      "columns": {
+        "attempt_count": {
+          "default": "0",
+          "nullable": false,
+          "type": "integer"
+        },
+        "created_at": {
+          "default": "now()",
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "error_code": {
+          "default": null,
+          "nullable": true,
+          "type": "text"
+        },
+        "error_message": {
+          "default": null,
+          "nullable": true,
+          "type": "text"
+        },
+        "finished_at": {
+          "default": null,
+          "nullable": true,
+          "type": "timestamp with time zone"
+        },
+        "id": {
+          "default": "gen_random_uuid()",
+          "nullable": false,
+          "type": "uuid"
+        },
+        "idempotency_key": {
+          "default": null,
+          "nullable": false,
+          "type": "text"
+        },
+        "listing_id": {
+          "default": null,
+          "nullable": true,
+          "type": "uuid"
+        },
+        "payload": {
+          "default": "'{}'::jsonb",
+          "nullable": false,
+          "type": "jsonb"
+        },
+        "platform_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "platform_rule_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "portfolio_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "scheduled_at": {
+          "default": "now()",
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "started_at": {
+          "default": null,
+          "nullable": true,
+          "type": "timestamp with time zone"
+        },
+        "status": {
+          "default": "'queued'::job_status",
+          "nullable": false,
+          "type": "job_status"
+        }
+      },
+      "constraints": {
+        "collection_jobs_attempt_count_check": "CHECK ((attempt_count >= 0))",
+        "collection_jobs_listing_id_fkey": "FOREIGN KEY (listing_id) REFERENCES listings(id)",
+        "collection_jobs_pkey": "PRIMARY KEY (id)",
+        "collection_jobs_platform_id_fkey": "FOREIGN KEY (platform_id) REFERENCES platforms(id)",
+        "collection_jobs_platform_rule_id_fkey": "FOREIGN KEY (platform_rule_id) REFERENCES platform_rules(id)",
+        "collection_jobs_portfolio_id_fkey": "FOREIGN KEY (portfolio_id) REFERENCES portfolios(id)",
+        "collection_jobs_portfolio_id_idempotency_key_key": "UNIQUE (portfolio_id, idempotency_key)",
+        "jobs_listing_same_portfolio_fk": "FOREIGN KEY (portfolio_id, listing_id) REFERENCES listings(portfolio_id, id)"
+      },
+      "indexes": {
+        "collection_jobs_pkey": "CREATE UNIQUE INDEX collection_jobs_pkey ON public.collection_jobs USING btree (id)",
+        "collection_jobs_portfolio_id_idempotency_key_key": "CREATE UNIQUE INDEX collection_jobs_portfolio_id_idempotency_key_key ON public.collection_jobs USING btree (portfolio_id, idempotency_key)",
+        "collection_jobs_scheduled_idx": "CREATE INDEX collection_jobs_scheduled_idx ON public.collection_jobs USING btree (status, scheduled_at)"
+      }
+    },
+    "comparable_overrides": {
+      "columns": {
+        "actor_user_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "comparable_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "corrected_data": {
+          "default": "'{}'::jsonb",
+          "nullable": false,
+          "type": "jsonb"
+        },
+        "created_at": {
+          "default": "now()",
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "excluded": {
+          "default": null,
+          "nullable": false,
+          "type": "boolean"
+        },
+        "exclusion_reason": {
+          "default": null,
+          "nullable": true,
+          "type": "text"
+        },
+        "id": {
+          "default": "gen_random_uuid()",
+          "nullable": false,
+          "type": "uuid"
+        },
+        "portfolio_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "previous_override_id": {
+          "default": null,
+          "nullable": true,
+          "type": "uuid"
+        },
+        "reason": {
+          "default": null,
+          "nullable": false,
+          "type": "text"
+        }
+      },
+      "constraints": {
+        "comparable_overrides_actor_user_id_fkey": "FOREIGN KEY (actor_user_id) REFERENCES users(id)",
+        "comparable_overrides_check": "CHECK (((NOT excluded) OR (exclusion_reason IS NOT NULL)))",
+        "comparable_overrides_comparable_id_fkey": "FOREIGN KEY (comparable_id) REFERENCES comparables(id)",
+        "comparable_overrides_pkey": "PRIMARY KEY (id)",
+        "comparable_overrides_portfolio_id_fkey": "FOREIGN KEY (portfolio_id) REFERENCES portfolios(id)",
+        "comparable_overrides_previous_override_id_fkey": "FOREIGN KEY (previous_override_id) REFERENCES comparable_overrides(id)",
+        "comparable_overrides_previous_override_id_key": "UNIQUE (previous_override_id)",
+        "overrides_comparable_same_portfolio_fk": "FOREIGN KEY (portfolio_id, comparable_id) REFERENCES comparables(portfolio_id, id)"
+      },
+      "indexes": {
+        "comparable_overrides_pkey": "CREATE UNIQUE INDEX comparable_overrides_pkey ON public.comparable_overrides USING btree (id)",
+        "comparable_overrides_previous_override_id_key": "CREATE UNIQUE INDEX comparable_overrides_previous_override_id_key ON public.comparable_overrides USING btree (previous_override_id)"
+      }
+    },
+    "comparables": {
+      "columns": {
+        "amount_eur": {
+          "default": null,
+          "nullable": false,
+          "type": "numeric(16,2)"
+        },
+        "amount_source": {
+          "default": null,
+          "nullable": false,
+          "type": "numeric(16,2)"
+        },
+        "buyer_fixed_fee_eur": {
+          "default": "0",
+          "nullable": false,
+          "type": "numeric(16,2)"
+        },
+        "buyer_total_price_eur": {
+          "default": null,
+          "nullable": false,
+          "type": "numeric(16,2)"
+        },
+        "buyer_variable_fee_eur": {
+          "default": "0",
+          "nullable": false,
+          "type": "numeric(16,2)"
+        },
+        "completeness_data": {
+          "default": "'{}'::jsonb",
+          "nullable": false,
+          "type": "jsonb"
+        },
+        "compulsory_shipping_eur": {
+          "default": "0",
+          "nullable": false,
+          "type": "numeric(16,2)"
+        },
+        "condition_data": {
+          "default": "'{}'::jsonb",
+          "nullable": false,
+          "type": "jsonb"
+        },
+        "created_at": {
+          "default": "now()",
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "created_by_user_id": {
+          "default": null,
+          "nullable": true,
+          "type": "uuid"
+        },
+        "currency": {
+          "default": null,
+          "nullable": false,
+          "type": "character(3)"
+        },
+        "ended_at": {
+          "default": null,
+          "nullable": true,
+          "type": "timestamp with time zone"
+        },
+        "fx_rate_at": {
+          "default": null,
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "fx_rate_id": {
+          "default": null,
+          "nullable": true,
+          "type": "uuid"
+        },
+        "fx_source": {
+          "default": null,
+          "nullable": false,
+          "type": "text"
+        },
+        "id": {
+          "default": "gen_random_uuid()",
+          "nullable": false,
+          "type": "uuid"
+        },
+        "listed_at": {
+          "default": null,
+          "nullable": true,
+          "type": "timestamp with time zone"
+        },
+        "listing_id": {
+          "default": null,
+          "nullable": true,
+          "type": "uuid"
+        },
+        "market_status": {
+          "default": null,
+          "nullable": false,
+          "type": "listing_status"
+        },
+        "observed_at": {
+          "default": null,
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "portfolio_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "price_kind": {
+          "default": null,
+          "nullable": false,
+          "type": "price_kind"
+        },
+        "rate_to_eur": {
+          "default": null,
+          "nullable": false,
+          "type": "numeric(24,12)"
+        },
+        "raw_data": {
+          "default": "'{}'::jsonb",
+          "nullable": false,
+          "type": "jsonb"
+        },
+        "reference_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "seller_fingerprint": {
+          "default": null,
+          "nullable": true,
+          "type": "text"
+        },
+        "source_external_id": {
+          "default": null,
+          "nullable": true,
+          "type": "text"
+        },
+        "source_name": {
+          "default": null,
+          "nullable": false,
+          "type": "text"
+        },
+        "source_reliability": {
+          "default": null,
+          "nullable": false,
+          "type": "source_reliability_level"
+        }
+      },
+      "constraints": {
+        "comparables_amount_eur_check": "CHECK ((amount_eur >= (0)::numeric))",
+        "comparables_amount_source_check": "CHECK ((amount_source >= (0)::numeric))",
+        "comparables_buyer_fixed_fee_eur_check": "CHECK ((buyer_fixed_fee_eur >= (0)::numeric))",
+        "comparables_buyer_total_price_eur_check": "CHECK ((buyer_total_price_eur >= (0)::numeric))",
+        "comparables_buyer_variable_fee_eur_check": "CHECK ((buyer_variable_fee_eur >= (0)::numeric))",
+        "comparables_check": "CHECK ((amount_eur = round((amount_source * rate_to_eur), 2)))",
+        "comparables_check1": "CHECK (((currency <> 'EUR'::bpchar) OR (rate_to_eur = (1)::numeric)))",
+        "comparables_check2": "CHECK (((currency = 'EUR'::bpchar) OR (fx_rate_id IS NOT NULL)))",
+        "comparables_check3": "CHECK (((ended_at IS NULL) OR (listed_at IS NULL) OR (ended_at >= listed_at)))",
+        "comparables_compulsory_shipping_eur_check": "CHECK ((compulsory_shipping_eur >= (0)::numeric))",
+        "comparables_created_by_user_id_fkey": "FOREIGN KEY (created_by_user_id) REFERENCES users(id)",
+        "comparables_fx_rate_id_fkey": "FOREIGN KEY (fx_rate_id) REFERENCES fx_rates(id)",
+        "comparables_listing_id_fkey": "FOREIGN KEY (listing_id) REFERENCES listings(id)",
+        "comparables_listing_same_portfolio_fk": "FOREIGN KEY (portfolio_id, listing_id) REFERENCES listings(portfolio_id, id)",
+        "comparables_pkey": "PRIMARY KEY (id)",
+        "comparables_portfolio_id_fkey": "FOREIGN KEY (portfolio_id) REFERENCES portfolios(id)",
+        "comparables_price_kind_check": "CHECK ((price_kind <> 'kairos_estimate'::price_kind))",
+        "comparables_rate_to_eur_check": "CHECK ((rate_to_eur > (0)::numeric))",
+        "comparables_reference_id_fkey": "FOREIGN KEY (reference_id) REFERENCES watch_references(id)"
+      },
+      "indexes": {
+        "comparables_pkey": "CREATE UNIQUE INDEX comparables_pkey ON public.comparables USING btree (id)",
+        "comparables_portfolio_identity_uq": "CREATE UNIQUE INDEX comparables_portfolio_identity_uq ON public.comparables USING btree (portfolio_id, id)",
+        "comparables_reference_date_idx": "CREATE INDEX comparables_reference_date_idx ON public.comparables USING btree (portfolio_id, reference_id, observed_at DESC, id DESC)",
+        "comparables_source_identity_uq": "CREATE UNIQUE INDEX comparables_source_identity_uq ON public.comparables USING btree (portfolio_id, source_name, source_external_id, price_kind) WHERE (source_external_id IS NOT NULL)"
+      }
+    },
+    "fx_rates": {
+      "columns": {
+        "base_currency": {
+          "default": null,
+          "nullable": false,
+          "type": "character(3)"
+        },
+        "created_at": {
+          "default": "now()",
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "id": {
+          "default": "gen_random_uuid()",
+          "nullable": false,
+          "type": "uuid"
+        },
+        "observed_at": {
+          "default": null,
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "quote_currency": {
+          "default": "'EUR'::bpchar",
+          "nullable": false,
+          "type": "character(3)"
+        },
+        "rate": {
+          "default": null,
+          "nullable": false,
+          "type": "numeric(24,12)"
+        },
+        "source_name": {
+          "default": null,
+          "nullable": false,
+          "type": "text"
+        }
+      },
+      "constraints": {
+        "fx_rates_base_currency_check": "CHECK (((base_currency)::text = upper((base_currency)::text)))",
+        "fx_rates_base_currency_quote_currency_observed_at_source_na_key": "UNIQUE (base_currency, quote_currency, observed_at, source_name)",
+        "fx_rates_pkey": "PRIMARY KEY (id)",
+        "fx_rates_quote_currency_check": "CHECK (((quote_currency)::text = upper((quote_currency)::text)))",
+        "fx_rates_rate_check": "CHECK ((rate > (0)::numeric))"
+      },
+      "indexes": {
+        "fx_rates_base_currency_quote_currency_observed_at_source_na_key": "CREATE UNIQUE INDEX fx_rates_base_currency_quote_currency_observed_at_source_na_key ON public.fx_rates USING btree (base_currency, quote_currency, observed_at, source_name)",
+        "fx_rates_pkey": "CREATE UNIQUE INDEX fx_rates_pkey ON public.fx_rates USING btree (id)"
+      }
+    },
+    "idempotency_records": {
+      "columns": {
+        "created_at": {
+          "default": "now()",
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "expires_at": {
+          "default": null,
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "id": {
+          "default": "gen_random_uuid()",
+          "nullable": false,
+          "type": "uuid"
+        },
+        "idempotency_key": {
+          "default": null,
+          "nullable": false,
+          "type": "text"
+        },
+        "portfolio_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "request_hash": {
+          "default": null,
+          "nullable": false,
+          "type": "text"
+        },
+        "request_method": {
+          "default": null,
+          "nullable": false,
+          "type": "text"
+        },
+        "request_path": {
+          "default": null,
+          "nullable": false,
+          "type": "text"
+        },
+        "response_body": {
+          "default": null,
+          "nullable": true,
+          "type": "jsonb"
+        },
+        "response_status": {
+          "default": null,
+          "nullable": true,
+          "type": "integer"
+        }
+      },
+      "constraints": {
+        "idempotency_records_idempotency_key_check": "CHECK (((length(idempotency_key) >= 1) AND (length(idempotency_key) <= 128)))",
+        "idempotency_records_pkey": "PRIMARY KEY (id)",
+        "idempotency_records_portfolio_id_fkey": "FOREIGN KEY (portfolio_id) REFERENCES portfolios(id)",
+        "idempotency_records_portfolio_id_idempotency_key_key": "UNIQUE (portfolio_id, idempotency_key)"
+      },
+      "indexes": {
+        "idempotency_records_pkey": "CREATE UNIQUE INDEX idempotency_records_pkey ON public.idempotency_records USING btree (id)",
+        "idempotency_records_portfolio_id_idempotency_key_key": "CREATE UNIQUE INDEX idempotency_records_portfolio_id_idempotency_key_key ON public.idempotency_records USING btree (portfolio_id, idempotency_key)"
+      }
+    },
+    "listing_observation_prices": {
+      "columns": {
+        "amount_eur": {
+          "default": null,
+          "nullable": false,
+          "type": "numeric(16,2)"
+        },
+        "amount_source": {
+          "default": null,
+          "nullable": false,
+          "type": "numeric(16,2)"
+        },
+        "created_at": {
+          "default": "now()",
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "currency": {
+          "default": null,
+          "nullable": false,
+          "type": "character(3)"
+        },
+        "fx_rate_at": {
+          "default": null,
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "fx_rate_id": {
+          "default": null,
+          "nullable": true,
+          "type": "uuid"
+        },
+        "fx_source": {
+          "default": null,
+          "nullable": false,
+          "type": "text"
+        },
+        "id": {
+          "default": "gen_random_uuid()",
+          "nullable": false,
+          "type": "uuid"
+        },
+        "kind": {
+          "default": null,
+          "nullable": false,
+          "type": "price_kind"
+        },
+        "observation_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "portfolio_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "rate_to_eur": {
+          "default": null,
+          "nullable": false,
+          "type": "numeric(24,12)"
+        }
+      },
+      "constraints": {
+        "listing_observation_prices_amount_eur_check": "CHECK ((amount_eur >= (0)::numeric))",
+        "listing_observation_prices_amount_source_check": "CHECK ((amount_source >= (0)::numeric))",
+        "listing_observation_prices_check": "CHECK ((amount_eur = round((amount_source * rate_to_eur), 2)))",
+        "listing_observation_prices_check1": "CHECK (((currency <> 'EUR'::bpchar) OR (rate_to_eur = (1)::numeric)))",
+        "listing_observation_prices_check2": "CHECK (((currency = 'EUR'::bpchar) OR (fx_rate_id IS NOT NULL)))",
+        "listing_observation_prices_fx_rate_id_fkey": "FOREIGN KEY (fx_rate_id) REFERENCES fx_rates(id)",
+        "listing_observation_prices_kind_check": "CHECK ((kind <> 'kairos_estimate'::price_kind))",
+        "listing_observation_prices_observation_id_fkey": "FOREIGN KEY (observation_id) REFERENCES listing_observations(id)",
+        "listing_observation_prices_observation_id_kind_key": "UNIQUE (observation_id, kind)",
+        "listing_observation_prices_pkey": "PRIMARY KEY (id)",
+        "listing_observation_prices_portfolio_id_fkey": "FOREIGN KEY (portfolio_id) REFERENCES portfolios(id)",
+        "listing_observation_prices_rate_to_eur_check": "CHECK ((rate_to_eur > (0)::numeric))",
+        "observation_prices_same_portfolio_fk": "FOREIGN KEY (portfolio_id, observation_id) REFERENCES listing_observations(portfolio_id, id)"
+      },
+      "indexes": {
+        "listing_observation_prices_observation_id_kind_key": "CREATE UNIQUE INDEX listing_observation_prices_observation_id_kind_key ON public.listing_observation_prices USING btree (observation_id, kind)",
+        "listing_observation_prices_pkey": "CREATE UNIQUE INDEX listing_observation_prices_pkey ON public.listing_observation_prices USING btree (id)"
+      }
+    },
+    "listing_observations": {
+      "columns": {
+        "auction_end_at": {
+          "default": null,
+          "nullable": true,
+          "type": "timestamp with time zone"
+        },
+        "collection_id": {
+          "default": "gen_random_uuid()",
+          "nullable": false,
+          "type": "uuid"
+        },
+        "completeness_data": {
+          "default": "'{}'::jsonb",
+          "nullable": false,
+          "type": "jsonb"
+        },
+        "condition_data": {
+          "default": "'{}'::jsonb",
+          "nullable": false,
+          "type": "jsonb"
+        },
+        "created_at": {
+          "default": "now()",
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "error_code": {
+          "default": null,
+          "nullable": true,
+          "type": "text"
+        },
+        "error_message": {
+          "default": null,
+          "nullable": true,
+          "type": "text"
+        },
+        "fetch_status": {
+          "default": "'success'::text",
+          "nullable": false,
+          "type": "text"
+        },
+        "id": {
+          "default": "gen_random_uuid()",
+          "nullable": false,
+          "type": "uuid"
+        },
+        "listing_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "observed_at": {
+          "default": null,
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "portfolio_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "raw_data": {
+          "default": "'{}'::jsonb",
+          "nullable": false,
+          "type": "jsonb"
+        },
+        "reserve_met": {
+          "default": null,
+          "nullable": true,
+          "type": "boolean"
+        },
+        "status": {
+          "default": null,
+          "nullable": false,
+          "type": "listing_status"
+        }
+      },
+      "constraints": {
+        "listing_observations_fetch_status_check": "CHECK ((fetch_status = ANY (ARRAY['success'::text, 'partial'::text, 'failed'::text])))",
+        "listing_observations_listing_id_collection_id_key": "UNIQUE (listing_id, collection_id)",
+        "listing_observations_listing_id_fkey": "FOREIGN KEY (listing_id) REFERENCES listings(id)",
+        "listing_observations_pkey": "PRIMARY KEY (id)",
+        "listing_observations_portfolio_id_fkey": "FOREIGN KEY (portfolio_id) REFERENCES portfolios(id)",
+        "observations_listing_same_portfolio_fk": "FOREIGN KEY (portfolio_id, listing_id) REFERENCES listings(portfolio_id, id)"
+      },
+      "indexes": {
+        "listing_observations_latest_idx": "CREATE INDEX listing_observations_latest_idx ON public.listing_observations USING btree (portfolio_id, listing_id, observed_at DESC, id DESC)",
+        "listing_observations_listing_id_collection_id_key": "CREATE UNIQUE INDEX listing_observations_listing_id_collection_id_key ON public.listing_observations USING btree (listing_id, collection_id)",
+        "listing_observations_pkey": "CREATE UNIQUE INDEX listing_observations_pkey ON public.listing_observations USING btree (id)",
+        "listing_observations_portfolio_identity_uq": "CREATE UNIQUE INDEX listing_observations_portfolio_identity_uq ON public.listing_observations USING btree (portfolio_id, id)"
+      }
+    },
+    "listings": {
+      "columns": {
+        "canonical_url": {
+          "default": null,
+          "nullable": false,
+          "type": "text"
+        },
+        "created_at": {
+          "default": "now()",
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "external_id": {
+          "default": null,
+          "nullable": true,
+          "type": "text"
+        },
+        "first_seen_at": {
+          "default": "now()",
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "id": {
+          "default": "gen_random_uuid()",
+          "nullable": false,
+          "type": "uuid"
+        },
+        "last_success_at": {
+          "default": null,
+          "nullable": true,
+          "type": "timestamp with time zone"
+        },
+        "platform_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "portfolio_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "seller_id": {
+          "default": null,
+          "nullable": true,
+          "type": "uuid"
+        },
+        "status": {
+          "default": "'unknown'::listing_status",
+          "nullable": false,
+          "type": "listing_status"
+        },
+        "watch_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        }
+      },
+      "constraints": {
+        "listings_pkey": "PRIMARY KEY (id)",
+        "listings_platform_id_fkey": "FOREIGN KEY (platform_id) REFERENCES platforms(id)",
+        "listings_portfolio_id_fkey": "FOREIGN KEY (portfolio_id) REFERENCES portfolios(id)",
+        "listings_seller_id_fkey": "FOREIGN KEY (seller_id) REFERENCES sellers(id)",
+        "listings_seller_same_portfolio_fk": "FOREIGN KEY (portfolio_id, seller_id) REFERENCES sellers(portfolio_id, id)",
+        "listings_watch_id_fkey": "FOREIGN KEY (watch_id) REFERENCES watches(id)"
+      },
+      "indexes": {
+        "listings_canonical_url_uq": "CREATE UNIQUE INDEX listings_canonical_url_uq ON public.listings USING btree (portfolio_id, canonical_url)",
+        "listings_external_id_uq": "CREATE UNIQUE INDEX listings_external_id_uq ON public.listings USING btree (portfolio_id, platform_id, external_id) WHERE (external_id IS NOT NULL)",
+        "listings_pkey": "CREATE UNIQUE INDEX listings_pkey ON public.listings USING btree (id)",
+        "listings_portfolio_identity_uq": "CREATE UNIQUE INDEX listings_portfolio_identity_uq ON public.listings USING btree (portfolio_id, id)",
+        "listings_portfolio_watch_identity_uq": "CREATE UNIQUE INDEX listings_portfolio_watch_identity_uq ON public.listings USING btree (portfolio_id, id, watch_id)"
+      }
+    },
+    "market_valuations": {
+      "columns": {
+        "calculated_at": {
+          "default": "now()",
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "central_value_eur": {
+          "default": null,
+          "nullable": false,
+          "type": "numeric(16,2)"
+        },
+        "explanation": {
+          "default": "'{}'::jsonb",
+          "nullable": false,
+          "type": "jsonb"
+        },
+        "high_value_eur": {
+          "default": null,
+          "nullable": false,
+          "type": "numeric(16,2)"
+        },
+        "id": {
+          "default": "gen_random_uuid()",
+          "nullable": false,
+          "type": "uuid"
+        },
+        "low_value_eur": {
+          "default": null,
+          "nullable": false,
+          "type": "numeric(16,2)"
+        },
+        "opportunity_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "portfolio_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "ruleset_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "ruleset_snapshot": {
+          "default": null,
+          "nullable": false,
+          "type": "jsonb"
+        },
+        "trend": {
+          "default": null,
+          "nullable": true,
+          "type": "text"
+        },
+        "valuation_confidence": {
+          "default": null,
+          "nullable": false,
+          "type": "numeric(7,4)"
+        }
+      },
+      "constraints": {
+        "market_valuations_check": "CHECK ((low_value_eur <= central_value_eur))",
+        "market_valuations_check1": "CHECK ((central_value_eur <= high_value_eur))",
+        "market_valuations_opportunity_id_fkey": "FOREIGN KEY (opportunity_id) REFERENCES opportunities(id)",
+        "market_valuations_pkey": "PRIMARY KEY (id)",
+        "market_valuations_portfolio_id_fkey": "FOREIGN KEY (portfolio_id) REFERENCES portfolios(id)",
+        "market_valuations_ruleset_id_fkey": "FOREIGN KEY (ruleset_id) REFERENCES rulesets(id)",
+        "market_valuations_valuation_confidence_check": "CHECK (((valuation_confidence >= (0)::numeric) AND (valuation_confidence <= (100)::numeric)))",
+        "valuations_opportunity_same_portfolio_fk": "FOREIGN KEY (portfolio_id, opportunity_id) REFERENCES opportunities(portfolio_id, id)"
+      },
+      "indexes": {
+        "market_valuations_pkey": "CREATE UNIQUE INDEX market_valuations_pkey ON public.market_valuations USING btree (id)",
+        "market_valuations_portfolio_identity_uq": "CREATE UNIQUE INDEX market_valuations_portfolio_identity_uq ON public.market_valuations USING btree (portfolio_id, id)"
+      }
+    },
+    "opportunities": {
+      "columns": {
+        "created_at": {
+          "default": "now()",
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "created_by_user_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "id": {
+          "default": "gen_random_uuid()",
+          "nullable": false,
+          "type": "uuid"
+        },
+        "listing_id": {
+          "default": null,
+          "nullable": true,
+          "type": "uuid"
+        },
+        "manual_identifier": {
+          "default": null,
+          "nullable": true,
+          "type": "text"
+        },
+        "portfolio_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "purchase_platform_id": {
+          "default": null,
+          "nullable": true,
+          "type": "uuid"
+        },
+        "seller_id": {
+          "default": null,
+          "nullable": true,
+          "type": "uuid"
+        },
+        "source_mode": {
+          "default": null,
+          "nullable": false,
+          "type": "opportunity_source_mode"
+        },
+        "status": {
+          "default": "'watching'::opportunity_status",
+          "nullable": false,
+          "type": "opportunity_status"
+        },
+        "strategy_id": {
+          "default": null,
+          "nullable": true,
+          "type": "uuid"
+        },
+        "updated_at": {
+          "default": "now()",
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "version": {
+          "default": "1",
+          "nullable": false,
+          "type": "integer"
+        },
+        "watch_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        }
+      },
+      "constraints": {
+        "opportunities_check": "CHECK ((((source_mode = 'manual'::opportunity_source_mode) AND (listing_id IS NULL) AND (manual_identifier IS NOT NULL)) OR ((source_mode <> 'manual'::opportunity_source_mode) AND (listing_id IS NOT NULL) AND (manual_identifier IS NULL))))",
+        "opportunities_created_by_user_id_fkey": "FOREIGN KEY (created_by_user_id) REFERENCES users(id)",
+        "opportunities_listing_id_fkey": "FOREIGN KEY (listing_id) REFERENCES listings(id)",
+        "opportunities_listing_same_portfolio_fk": "FOREIGN KEY (portfolio_id, listing_id) REFERENCES listings(portfolio_id, id)",
+        "opportunities_listing_watch_match_fk": "FOREIGN KEY (portfolio_id, listing_id, watch_id) REFERENCES listings(portfolio_id, id, watch_id)",
+        "opportunities_pkey": "PRIMARY KEY (id)",
+        "opportunities_portfolio_id_fkey": "FOREIGN KEY (portfolio_id) REFERENCES portfolios(id)",
+        "opportunities_purchase_platform_id_fkey": "FOREIGN KEY (purchase_platform_id) REFERENCES platforms(id)",
+        "opportunities_seller_id_fkey": "FOREIGN KEY (seller_id) REFERENCES sellers(id)",
+        "opportunities_seller_same_portfolio_fk": "FOREIGN KEY (portfolio_id, seller_id) REFERENCES sellers(portfolio_id, id)",
+        "opportunities_strategy_id_fkey": "FOREIGN KEY (strategy_id) REFERENCES strategies(id)",
+        "opportunities_strategy_same_portfolio_fk": "FOREIGN KEY (portfolio_id, strategy_id) REFERENCES strategies(portfolio_id, id)",
+        "opportunities_version_check": "CHECK ((version > 0))",
+        "opportunities_watch_id_fkey": "FOREIGN KEY (watch_id) REFERENCES watches(id)"
+      },
+      "indexes": {
+        "opportunities_listing_uq": "CREATE UNIQUE INDEX opportunities_listing_uq ON public.opportunities USING btree (portfolio_id, listing_id) WHERE (listing_id IS NOT NULL)",
+        "opportunities_manual_identifier_uq": "CREATE UNIQUE INDEX opportunities_manual_identifier_uq ON public.opportunities USING btree (portfolio_id, manual_identifier) WHERE (manual_identifier IS NOT NULL)",
+        "opportunities_pkey": "CREATE UNIQUE INDEX opportunities_pkey ON public.opportunities USING btree (id)",
+        "opportunities_portfolio_identity_uq": "CREATE UNIQUE INDEX opportunities_portfolio_identity_uq ON public.opportunities USING btree (portfolio_id, id)",
+        "opportunities_portfolio_watch_identity_uq": "CREATE UNIQUE INDEX opportunities_portfolio_watch_identity_uq ON public.opportunities USING btree (portfolio_id, id, watch_id)"
+      }
+    },
+    "opportunity_costs": {
+      "columns": {
+        "amount_central_eur": {
+          "default": null,
+          "nullable": true,
+          "type": "numeric(16,2)"
+        },
+        "amount_central_source": {
+          "default": null,
+          "nullable": true,
+          "type": "numeric(16,2)"
+        },
+        "amount_high_eur": {
+          "default": null,
+          "nullable": true,
+          "type": "numeric(16,2)"
+        },
+        "amount_high_source": {
+          "default": null,
+          "nullable": true,
+          "type": "numeric(16,2)"
+        },
+        "amount_low_eur": {
+          "default": null,
+          "nullable": true,
+          "type": "numeric(16,2)"
+        },
+        "amount_low_source": {
+          "default": null,
+          "nullable": true,
+          "type": "numeric(16,2)"
+        },
+        "analysis_id": {
+          "default": null,
+          "nullable": true,
+          "type": "uuid"
+        },
+        "basis": {
+          "default": null,
+          "nullable": true,
+          "type": "cost_basis"
+        },
+        "calculation_mode": {
+          "default": null,
+          "nullable": false,
+          "type": "cost_calculation_mode"
+        },
+        "created_at": {
+          "default": "now()",
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "created_by_user_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "currency": {
+          "default": null,
+          "nullable": true,
+          "type": "character(3)"
+        },
+        "fx_rate_at": {
+          "default": null,
+          "nullable": true,
+          "type": "timestamp with time zone"
+        },
+        "fx_rate_id": {
+          "default": null,
+          "nullable": true,
+          "type": "uuid"
+        },
+        "fx_source": {
+          "default": null,
+          "nullable": true,
+          "type": "text"
+        },
+        "id": {
+          "default": "gen_random_uuid()",
+          "nullable": false,
+          "type": "uuid"
+        },
+        "incurred_at": {
+          "default": null,
+          "nullable": true,
+          "type": "timestamp with time zone"
+        },
+        "kind": {
+          "default": null,
+          "nullable": false,
+          "type": "cost_kind"
+        },
+        "notes": {
+          "default": null,
+          "nullable": true,
+          "type": "text"
+        },
+        "opportunity_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "phase": {
+          "default": null,
+          "nullable": false,
+          "type": "cost_phase"
+        },
+        "portfolio_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "provenance": {
+          "default": null,
+          "nullable": true,
+          "type": "text"
+        },
+        "rate_central": {
+          "default": null,
+          "nullable": true,
+          "type": "numeric(18,10)"
+        },
+        "rate_high": {
+          "default": null,
+          "nullable": true,
+          "type": "numeric(18,10)"
+        },
+        "rate_low": {
+          "default": null,
+          "nullable": true,
+          "type": "numeric(18,10)"
+        },
+        "rate_to_eur": {
+          "default": null,
+          "nullable": true,
+          "type": "numeric(24,12)"
+        },
+        "status": {
+          "default": null,
+          "nullable": false,
+          "type": "cost_status"
+        }
+      },
+      "constraints": {
+        "costs_analysis_same_portfolio_fk": "FOREIGN KEY (portfolio_id, analysis_id) REFERENCES analyses(portfolio_id, id)",
+        "costs_opportunity_same_portfolio_fk": "FOREIGN KEY (portfolio_id, opportunity_id) REFERENCES opportunities(portfolio_id, id)",
+        "opportunity_costs_analysis_id_fkey": "FOREIGN KEY (analysis_id) REFERENCES analyses(id)",
+        "opportunity_costs_check": "CHECK ((((calculation_mode = 'fixed'::cost_calculation_mode) AND (basis IS NULL) AND (amount_low_source IS NOT NULL) AND (amount_central_source IS NOT NULL) AND (amount_high_source IS NOT NULL) AND (currency IS NOT NULL) AND (amount_low_eur IS NOT NULL) AND (amount_central_eur IS NOT NULL) AND (amount_high_eur IS NOT NULL) AND (rate_to_eur IS NOT NULL) AND (fx_rate_at IS NOT NULL) AND (fx_source IS NOT NULL) AND (rate_low IS NULL) AND (rate_central IS NULL) AND (rate_high IS NULL)) OR ((calculation_mode = 'rate'::cost_calculation_mode) AND (basis IS NOT NULL) AND (rate_low IS NOT NULL) AND (rate_central IS NOT NULL) AND (rate_high IS NOT NULL) AND (amount_low_source IS NULL) AND (amount_central_source IS NULL) AND (amount_high_source IS NULL))))",
+        "opportunity_costs_check1": "CHECK (((calculation_mode <> 'fixed'::cost_calculation_mode) OR ((amount_low_source <= amount_central_source) AND (amount_central_source <= amount_high_source) AND (amount_low_eur <= amount_central_eur) AND (amount_central_eur <= amount_high_eur) AND (amount_low_eur = round((amount_low_source * rate_to_eur), 2)) AND (amount_central_eur = round((amount_central_source * rate_to_eur), 2)) AND (amount_high_eur = round((amount_high_source * rate_to_eur), 2)))))",
+        "opportunity_costs_check2": "CHECK (((calculation_mode <> 'rate'::cost_calculation_mode) OR ((rate_low <= rate_central) AND (rate_central <= rate_high) AND (rate_low >= (0)::numeric))))",
+        "opportunity_costs_check3": "CHECK (((currency IS NULL) OR (currency <> 'EUR'::bpchar) OR (rate_to_eur = (1)::numeric)))",
+        "opportunity_costs_check4": "CHECK (((currency IS NULL) OR (currency = 'EUR'::bpchar) OR (fx_rate_id IS NOT NULL)))",
+        "opportunity_costs_created_by_user_id_fkey": "FOREIGN KEY (created_by_user_id) REFERENCES users(id)",
+        "opportunity_costs_fx_rate_id_fkey": "FOREIGN KEY (fx_rate_id) REFERENCES fx_rates(id)",
+        "opportunity_costs_opportunity_id_fkey": "FOREIGN KEY (opportunity_id) REFERENCES opportunities(id)",
+        "opportunity_costs_pkey": "PRIMARY KEY (id)",
+        "opportunity_costs_portfolio_id_fkey": "FOREIGN KEY (portfolio_id) REFERENCES portfolios(id)"
+      },
+      "indexes": {
+        "opportunity_costs_pkey": "CREATE UNIQUE INDEX opportunity_costs_pkey ON public.opportunity_costs USING btree (id)",
+        "opportunity_costs_status_idx": "CREATE INDEX opportunity_costs_status_idx ON public.opportunity_costs USING btree (portfolio_id, opportunity_id, status, phase, kind)"
+      }
+    },
+    "opportunity_events": {
+      "columns": {
+        "actor_user_id": {
+          "default": null,
+          "nullable": true,
+          "type": "uuid"
+        },
+        "event_type": {
+          "default": null,
+          "nullable": false,
+          "type": "text"
+        },
+        "from_status": {
+          "default": null,
+          "nullable": true,
+          "type": "opportunity_status"
+        },
+        "id": {
+          "default": "gen_random_uuid()",
+          "nullable": false,
+          "type": "uuid"
+        },
+        "occurred_at": {
+          "default": "now()",
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "opportunity_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "payload": {
+          "default": "'{}'::jsonb",
+          "nullable": false,
+          "type": "jsonb"
+        },
+        "portfolio_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "reason": {
+          "default": null,
+          "nullable": false,
+          "type": "text"
+        },
+        "to_status": {
+          "default": null,
+          "nullable": true,
+          "type": "opportunity_status"
+        }
+      },
+      "constraints": {
+        "events_opportunity_same_portfolio_fk": "FOREIGN KEY (portfolio_id, opportunity_id) REFERENCES opportunities(portfolio_id, id)",
+        "opportunity_events_actor_user_id_fkey": "FOREIGN KEY (actor_user_id) REFERENCES users(id)",
+        "opportunity_events_opportunity_id_fkey": "FOREIGN KEY (opportunity_id) REFERENCES opportunities(id)",
+        "opportunity_events_pkey": "PRIMARY KEY (id)",
+        "opportunity_events_portfolio_id_fkey": "FOREIGN KEY (portfolio_id) REFERENCES portfolios(id)",
+        "opportunity_events_reason_check": "CHECK ((length(TRIM(BOTH FROM reason)) > 0))"
+      },
+      "indexes": {
+        "opportunity_events_date_idx": "CREATE INDEX opportunity_events_date_idx ON public.opportunity_events USING btree (portfolio_id, opportunity_id, occurred_at DESC, id DESC)",
+        "opportunity_events_pkey": "CREATE UNIQUE INDEX opportunity_events_pkey ON public.opportunity_events USING btree (id)",
+        "opportunity_events_portfolio_identity_uq": "CREATE UNIQUE INDEX opportunity_events_portfolio_identity_uq ON public.opportunity_events USING btree (portfolio_id, id)"
+      }
+    },
+    "opportunity_price_inputs": {
+      "columns": {
+        "actor_user_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "amount_eur": {
+          "default": null,
+          "nullable": true,
+          "type": "numeric(16,2)"
+        },
+        "amount_source": {
+          "default": null,
+          "nullable": true,
+          "type": "numeric(16,2)"
+        },
+        "created_at": {
+          "default": "now()",
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "currency": {
+          "default": null,
+          "nullable": true,
+          "type": "character(3)"
+        },
+        "fx_rate_at": {
+          "default": null,
+          "nullable": true,
+          "type": "timestamp with time zone"
+        },
+        "fx_rate_id": {
+          "default": null,
+          "nullable": true,
+          "type": "uuid"
+        },
+        "fx_source": {
+          "default": null,
+          "nullable": true,
+          "type": "text"
+        },
+        "id": {
+          "default": "gen_random_uuid()",
+          "nullable": false,
+          "type": "uuid"
+        },
+        "kind": {
+          "default": null,
+          "nullable": false,
+          "type": "price_kind"
+        },
+        "missing_reason": {
+          "default": null,
+          "nullable": true,
+          "type": "text"
+        },
+        "observed_at": {
+          "default": "now()",
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "opportunity_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "portfolio_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "rate_to_eur": {
+          "default": null,
+          "nullable": true,
+          "type": "numeric(24,12)"
+        }
+      },
+      "constraints": {
+        "opportunity_price_inputs_actor_user_id_fkey": "FOREIGN KEY (actor_user_id) REFERENCES users(id)",
+        "opportunity_price_inputs_check": "CHECK ((((amount_source IS NOT NULL) AND (amount_source >= (0)::numeric) AND (currency IS NOT NULL) AND (amount_eur IS NOT NULL) AND (amount_eur >= (0)::numeric) AND (rate_to_eur IS NOT NULL) AND (rate_to_eur > (0)::numeric) AND (fx_rate_at IS NOT NULL) AND (fx_source IS NOT NULL) AND (missing_reason IS NULL)) OR ((amount_source IS NULL) AND (currency IS NULL) AND (amount_eur IS NULL) AND (rate_to_eur IS NULL) AND (fx_rate_at IS NULL) AND (fx_source IS NULL) AND (fx_rate_id IS NULL) AND (missing_reason IS NOT NULL))))",
+        "opportunity_price_inputs_check1": "CHECK (((amount_source IS NULL) OR (amount_eur = round((amount_source * rate_to_eur), 2))))",
+        "opportunity_price_inputs_check2": "CHECK (((currency IS NULL) OR (currency <> 'EUR'::bpchar) OR (rate_to_eur = (1)::numeric)))",
+        "opportunity_price_inputs_check3": "CHECK (((currency IS NULL) OR (currency = 'EUR'::bpchar) OR (fx_rate_id IS NOT NULL)))",
+        "opportunity_price_inputs_fx_rate_id_fkey": "FOREIGN KEY (fx_rate_id) REFERENCES fx_rates(id)",
+        "opportunity_price_inputs_kind_check": "CHECK ((kind = ANY (ARRAY['asking'::price_kind, 'offer'::price_kind, 'accepted_offer'::price_kind, 'current_bid'::price_kind, 'hammer'::price_kind])))",
+        "opportunity_price_inputs_opportunity_id_fkey": "FOREIGN KEY (opportunity_id) REFERENCES opportunities(id)",
+        "opportunity_price_inputs_pkey": "PRIMARY KEY (id)",
+        "opportunity_price_inputs_portfolio_id_fkey": "FOREIGN KEY (portfolio_id) REFERENCES portfolios(id)",
+        "price_inputs_opportunity_same_portfolio_fk": "FOREIGN KEY (portfolio_id, opportunity_id) REFERENCES opportunities(portfolio_id, id)"
+      },
+      "indexes": {
+        "opportunity_price_inputs_latest_idx": "CREATE INDEX opportunity_price_inputs_latest_idx ON public.opportunity_price_inputs USING btree (portfolio_id, opportunity_id, kind, observed_at DESC, id DESC)",
+        "opportunity_price_inputs_pkey": "CREATE UNIQUE INDEX opportunity_price_inputs_pkey ON public.opportunity_price_inputs USING btree (id)"
+      }
+    },
+    "platform_rules": {
+      "columns": {
+        "access_authorized": {
+          "default": "false",
+          "nullable": false,
+          "type": "boolean"
+        },
+        "access_method": {
+          "default": "'manual'::platform_access_method",
+          "nullable": false,
+          "type": "platform_access_method"
+        },
+        "buyer_fee_basis": {
+          "default": "'price'::text",
+          "nullable": false,
+          "type": "text"
+        },
+        "buyer_fee_currency": {
+          "default": null,
+          "nullable": true,
+          "type": "character(3)"
+        },
+        "buyer_fee_fixed": {
+          "default": null,
+          "nullable": true,
+          "type": "numeric(16,2)"
+        },
+        "buyer_fee_max": {
+          "default": null,
+          "nullable": true,
+          "type": "numeric(16,2)"
+        },
+        "buyer_fee_min": {
+          "default": null,
+          "nullable": true,
+          "type": "numeric(16,2)"
+        },
+        "buyer_fee_rate": {
+          "default": null,
+          "nullable": true,
+          "type": "numeric(18,10)"
+        },
+        "buyer_fee_tiers": {
+          "default": "'[]'::jsonb",
+          "nullable": false,
+          "type": "jsonb"
+        },
+        "buyer_fee_vat_rate": {
+          "default": null,
+          "nullable": true,
+          "type": "numeric(18,10)"
+        },
+        "can_observe_active_listing": {
+          "default": "true",
+          "nullable": false,
+          "type": "boolean"
+        },
+        "can_observe_auction_result": {
+          "default": "false",
+          "nullable": false,
+          "type": "boolean"
+        },
+        "can_observe_realized_sale": {
+          "default": "false",
+          "nullable": false,
+          "type": "boolean"
+        },
+        "created_at": {
+          "default": "now()",
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "created_by_user_id": {
+          "default": null,
+          "nullable": true,
+          "type": "uuid"
+        },
+        "id": {
+          "default": "gen_random_uuid()",
+          "nullable": false,
+          "type": "uuid"
+        },
+        "max_poll_interval": {
+          "default": null,
+          "nullable": true,
+          "type": "interval"
+        },
+        "min_poll_interval": {
+          "default": null,
+          "nullable": true,
+          "type": "interval"
+        },
+        "payment_fee_rate": {
+          "default": null,
+          "nullable": true,
+          "type": "numeric(18,10)"
+        },
+        "payment_rules": {
+          "default": "'{}'::jsonb",
+          "nullable": false,
+          "type": "jsonb"
+        },
+        "platform_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "protection_rules": {
+          "default": "'{}'::jsonb",
+          "nullable": false,
+          "type": "jsonb"
+        },
+        "provenance_url": {
+          "default": null,
+          "nullable": true,
+          "type": "text"
+        },
+        "region_code": {
+          "default": "'*'::text",
+          "nullable": false,
+          "type": "text"
+        },
+        "seller_fee_basis": {
+          "default": "'price'::text",
+          "nullable": false,
+          "type": "text"
+        },
+        "seller_fee_currency": {
+          "default": null,
+          "nullable": true,
+          "type": "character(3)"
+        },
+        "seller_fee_fixed": {
+          "default": null,
+          "nullable": true,
+          "type": "numeric(16,2)"
+        },
+        "seller_fee_max": {
+          "default": null,
+          "nullable": true,
+          "type": "numeric(16,2)"
+        },
+        "seller_fee_min": {
+          "default": null,
+          "nullable": true,
+          "type": "numeric(16,2)"
+        },
+        "seller_fee_rate": {
+          "default": null,
+          "nullable": true,
+          "type": "numeric(18,10)"
+        },
+        "seller_fee_tiers": {
+          "default": "'[]'::jsonb",
+          "nullable": false,
+          "type": "jsonb"
+        },
+        "seller_fee_vat_rate": {
+          "default": null,
+          "nullable": true,
+          "type": "numeric(18,10)"
+        },
+        "shipping_rules": {
+          "default": "'{}'::jsonb",
+          "nullable": false,
+          "type": "jsonb"
+        },
+        "tax_rules": {
+          "default": "'{}'::jsonb",
+          "nullable": false,
+          "type": "jsonb"
+        },
+        "valid_from": {
+          "default": null,
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "valid_to": {
+          "default": null,
+          "nullable": true,
+          "type": "timestamp with time zone"
+        },
+        "verified_at": {
+          "default": null,
+          "nullable": true,
+          "type": "timestamp with time zone"
+        },
+        "version": {
+          "default": null,
+          "nullable": false,
+          "type": "integer"
+        }
+      },
+      "constraints": {
+        "platform_rules_buyer_fee_basis_check": "CHECK ((buyer_fee_basis = ANY (ARRAY['price'::text, 'price_and_shipping'::text])))",
+        "platform_rules_buyer_fee_basis_known": "CHECK ((buyer_fee_basis = ANY (ARRAY['price'::text, 'price_and_shipping'::text])))",
+        "platform_rules_buyer_fee_fixed_check": "CHECK (((buyer_fee_fixed IS NULL) OR (buyer_fee_fixed >= (0)::numeric)))",
+        "platform_rules_buyer_fee_max_check": "CHECK (((buyer_fee_max IS NULL) OR (buyer_fee_max >= (0)::numeric)))",
+        "platform_rules_buyer_fee_min_check": "CHECK (((buyer_fee_min IS NULL) OR (buyer_fee_min >= (0)::numeric)))",
+        "platform_rules_buyer_fee_rate_check": "CHECK (((buyer_fee_rate IS NULL) OR (buyer_fee_rate >= (0)::numeric)))",
+        "platform_rules_buyer_fee_tiers_check": "CHECK ((jsonb_typeof(buyer_fee_tiers) = 'array'::text))",
+        "platform_rules_buyer_fee_tiers_is_array": "CHECK ((jsonb_typeof(buyer_fee_tiers) = 'array'::text))",
+        "platform_rules_buyer_fee_vat_rate_check": "CHECK (((buyer_fee_vat_rate IS NULL) OR ((buyer_fee_vat_rate >= (0)::numeric) AND (buyer_fee_vat_rate <= (1)::numeric))))",
+        "platform_rules_buyer_fee_vat_rate_range": "CHECK (((buyer_fee_vat_rate IS NULL) OR ((buyer_fee_vat_rate >= (0)::numeric) AND (buyer_fee_vat_rate <= (1)::numeric))))",
+        "platform_rules_check": "CHECK (((valid_to IS NULL) OR (valid_to > valid_from)))",
+        "platform_rules_check1": "CHECK (((buyer_fee_min IS NULL) OR (buyer_fee_max IS NULL) OR (buyer_fee_min <= buyer_fee_max)))",
+        "platform_rules_check2": "CHECK (((seller_fee_min IS NULL) OR (seller_fee_max IS NULL) OR (seller_fee_min <= seller_fee_max)))",
+        "platform_rules_check3": "CHECK (((buyer_fee_fixed IS NULL) OR (buyer_fee_currency IS NOT NULL)))",
+        "platform_rules_check4": "CHECK (((seller_fee_fixed IS NULL) OR (seller_fee_currency IS NOT NULL)))",
+        "platform_rules_check5": "CHECK (((NOT access_authorized) OR (verified_at IS NOT NULL)))",
+        "platform_rules_created_by_user_id_fkey": "FOREIGN KEY (created_by_user_id) REFERENCES users(id)",
+        "platform_rules_payment_fee_rate_check": "CHECK (((payment_fee_rate IS NULL) OR ((payment_fee_rate >= (0)::numeric) AND (payment_fee_rate <= (1)::numeric))))",
+        "platform_rules_payment_fee_rate_range": "CHECK (((payment_fee_rate IS NULL) OR ((payment_fee_rate >= (0)::numeric) AND (payment_fee_rate <= (1)::numeric))))",
+        "platform_rules_pkey": "PRIMARY KEY (id)",
+        "platform_rules_platform_id_fkey": "FOREIGN KEY (platform_id) REFERENCES platforms(id)",
+        "platform_rules_platform_id_region_code_tstzrange_excl": "EXCLUDE USING gist (platform_id WITH =, region_code WITH =, tstzrange(valid_from, valid_to, '[)'::text) WITH &&)",
+        "platform_rules_platform_id_region_code_version_key": "UNIQUE (platform_id, region_code, version)",
+        "platform_rules_seller_fee_basis_check": "CHECK ((seller_fee_basis = ANY (ARRAY['price'::text, 'price_and_shipping'::text])))",
+        "platform_rules_seller_fee_basis_known": "CHECK ((seller_fee_basis = ANY (ARRAY['price'::text, 'price_and_shipping'::text])))",
+        "platform_rules_seller_fee_fixed_check": "CHECK (((seller_fee_fixed IS NULL) OR (seller_fee_fixed >= (0)::numeric)))",
+        "platform_rules_seller_fee_max_check": "CHECK (((seller_fee_max IS NULL) OR (seller_fee_max >= (0)::numeric)))",
+        "platform_rules_seller_fee_min_check": "CHECK (((seller_fee_min IS NULL) OR (seller_fee_min >= (0)::numeric)))",
+        "platform_rules_seller_fee_rate_check": "CHECK (((seller_fee_rate IS NULL) OR (seller_fee_rate >= (0)::numeric)))",
+        "platform_rules_seller_fee_tiers_check": "CHECK ((jsonb_typeof(seller_fee_tiers) = 'array'::text))",
+        "platform_rules_seller_fee_tiers_is_array": "CHECK ((jsonb_typeof(seller_fee_tiers) = 'array'::text))",
+        "platform_rules_seller_fee_vat_rate_check": "CHECK (((seller_fee_vat_rate IS NULL) OR ((seller_fee_vat_rate >= (0)::numeric) AND (seller_fee_vat_rate <= (1)::numeric))))",
+        "platform_rules_seller_fee_vat_rate_range": "CHECK (((seller_fee_vat_rate IS NULL) OR ((seller_fee_vat_rate >= (0)::numeric) AND (seller_fee_vat_rate <= (1)::numeric))))",
+        "platform_rules_version_check": "CHECK ((version > 0))"
+      },
+      "indexes": {
+        "platform_rules_pkey": "CREATE UNIQUE INDEX platform_rules_pkey ON public.platform_rules USING btree (id)",
+        "platform_rules_platform_id_region_code_tstzrange_excl": "CREATE INDEX platform_rules_platform_id_region_code_tstzrange_excl ON public.platform_rules USING gist (platform_id, region_code, tstzrange(valid_from, valid_to, '[)'::text))",
+        "platform_rules_platform_id_region_code_version_key": "CREATE UNIQUE INDEX platform_rules_platform_id_region_code_version_key ON public.platform_rules USING btree (platform_id, region_code, version)"
+      }
+    },
+    "platforms": {
+      "columns": {
+        "code": {
+          "default": null,
+          "nullable": false,
+          "type": "text"
+        },
+        "created_at": {
+          "default": "now()",
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "name": {
+          "default": null,
+          "nullable": false,
+          "type": "text"
+        }
+      },
+      "constraints": {
+        "platforms_code_key": "UNIQUE (code)",
+        "platforms_pkey": "PRIMARY KEY (id)"
+      },
+      "indexes": {
+        "platforms_code_key": "CREATE UNIQUE INDEX platforms_code_key ON public.platforms USING btree (code)",
+        "platforms_pkey": "CREATE UNIQUE INDEX platforms_pkey ON public.platforms USING btree (id)"
+      }
+    },
+    "portfolio_ledger_entries": {
+      "columns": {
+        "actor_user_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "amount_eur": {
+          "default": null,
+          "nullable": false,
+          "type": "numeric(16,2)"
+        },
+        "amount_source": {
+          "default": null,
+          "nullable": false,
+          "type": "numeric(16,2)"
+        },
+        "created_at": {
+          "default": "now()",
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "currency": {
+          "default": null,
+          "nullable": false,
+          "type": "character(3)"
+        },
+        "external_reference": {
+          "default": null,
+          "nullable": true,
+          "type": "text"
+        },
+        "fx_rate_at": {
+          "default": null,
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "fx_rate_id": {
+          "default": null,
+          "nullable": true,
+          "type": "uuid"
+        },
+        "fx_source": {
+          "default": null,
+          "nullable": false,
+          "type": "text"
+        },
+        "id": {
+          "default": "gen_random_uuid()",
+          "nullable": false,
+          "type": "uuid"
+        },
+        "kind": {
+          "default": null,
+          "nullable": false,
+          "type": "ledger_entry_kind"
+        },
+        "notes": {
+          "default": null,
+          "nullable": true,
+          "type": "text"
+        },
+        "occurred_at": {
+          "default": null,
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "opportunity_id": {
+          "default": null,
+          "nullable": true,
+          "type": "uuid"
+        },
+        "portfolio_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "rate_to_eur": {
+          "default": null,
+          "nullable": false,
+          "type": "numeric(24,12)"
+        }
+      },
+      "constraints": {
+        "ledger_opportunity_same_portfolio_fk": "FOREIGN KEY (portfolio_id, opportunity_id) REFERENCES opportunities(portfolio_id, id)",
+        "portfolio_ledger_entries_actor_user_id_fkey": "FOREIGN KEY (actor_user_id) REFERENCES users(id)",
+        "portfolio_ledger_entries_amount_eur_check": "CHECK ((amount_eur > (0)::numeric))",
+        "portfolio_ledger_entries_amount_source_check": "CHECK ((amount_source > (0)::numeric))",
+        "portfolio_ledger_entries_check": "CHECK ((amount_eur = round((amount_source * rate_to_eur), 2)))",
+        "portfolio_ledger_entries_check1": "CHECK (((currency <> 'EUR'::bpchar) OR (rate_to_eur = (1)::numeric)))",
+        "portfolio_ledger_entries_check2": "CHECK (((currency = 'EUR'::bpchar) OR (fx_rate_id IS NOT NULL)))",
+        "portfolio_ledger_entries_fx_rate_id_fkey": "FOREIGN KEY (fx_rate_id) REFERENCES fx_rates(id)",
+        "portfolio_ledger_entries_opportunity_id_fkey": "FOREIGN KEY (opportunity_id) REFERENCES opportunities(id)",
+        "portfolio_ledger_entries_pkey": "PRIMARY KEY (id)",
+        "portfolio_ledger_entries_portfolio_id_fkey": "FOREIGN KEY (portfolio_id) REFERENCES portfolios(id)",
+        "portfolio_ledger_entries_rate_to_eur_check": "CHECK ((rate_to_eur > (0)::numeric))"
+      },
+      "indexes": {
+        "ledger_portfolio_date_idx": "CREATE INDEX ledger_portfolio_date_idx ON public.portfolio_ledger_entries USING btree (portfolio_id, occurred_at DESC, id DESC)",
+        "portfolio_ledger_entries_pkey": "CREATE UNIQUE INDEX portfolio_ledger_entries_pkey ON public.portfolio_ledger_entries USING btree (id)"
+      }
+    },
+    "portfolio_members": {
+      "columns": {
+        "portfolio_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "role": {
+          "default": null,
+          "nullable": false,
+          "type": "text"
+        },
+        "user_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        }
+      },
+      "constraints": {
+        "portfolio_members_pkey": "PRIMARY KEY (portfolio_id, user_id)",
+        "portfolio_members_portfolio_id_fkey": "FOREIGN KEY (portfolio_id) REFERENCES portfolios(id)",
+        "portfolio_members_role_check": "CHECK ((role = ANY (ARRAY['owner'::text, 'editor'::text, 'viewer'::text])))",
+        "portfolio_members_user_id_fkey": "FOREIGN KEY (user_id) REFERENCES users(id)"
+      },
+      "indexes": {
+        "portfolio_members_pkey": "CREATE UNIQUE INDEX portfolio_members_pkey ON public.portfolio_members USING btree (portfolio_id, user_id)"
+      }
+    },
+    "portfolios": {
+      "columns": {
+        "base_currency": {
+          "default": "'EUR'::bpchar",
+          "nullable": false,
+          "type": "character(3)"
+        },
+        "created_at": {
+          "default": "now()",
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "id": {
+          "default": "gen_random_uuid()",
+          "nullable": false,
+          "type": "uuid"
+        },
+        "name": {
+          "default": null,
+          "nullable": false,
+          "type": "text"
+        }
+      },
+      "constraints": {
+        "portfolios_base_currency_check": "CHECK (((base_currency)::text = upper((base_currency)::text)))",
+        "portfolios_pkey": "PRIMARY KEY (id)"
+      },
+      "indexes": {
+        "portfolios_pkey": "CREATE UNIQUE INDEX portfolios_pkey ON public.portfolios USING btree (id)"
+      }
+    },
+    "purchases": {
+      "columns": {
+        "amount_eur": {
+          "default": null,
+          "nullable": false,
+          "type": "numeric(16,2)"
+        },
+        "amount_source": {
+          "default": null,
+          "nullable": false,
+          "type": "numeric(16,2)"
+        },
+        "created_at": {
+          "default": "now()",
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "created_by_user_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "currency": {
+          "default": null,
+          "nullable": false,
+          "type": "character(3)"
+        },
+        "fx_rate_at": {
+          "default": null,
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "fx_rate_id": {
+          "default": null,
+          "nullable": true,
+          "type": "uuid"
+        },
+        "fx_source": {
+          "default": null,
+          "nullable": false,
+          "type": "text"
+        },
+        "id": {
+          "default": "gen_random_uuid()",
+          "nullable": false,
+          "type": "uuid"
+        },
+        "opportunity_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "payment_status": {
+          "default": "'paid'::text",
+          "nullable": false,
+          "type": "text"
+        },
+        "portfolio_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "purchased_at": {
+          "default": null,
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "rate_to_eur": {
+          "default": null,
+          "nullable": false,
+          "type": "numeric(24,12)"
+        }
+      },
+      "constraints": {
+        "purchases_amount_eur_check": "CHECK ((amount_eur >= (0)::numeric))",
+        "purchases_amount_source_check": "CHECK ((amount_source >= (0)::numeric))",
+        "purchases_check": "CHECK ((amount_eur = round((amount_source * rate_to_eur), 2)))",
+        "purchases_check1": "CHECK (((currency <> 'EUR'::bpchar) OR (rate_to_eur = (1)::numeric)))",
+        "purchases_check2": "CHECK (((currency = 'EUR'::bpchar) OR (fx_rate_id IS NOT NULL)))",
+        "purchases_created_by_user_id_fkey": "FOREIGN KEY (created_by_user_id) REFERENCES users(id)",
+        "purchases_fx_rate_id_fkey": "FOREIGN KEY (fx_rate_id) REFERENCES fx_rates(id)",
+        "purchases_opportunity_id_fkey": "FOREIGN KEY (opportunity_id) REFERENCES opportunities(id)",
+        "purchases_opportunity_id_key": "UNIQUE (opportunity_id)",
+        "purchases_opportunity_same_portfolio_fk": "FOREIGN KEY (portfolio_id, opportunity_id) REFERENCES opportunities(portfolio_id, id)",
+        "purchases_pkey": "PRIMARY KEY (id)",
+        "purchases_portfolio_id_fkey": "FOREIGN KEY (portfolio_id) REFERENCES portfolios(id)",
+        "purchases_rate_to_eur_check": "CHECK ((rate_to_eur > (0)::numeric))"
+      },
+      "indexes": {
+        "purchases_opportunity_id_key": "CREATE UNIQUE INDEX purchases_opportunity_id_key ON public.purchases USING btree (opportunity_id)",
+        "purchases_pkey": "CREATE UNIQUE INDEX purchases_pkey ON public.purchases USING btree (id)"
+      }
+    },
+    "reference_confirmations": {
+      "columns": {
+        "actor_user_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "id": {
+          "default": "gen_random_uuid()",
+          "nullable": false,
+          "type": "uuid"
+        },
+        "identification_confidence": {
+          "default": null,
+          "nullable": true,
+          "type": "numeric(7,4)"
+        },
+        "occurred_at": {
+          "default": "now()",
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "opportunity_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "portfolio_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "reason": {
+          "default": null,
+          "nullable": false,
+          "type": "text"
+        },
+        "reference_id": {
+          "default": null,
+          "nullable": true,
+          "type": "uuid"
+        },
+        "status": {
+          "default": null,
+          "nullable": false,
+          "type": "reference_confirmation_status"
+        },
+        "watch_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        }
+      },
+      "constraints": {
+        "confirmations_opportunity_same_portfolio_fk": "FOREIGN KEY (portfolio_id, opportunity_id) REFERENCES opportunities(portfolio_id, id)",
+        "confirmations_opportunity_watch_match_fk": "FOREIGN KEY (portfolio_id, opportunity_id, watch_id) REFERENCES opportunities(portfolio_id, id, watch_id)",
+        "reference_confirmations_actor_user_id_fkey": "FOREIGN KEY (actor_user_id) REFERENCES users(id)",
+        "reference_confirmations_check": "CHECK ((((status = ANY (ARRAY['confirmed'::reference_confirmation_status, 'corrected'::reference_confirmation_status])) AND (reference_id IS NOT NULL)) OR (status <> ALL (ARRAY['confirmed'::reference_confirmation_status, 'corrected'::reference_confirmation_status]))))",
+        "reference_confirmations_identification_confidence_check": "CHECK (((identification_confidence >= (0)::numeric) AND (identification_confidence <= (100)::numeric)))",
+        "reference_confirmations_opportunity_id_fkey": "FOREIGN KEY (opportunity_id) REFERENCES opportunities(id)",
+        "reference_confirmations_pkey": "PRIMARY KEY (id)",
+        "reference_confirmations_portfolio_id_fkey": "FOREIGN KEY (portfolio_id) REFERENCES portfolios(id)",
+        "reference_confirmations_reason_check": "CHECK ((length(TRIM(BOTH FROM reason)) > 0))",
+        "reference_confirmations_reference_id_fkey": "FOREIGN KEY (reference_id) REFERENCES watch_references(id)",
+        "reference_confirmations_watch_id_fkey": "FOREIGN KEY (watch_id) REFERENCES watches(id)"
+      },
+      "indexes": {
+        "reference_confirmations_pkey": "CREATE UNIQUE INDEX reference_confirmations_pkey ON public.reference_confirmations USING btree (id)"
+      }
+    },
+    "rulesets": {
+      "columns": {
+        "checksum_sha256": {
+          "default": null,
+          "nullable": false,
+          "type": "text"
+        },
+        "config": {
+          "default": null,
+          "nullable": false,
+          "type": "jsonb"
+        },
+        "created_at": {
+          "default": "now()",
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "created_by_user_id": {
+          "default": null,
+          "nullable": true,
+          "type": "uuid"
+        },
+        "id": {
+          "default": "gen_random_uuid()",
+          "nullable": false,
+          "type": "uuid"
+        },
+        "valid_from": {
+          "default": null,
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "version": {
+          "default": null,
+          "nullable": false,
+          "type": "text"
+        }
+      },
+      "constraints": {
+        "rulesets_checksum_sha256_check": "CHECK ((checksum_sha256 ~ '^[0-9a-f]{64}$'::text))",
+        "rulesets_checksum_sha256_key": "UNIQUE (checksum_sha256)",
+        "rulesets_created_by_user_id_fkey": "FOREIGN KEY (created_by_user_id) REFERENCES users(id)",
+        "rulesets_pkey": "PRIMARY KEY (id)",
+        "rulesets_version_key": "UNIQUE (version)"
+      },
+      "indexes": {
+        "rulesets_checksum_sha256_key": "CREATE UNIQUE INDEX rulesets_checksum_sha256_key ON public.rulesets USING btree (checksum_sha256)",
+        "rulesets_pkey": "CREATE UNIQUE INDEX rulesets_pkey ON public.rulesets USING btree (id)",
+        "rulesets_version_key": "CREATE UNIQUE INDEX rulesets_version_key ON public.rulesets USING btree (version)"
+      }
+    },
+    "sale_listings": {
+      "columns": {
+        "asking_amount_eur": {
+          "default": null,
+          "nullable": false,
+          "type": "numeric(16,2)"
+        },
+        "asking_amount_source": {
+          "default": null,
+          "nullable": false,
+          "type": "numeric(16,2)"
+        },
+        "created_at": {
+          "default": "now()",
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "created_by_user_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "currency": {
+          "default": null,
+          "nullable": false,
+          "type": "character(3)"
+        },
+        "ended_at": {
+          "default": null,
+          "nullable": true,
+          "type": "timestamp with time zone"
+        },
+        "external_url": {
+          "default": null,
+          "nullable": true,
+          "type": "text"
+        },
+        "fx_rate_at": {
+          "default": null,
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "fx_rate_id": {
+          "default": null,
+          "nullable": true,
+          "type": "uuid"
+        },
+        "fx_source": {
+          "default": null,
+          "nullable": false,
+          "type": "text"
+        },
+        "id": {
+          "default": "gen_random_uuid()",
+          "nullable": false,
+          "type": "uuid"
+        },
+        "listed_at": {
+          "default": null,
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "opportunity_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "platform_id": {
+          "default": null,
+          "nullable": true,
+          "type": "uuid"
+        },
+        "portfolio_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "rate_to_eur": {
+          "default": null,
+          "nullable": false,
+          "type": "numeric(24,12)"
+        },
+        "status": {
+          "default": "'active'::listing_status",
+          "nullable": false,
+          "type": "listing_status"
+        }
+      },
+      "constraints": {
+        "sale_listings_asking_amount_eur_check": "CHECK ((asking_amount_eur >= (0)::numeric))",
+        "sale_listings_asking_amount_source_check": "CHECK ((asking_amount_source >= (0)::numeric))",
+        "sale_listings_check": "CHECK (((ended_at IS NULL) OR (ended_at >= listed_at)))",
+        "sale_listings_check1": "CHECK ((asking_amount_eur = round((asking_amount_source * rate_to_eur), 2)))",
+        "sale_listings_check2": "CHECK (((currency <> 'EUR'::bpchar) OR (rate_to_eur = (1)::numeric)))",
+        "sale_listings_check3": "CHECK (((currency = 'EUR'::bpchar) OR (fx_rate_id IS NOT NULL)))",
+        "sale_listings_created_by_user_id_fkey": "FOREIGN KEY (created_by_user_id) REFERENCES users(id)",
+        "sale_listings_fx_rate_id_fkey": "FOREIGN KEY (fx_rate_id) REFERENCES fx_rates(id)",
+        "sale_listings_opportunity_id_fkey": "FOREIGN KEY (opportunity_id) REFERENCES opportunities(id)",
+        "sale_listings_opportunity_same_portfolio_fk": "FOREIGN KEY (portfolio_id, opportunity_id) REFERENCES opportunities(portfolio_id, id)",
+        "sale_listings_pkey": "PRIMARY KEY (id)",
+        "sale_listings_platform_id_fkey": "FOREIGN KEY (platform_id) REFERENCES platforms(id)",
+        "sale_listings_portfolio_id_fkey": "FOREIGN KEY (portfolio_id) REFERENCES portfolios(id)",
+        "sale_listings_rate_to_eur_check": "CHECK ((rate_to_eur > (0)::numeric))"
+      },
+      "indexes": {
+        "sale_listings_pkey": "CREATE UNIQUE INDEX sale_listings_pkey ON public.sale_listings USING btree (id)",
+        "sale_listings_portfolio_identity_uq": "CREATE UNIQUE INDEX sale_listings_portfolio_identity_uq ON public.sale_listings USING btree (portfolio_id, id)"
+      }
+    },
+    "sales": {
+      "columns": {
+        "buyer_reference": {
+          "default": null,
+          "nullable": true,
+          "type": "text"
+        },
+        "created_at": {
+          "default": "now()",
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "created_by_user_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "currency": {
+          "default": null,
+          "nullable": false,
+          "type": "character(3)"
+        },
+        "fx_rate_at": {
+          "default": null,
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "fx_rate_id": {
+          "default": null,
+          "nullable": true,
+          "type": "uuid"
+        },
+        "fx_source": {
+          "default": null,
+          "nullable": false,
+          "type": "text"
+        },
+        "id": {
+          "default": "gen_random_uuid()",
+          "nullable": false,
+          "type": "uuid"
+        },
+        "opportunity_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "payout_received_at": {
+          "default": null,
+          "nullable": true,
+          "type": "timestamp with time zone"
+        },
+        "portfolio_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "rate_to_eur": {
+          "default": null,
+          "nullable": false,
+          "type": "numeric(24,12)"
+        },
+        "realized_amount_eur": {
+          "default": null,
+          "nullable": false,
+          "type": "numeric(16,2)"
+        },
+        "realized_amount_source": {
+          "default": null,
+          "nullable": false,
+          "type": "numeric(16,2)"
+        },
+        "sale_listing_id": {
+          "default": null,
+          "nullable": true,
+          "type": "uuid"
+        },
+        "sold_at": {
+          "default": null,
+          "nullable": false,
+          "type": "timestamp with time zone"
+        }
+      },
+      "constraints": {
+        "sales_check": "CHECK (((payout_received_at IS NULL) OR (payout_received_at >= sold_at)))",
+        "sales_check1": "CHECK ((realized_amount_eur = round((realized_amount_source * rate_to_eur), 2)))",
+        "sales_check2": "CHECK (((currency <> 'EUR'::bpchar) OR (rate_to_eur = (1)::numeric)))",
+        "sales_check3": "CHECK (((currency = 'EUR'::bpchar) OR (fx_rate_id IS NOT NULL)))",
+        "sales_created_by_user_id_fkey": "FOREIGN KEY (created_by_user_id) REFERENCES users(id)",
+        "sales_fx_rate_id_fkey": "FOREIGN KEY (fx_rate_id) REFERENCES fx_rates(id)",
+        "sales_listing_same_portfolio_fk": "FOREIGN KEY (portfolio_id, sale_listing_id) REFERENCES sale_listings(portfolio_id, id)",
+        "sales_opportunity_id_fkey": "FOREIGN KEY (opportunity_id) REFERENCES opportunities(id)",
+        "sales_opportunity_id_key": "UNIQUE (opportunity_id)",
+        "sales_opportunity_same_portfolio_fk": "FOREIGN KEY (portfolio_id, opportunity_id) REFERENCES opportunities(portfolio_id, id)",
+        "sales_pkey": "PRIMARY KEY (id)",
+        "sales_portfolio_id_fkey": "FOREIGN KEY (portfolio_id) REFERENCES portfolios(id)",
+        "sales_rate_to_eur_check": "CHECK ((rate_to_eur > (0)::numeric))",
+        "sales_realized_amount_eur_check": "CHECK ((realized_amount_eur >= (0)::numeric))",
+        "sales_realized_amount_source_check": "CHECK ((realized_amount_source >= (0)::numeric))",
+        "sales_sale_listing_id_fkey": "FOREIGN KEY (sale_listing_id) REFERENCES sale_listings(id)"
+      },
+      "indexes": {
+        "sales_opportunity_id_key": "CREATE UNIQUE INDEX sales_opportunity_id_key ON public.sales USING btree (opportunity_id)",
+        "sales_pkey": "CREATE UNIQUE INDEX sales_pkey ON public.sales USING btree (id)"
+      }
+    },
+    "sellers": {
+      "columns": {
+        "country_code": {
+          "default": null,
+          "nullable": true,
+          "type": "character(2)"
+        },
+        "created_at": {
+          "default": "now()",
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "external_id": {
+          "default": null,
+          "nullable": true,
+          "type": "text"
+        },
+        "id": {
+          "default": "gen_random_uuid()",
+          "nullable": false,
+          "type": "uuid"
+        },
+        "platform_id": {
+          "default": null,
+          "nullable": true,
+          "type": "uuid"
+        },
+        "portfolio_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "reliability_data": {
+          "default": "'{}'::jsonb",
+          "nullable": false,
+          "type": "jsonb"
+        },
+        "seller_type": {
+          "default": null,
+          "nullable": true,
+          "type": "text"
+        }
+      },
+      "constraints": {
+        "sellers_pkey": "PRIMARY KEY (id)",
+        "sellers_platform_id_fkey": "FOREIGN KEY (platform_id) REFERENCES platforms(id)",
+        "sellers_portfolio_id_fkey": "FOREIGN KEY (portfolio_id) REFERENCES portfolios(id)"
+      },
+      "indexes": {
+        "sellers_external_identity_uq": "CREATE UNIQUE INDEX sellers_external_identity_uq ON public.sellers USING btree (portfolio_id, platform_id, external_id) WHERE (external_id IS NOT NULL)",
+        "sellers_pkey": "CREATE UNIQUE INDEX sellers_pkey ON public.sellers USING btree (id)",
+        "sellers_portfolio_identity_uq": "CREATE UNIQUE INDEX sellers_portfolio_identity_uq ON public.sellers USING btree (portfolio_id, id)"
+      }
+    },
+    "strategies": {
+      "columns": {
+        "created_at": {
+          "default": "now()",
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "created_by_user_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "id": {
+          "default": "gen_random_uuid()",
+          "nullable": false,
+          "type": "uuid"
+        },
+        "name": {
+          "default": null,
+          "nullable": false,
+          "type": "text"
+        },
+        "portfolio_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        }
+      },
+      "constraints": {
+        "strategies_created_by_user_id_fkey": "FOREIGN KEY (created_by_user_id) REFERENCES users(id)",
+        "strategies_pkey": "PRIMARY KEY (id)",
+        "strategies_portfolio_id_fkey": "FOREIGN KEY (portfolio_id) REFERENCES portfolios(id)",
+        "strategies_portfolio_id_name_key": "UNIQUE (portfolio_id, name)"
+      },
+      "indexes": {
+        "strategies_pkey": "CREATE UNIQUE INDEX strategies_pkey ON public.strategies USING btree (id)",
+        "strategies_portfolio_id_name_key": "CREATE UNIQUE INDEX strategies_portfolio_id_name_key ON public.strategies USING btree (portfolio_id, name)",
+        "strategies_portfolio_identity_uq": "CREATE UNIQUE INDEX strategies_portfolio_identity_uq ON public.strategies USING btree (portfolio_id, id)"
+      }
+    },
+    "strategy_versions": {
+      "columns": {
+        "created_at": {
+          "default": "now()",
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "created_by_user_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "id": {
+          "default": "gen_random_uuid()",
+          "nullable": false,
+          "type": "uuid"
+        },
+        "maximum_allocation_rate": {
+          "default": "0.50",
+          "nullable": false,
+          "type": "numeric(18,10)"
+        },
+        "minimum_profit_eur": {
+          "default": "200",
+          "nullable": false,
+          "type": "numeric(16,2)"
+        },
+        "minimum_roi": {
+          "default": "0.10",
+          "nullable": false,
+          "type": "numeric(18,10)"
+        },
+        "negotiation_buffer": {
+          "default": "0.08",
+          "nullable": false,
+          "type": "numeric(18,10)"
+        },
+        "portfolio_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "ruleset_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "settings": {
+          "default": "'{}'::jsonb",
+          "nullable": false,
+          "type": "jsonb"
+        },
+        "strategy_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "valid_from": {
+          "default": null,
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "version": {
+          "default": null,
+          "nullable": false,
+          "type": "integer"
+        }
+      },
+      "constraints": {
+        "strategy_versions_created_by_user_id_fkey": "FOREIGN KEY (created_by_user_id) REFERENCES users(id)",
+        "strategy_versions_maximum_allocation_rate_check": "CHECK (((maximum_allocation_rate > (0)::numeric) AND (maximum_allocation_rate <= (1)::numeric)))",
+        "strategy_versions_minimum_profit_eur_check": "CHECK ((minimum_profit_eur >= (0)::numeric))",
+        "strategy_versions_minimum_roi_check": "CHECK ((minimum_roi >= (0)::numeric))",
+        "strategy_versions_negotiation_buffer_check": "CHECK ((negotiation_buffer >= (0)::numeric))",
+        "strategy_versions_pkey": "PRIMARY KEY (id)",
+        "strategy_versions_portfolio_id_fkey": "FOREIGN KEY (portfolio_id) REFERENCES portfolios(id)",
+        "strategy_versions_ruleset_id_fkey": "FOREIGN KEY (ruleset_id) REFERENCES rulesets(id)",
+        "strategy_versions_strategy_id_fkey": "FOREIGN KEY (strategy_id) REFERENCES strategies(id)",
+        "strategy_versions_strategy_id_version_key": "UNIQUE (strategy_id, version)",
+        "strategy_versions_strategy_same_portfolio_fk": "FOREIGN KEY (portfolio_id, strategy_id) REFERENCES strategies(portfolio_id, id)",
+        "strategy_versions_version_check": "CHECK ((version > 0))"
+      },
+      "indexes": {
+        "strategy_versions_pkey": "CREATE UNIQUE INDEX strategy_versions_pkey ON public.strategy_versions USING btree (id)",
+        "strategy_versions_portfolio_identity_uq": "CREATE UNIQUE INDEX strategy_versions_portfolio_identity_uq ON public.strategy_versions USING btree (portfolio_id, id)",
+        "strategy_versions_strategy_id_version_key": "CREATE UNIQUE INDEX strategy_versions_strategy_id_version_key ON public.strategy_versions USING btree (strategy_id, version)"
+      }
+    },
+    "telemetry_events": {
+      "columns": {
+        "allowed_properties": {
+          "default": "'{}'::jsonb",
+          "nullable": false,
+          "type": "jsonb"
+        },
+        "event_name": {
+          "default": null,
+          "nullable": false,
+          "type": "text"
+        },
+        "id": {
+          "default": "gen_random_uuid()",
+          "nullable": false,
+          "type": "uuid"
+        },
+        "occurred_at": {
+          "default": "now()",
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "opportunity_id": {
+          "default": null,
+          "nullable": true,
+          "type": "uuid"
+        },
+        "portfolio_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "user_id": {
+          "default": null,
+          "nullable": true,
+          "type": "uuid"
+        }
+      },
+      "constraints": {
+        "telemetry_events_opportunity_id_fkey": "FOREIGN KEY (opportunity_id) REFERENCES opportunities(id)",
+        "telemetry_events_pkey": "PRIMARY KEY (id)",
+        "telemetry_events_portfolio_id_fkey": "FOREIGN KEY (portfolio_id) REFERENCES portfolios(id)",
+        "telemetry_events_user_id_fkey": "FOREIGN KEY (user_id) REFERENCES users(id)",
+        "telemetry_opportunity_same_portfolio_fk": "FOREIGN KEY (portfolio_id, opportunity_id) REFERENCES opportunities(portfolio_id, id)"
+      },
+      "indexes": {
+        "telemetry_events_pkey": "CREATE UNIQUE INDEX telemetry_events_pkey ON public.telemetry_events USING btree (id)"
+      }
+    },
+    "user_sessions": {
+      "columns": {
+        "expires_at": {
+          "default": null,
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "id": {
+          "default": "gen_random_uuid()",
+          "nullable": false,
+          "type": "uuid"
+        },
+        "issued_at": {
+          "default": "now()",
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "last_seen_at": {
+          "default": "now()",
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "revoked_at": {
+          "default": null,
+          "nullable": true,
+          "type": "timestamp with time zone"
+        },
+        "token_fingerprint": {
+          "default": null,
+          "nullable": false,
+          "type": "text"
+        },
+        "user_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        }
+      },
+      "constraints": {
+        "user_sessions_check": "CHECK ((expires_at > issued_at))",
+        "user_sessions_check1": "CHECK (((revoked_at IS NULL) OR (revoked_at >= issued_at)))",
+        "user_sessions_pkey": "PRIMARY KEY (id)",
+        "user_sessions_token_fingerprint_key": "UNIQUE (token_fingerprint)",
+        "user_sessions_user_id_fkey": "FOREIGN KEY (user_id) REFERENCES users(id)"
+      },
+      "indexes": {
+        "user_sessions_pkey": "CREATE UNIQUE INDEX user_sessions_pkey ON public.user_sessions USING btree (id)",
+        "user_sessions_token_fingerprint_key": "CREATE UNIQUE INDEX user_sessions_token_fingerprint_key ON public.user_sessions USING btree (token_fingerprint)",
+        "user_sessions_user_idx": "CREATE INDEX user_sessions_user_idx ON public.user_sessions USING btree (user_id)"
+      }
+    },
+    "users": {
+      "columns": {
+        "created_at": {
+          "default": "now()",
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "email": {
+          "default": null,
+          "nullable": false,
+          "type": "text"
+        },
+        "id": {
+          "default": "gen_random_uuid()",
+          "nullable": false,
+          "type": "uuid"
+        },
+        "password_hash": {
+          "default": null,
+          "nullable": true,
+          "type": "text"
+        }
+      },
+      "constraints": {
+        "users_email_key": "UNIQUE (email)",
+        "users_pkey": "PRIMARY KEY (id)"
+      },
+      "indexes": {
+        "users_email_key": "CREATE UNIQUE INDEX users_email_key ON public.users USING btree (email)",
+        "users_pkey": "CREATE UNIQUE INDEX users_pkey ON public.users USING btree (id)"
+      }
+    },
+    "valuation_comparables": {
+      "columns": {
+        "adjusted_price_eur": {
+          "default": null,
+          "nullable": false,
+          "type": "numeric(16,2)"
+        },
+        "amount_eur_snapshot": {
+          "default": null,
+          "nullable": false,
+          "type": "numeric(16,2)"
+        },
+        "anomaly_flag": {
+          "default": "false",
+          "nullable": false,
+          "type": "boolean"
+        },
+        "buyer_total_price_eur": {
+          "default": null,
+          "nullable": false,
+          "type": "numeric(16,2)"
+        },
+        "comparable_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "comparable_set_premium": {
+          "default": null,
+          "nullable": false,
+          "type": "numeric(18,10)"
+        },
+        "completeness_factor": {
+          "default": null,
+          "nullable": false,
+          "type": "numeric(18,12)"
+        },
+        "condition_factor": {
+          "default": null,
+          "nullable": false,
+          "type": "numeric(18,12)"
+        },
+        "excluded": {
+          "default": "false",
+          "nullable": false,
+          "type": "boolean"
+        },
+        "exclusion_reason": {
+          "default": null,
+          "nullable": true,
+          "type": "text"
+        },
+        "final_weight": {
+          "default": null,
+          "nullable": false,
+          "type": "numeric(24,16)"
+        },
+        "recency_factor": {
+          "default": null,
+          "nullable": false,
+          "type": "numeric(18,12)"
+        },
+        "reference_factor": {
+          "default": null,
+          "nullable": false,
+          "type": "numeric(18,12)"
+        },
+        "seller_independence_factor": {
+          "default": null,
+          "nullable": false,
+          "type": "numeric(18,12)"
+        },
+        "source_amount_snapshot": {
+          "default": null,
+          "nullable": false,
+          "type": "numeric(16,2)"
+        },
+        "source_currency_snapshot": {
+          "default": null,
+          "nullable": false,
+          "type": "character(3)"
+        },
+        "source_reliability_factor": {
+          "default": null,
+          "nullable": false,
+          "type": "numeric(18,12)"
+        },
+        "target_set_premium": {
+          "default": null,
+          "nullable": false,
+          "type": "numeric(18,10)"
+        },
+        "trace": {
+          "default": "'{}'::jsonb",
+          "nullable": false,
+          "type": "jsonb"
+        },
+        "valuation_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        }
+      },
+      "constraints": {
+        "valuation_comparables_check": "CHECK (((NOT excluded) OR (exclusion_reason IS NOT NULL)))",
+        "valuation_comparables_comparable_id_fkey": "FOREIGN KEY (comparable_id) REFERENCES comparables(id)",
+        "valuation_comparables_completeness_factor_check": "CHECK (((completeness_factor >= (0)::numeric) AND (completeness_factor <= (1)::numeric)))",
+        "valuation_comparables_condition_factor_check": "CHECK (((condition_factor >= (0)::numeric) AND (condition_factor <= (1)::numeric)))",
+        "valuation_comparables_final_weight_check": "CHECK ((final_weight >= (0)::numeric))",
+        "valuation_comparables_pkey": "PRIMARY KEY (valuation_id, comparable_id)",
+        "valuation_comparables_recency_factor_check": "CHECK (((recency_factor >= (0)::numeric) AND (recency_factor <= (1)::numeric)))",
+        "valuation_comparables_reference_factor_check": "CHECK (((reference_factor >= (0)::numeric) AND (reference_factor <= (1)::numeric)))",
+        "valuation_comparables_seller_independence_factor_check": "CHECK (((seller_independence_factor >= (0)::numeric) AND (seller_independence_factor <= (1)::numeric)))",
+        "valuation_comparables_source_reliability_factor_check": "CHECK (((source_reliability_factor >= (0)::numeric) AND (source_reliability_factor <= (1)::numeric)))",
+        "valuation_comparables_valuation_id_fkey": "FOREIGN KEY (valuation_id) REFERENCES market_valuations(id)"
+      },
+      "indexes": {
+        "valuation_comparables_pkey": "CREATE UNIQUE INDEX valuation_comparables_pkey ON public.valuation_comparables USING btree (valuation_id, comparable_id)"
+      }
+    },
+    "watch_references": {
+      "columns": {
+        "attributes": {
+          "default": "'{}'::jsonb",
+          "nullable": false,
+          "type": "jsonb"
+        },
+        "brand": {
+          "default": null,
+          "nullable": false,
+          "type": "text"
+        },
+        "created_at": {
+          "default": "now()",
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "id": {
+          "default": "gen_random_uuid()",
+          "nullable": false,
+          "type": "uuid"
+        },
+        "model": {
+          "default": null,
+          "nullable": true,
+          "type": "text"
+        },
+        "reference": {
+          "default": null,
+          "nullable": false,
+          "type": "text"
+        }
+      },
+      "constraints": {
+        "watch_references_brand_reference_key": "UNIQUE (brand, reference)",
+        "watch_references_pkey": "PRIMARY KEY (id)"
+      },
+      "indexes": {
+        "watch_references_brand_reference_key": "CREATE UNIQUE INDEX watch_references_brand_reference_key ON public.watch_references USING btree (brand, reference)",
+        "watch_references_pkey": "CREATE UNIQUE INDEX watch_references_pkey ON public.watch_references USING btree (id)"
+      }
+    },
+    "watches": {
+      "columns": {
+        "completeness_data": {
+          "default": "'{}'::jsonb",
+          "nullable": false,
+          "type": "jsonb"
+        },
+        "condition_data": {
+          "default": "'{}'::jsonb",
+          "nullable": false,
+          "type": "jsonb"
+        },
+        "created_at": {
+          "default": "now()",
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "id": {
+          "default": "gen_random_uuid()",
+          "nullable": false,
+          "type": "uuid"
+        },
+        "identification_confidence": {
+          "default": null,
+          "nullable": true,
+          "type": "numeric(7,4)"
+        },
+        "raw_input": {
+          "default": "'{}'::jsonb",
+          "nullable": false,
+          "type": "jsonb"
+        },
+        "reference_confirmed_at": {
+          "default": null,
+          "nullable": true,
+          "type": "timestamp with time zone"
+        },
+        "reference_confirmed_by_user_id": {
+          "default": null,
+          "nullable": true,
+          "type": "uuid"
+        },
+        "reference_id": {
+          "default": null,
+          "nullable": true,
+          "type": "uuid"
+        },
+        "reference_status": {
+          "default": "'unconfirmed'::reference_confirmation_status",
+          "nullable": false,
+          "type": "reference_confirmation_status"
+        },
+        "serial_number_encrypted": {
+          "default": null,
+          "nullable": true,
+          "type": "bytea"
+        }
+      },
+      "constraints": {
+        "watches_check": "CHECK ((((reference_status = ANY (ARRAY['confirmed'::reference_confirmation_status, 'corrected'::reference_confirmation_status])) AND (reference_id IS NOT NULL) AND (reference_confirmed_by_user_id IS NOT NULL) AND (reference_confirmed_at IS NOT NULL)) OR (reference_status <> ALL (ARRAY['confirmed'::reference_confirmation_status, 'corrected'::reference_confirmation_status]))))",
+        "watches_identification_confidence_check": "CHECK (((identification_confidence >= (0)::numeric) AND (identification_confidence <= (100)::numeric)))",
+        "watches_pkey": "PRIMARY KEY (id)",
+        "watches_reference_confirmed_by_user_id_fkey": "FOREIGN KEY (reference_confirmed_by_user_id) REFERENCES users(id)",
+        "watches_reference_id_fkey": "FOREIGN KEY (reference_id) REFERENCES watch_references(id)"
+      },
+      "indexes": {
+        "watches_pkey": "CREATE UNIQUE INDEX watches_pkey ON public.watches USING btree (id)"
+      }
+    }
+  },
+  "triggers": {
+    "analyses": {
+      "analyses_published_immutable": "CREATE TRIGGER analyses_published_immutable BEFORE DELETE OR UPDATE ON public.analyses FOR EACH ROW EXECUTE FUNCTION reject_published_analysis_mutation()"
+    },
+    "audit_events": {
+      "audit_events_append_only": "CREATE TRIGGER audit_events_append_only BEFORE DELETE OR UPDATE ON public.audit_events FOR EACH ROW EXECUTE FUNCTION reject_all_mutations()"
+    },
+    "collection_jobs": {
+      "collection_jobs_authorized": "CREATE TRIGGER collection_jobs_authorized BEFORE INSERT ON public.collection_jobs FOR EACH ROW EXECUTE FUNCTION enforce_authorized_collection_job()"
+    },
+    "comparable_overrides": {
+      "comparable_overrides_append_only": "CREATE TRIGGER comparable_overrides_append_only BEFORE DELETE OR UPDATE ON public.comparable_overrides FOR EACH ROW EXECUTE FUNCTION reject_all_mutations()"
+    },
+    "comparables": {
+      "comparables_append_only": "CREATE TRIGGER comparables_append_only BEFORE DELETE OR UPDATE ON public.comparables FOR EACH ROW EXECUTE FUNCTION reject_all_mutations()"
+    },
+    "listing_observation_prices": {
+      "listing_observation_prices_append_only": "CREATE TRIGGER listing_observation_prices_append_only BEFORE DELETE OR UPDATE ON public.listing_observation_prices FOR EACH ROW EXECUTE FUNCTION reject_all_mutations()"
+    },
+    "listing_observations": {
+      "listing_observations_append_only": "CREATE TRIGGER listing_observations_append_only BEFORE DELETE OR UPDATE ON public.listing_observations FOR EACH ROW EXECUTE FUNCTION reject_all_mutations()"
+    },
+    "market_valuations": {
+      "market_valuations_append_only": "CREATE TRIGGER market_valuations_append_only BEFORE DELETE OR UPDATE ON public.market_valuations FOR EACH ROW EXECUTE FUNCTION reject_all_mutations()"
+    },
+    "opportunities": {
+      "opportunities_touch": "CREATE TRIGGER opportunities_touch BEFORE UPDATE ON public.opportunities FOR EACH ROW EXECUTE FUNCTION touch_opportunity()"
+    },
+    "opportunity_events": {
+      "opportunity_events_append_only": "CREATE TRIGGER opportunity_events_append_only BEFORE DELETE OR UPDATE ON public.opportunity_events FOR EACH ROW EXECUTE FUNCTION reject_all_mutations()"
+    },
+    "opportunity_price_inputs": {
+      "opportunity_price_inputs_append_only": "CREATE TRIGGER opportunity_price_inputs_append_only BEFORE DELETE OR UPDATE ON public.opportunity_price_inputs FOR EACH ROW EXECUTE FUNCTION reject_all_mutations()"
+    },
+    "platform_rules": {
+      "platform_rules_close_only": "CREATE TRIGGER platform_rules_close_only BEFORE DELETE OR UPDATE ON public.platform_rules FOR EACH ROW EXECUTE FUNCTION allow_platform_rule_close_only()"
+    },
+    "portfolio_ledger_entries": {
+      "portfolio_ledger_entries_append_only": "CREATE TRIGGER portfolio_ledger_entries_append_only BEFORE DELETE OR UPDATE ON public.portfolio_ledger_entries FOR EACH ROW EXECUTE FUNCTION reject_all_mutations()"
+    },
+    "reference_confirmations": {
+      "reference_confirmations_append_only": "CREATE TRIGGER reference_confirmations_append_only BEFORE DELETE OR UPDATE ON public.reference_confirmations FOR EACH ROW EXECUTE FUNCTION reject_all_mutations()"
+    },
+    "rulesets": {
+      "rulesets_append_only": "CREATE TRIGGER rulesets_append_only BEFORE DELETE OR UPDATE ON public.rulesets FOR EACH ROW EXECUTE FUNCTION reject_all_mutations()"
+    },
+    "strategy_versions": {
+      "strategy_versions_append_only": "CREATE TRIGGER strategy_versions_append_only BEFORE DELETE OR UPDATE ON public.strategy_versions FOR EACH ROW EXECUTE FUNCTION reject_all_mutations()"
+    },
+    "valuation_comparables": {
+      "valuation_comparables_append_only": "CREATE TRIGGER valuation_comparables_append_only BEFORE DELETE OR UPDATE ON public.valuation_comparables FOR EACH ROW EXECUTE FUNCTION reject_all_mutations()"
+    }
+  }
+}

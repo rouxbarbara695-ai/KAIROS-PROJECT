@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   addPriceInput,
   ApiError,
+  isVersionConflict,
   patchSellerProfile,
   patchWatchProfile,
 } from "@/lib/api";
@@ -30,14 +31,21 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 function useCorrection(onDone: () => void) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [conflict, setConflict] = useState(false);
 
   function submit(action: () => Promise<unknown>) {
     setError(null);
+    setConflict(false);
     startTransition(async () => {
       try {
         await action();
         onDone();
       } catch (err) {
+        // Sur conflit, on ne vide **rien** : la saisie reste à l'écran, et
+        // l'utilisateur décide de recharger pour voir ce qui a bougé. La
+        // renvoyer d'office écraserait le travail de l'autre onglet, ce que
+        // la protection existe pour empêcher.
+        setConflict(isVersionConflict(err));
         setError(
           err instanceof ApiError
             ? err.message
@@ -47,21 +55,39 @@ function useCorrection(onDone: () => void) {
     });
   }
 
-  return { isPending, error, submit };
+  return { isPending, error, conflict, submit, reload: onDone };
 }
 
 function SubmitRow({
   isPending,
   error,
+  conflict = false,
+  onReload,
   label,
 }: {
   isPending: boolean;
   error: string | null;
+  conflict?: boolean;
+  onReload?: () => void;
   label: string;
 }) {
   return (
     <>
       {error && <p className="text-sm text-danger">{error}</p>}
+      {conflict && onReload && (
+        <p className="text-xs text-fg-muted">
+          Votre saisie est conservée.{" "}
+          <button
+            type="button"
+            onClick={onReload}
+            className="underline underline-offset-2"
+          >
+            Recharger le dossier
+          </button>{" "}
+          pour voir la version actuelle, puis renvoyer la correction si elle
+          tient toujours.
+        </p>
+      )}
       <button
         type="submit"
         disabled={isPending}
@@ -75,13 +101,17 @@ function SubmitRow({
 
 export function WatchProfileForm({
   opportunityId,
+  version,
   current,
 }: {
   opportunityId: string;
+  version: number;
   current: { mechanical?: string; cosmetic?: string; completeness?: string };
 }) {
   const router = useRouter();
-  const { isPending, error, submit } = useCorrection(() => router.refresh());
+  const { isPending, error, conflict, submit, reload } = useCorrection(() =>
+    router.refresh(),
+  );
   const [editSet, setEditSet] = useState(false);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -92,17 +122,21 @@ export function WatchProfileForm({
       // `box` et `papers` ne sont transmis que si le set est explicitement
       // modifié : l'API interprète leur absence comme « ne pas toucher », et
       // des cases décochées par défaut effaceraient sinon un set existant.
-      await patchWatchProfile(opportunityId, {
-        mechanical_condition: String(data.get("mechanical_condition")),
-        cosmetic_condition: String(data.get("cosmetic_condition")),
-        ...(editSet
-          ? {
-              box: data.get("box") === "on",
-              papers: data.get("papers") === "on",
-            }
-          : {}),
-        reason: String(data.get("reason")),
-      });
+      await patchWatchProfile(
+        opportunityId,
+        {
+          mechanical_condition: String(data.get("mechanical_condition")),
+          cosmetic_condition: String(data.get("cosmetic_condition")),
+          ...(editSet
+            ? {
+                box: data.get("box") === "on",
+                papers: data.get("papers") === "on",
+              }
+            : {}),
+          reason: String(data.get("reason")),
+        },
+        version,
+      );
       form.reset();
       setEditSet(false);
     });
@@ -172,16 +206,24 @@ export function WatchProfileForm({
           placeholder="ex. rayures constatées sur le fond"
         />
       </Field>
-      <SubmitRow isPending={isPending} error={error} label="Corriger l'état" />
+      <SubmitRow
+        isPending={isPending}
+        error={error}
+        conflict={conflict}
+        onReload={reload}
+        label="Corriger l'état"
+      />
     </form>
   );
 }
 
 export function SellerProfileForm({
   opportunityId,
+  version,
   current,
 }: {
   opportunityId: string;
+  version: number;
   current: {
     countryCode?: string | null;
     sellerType?: string | null;
@@ -191,7 +233,9 @@ export function SellerProfileForm({
   };
 }) {
   const router = useRouter();
-  const { isPending, error, submit } = useCorrection(() => router.refresh());
+  const { isPending, error, conflict, submit, reload } = useCorrection(() =>
+    router.refresh(),
+  );
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -199,14 +243,18 @@ export function SellerProfileForm({
     const form = event.currentTarget;
     const countryCode = String(data.get("country_code") ?? "").trim();
     submit(async () => {
-      await patchSellerProfile(opportunityId, {
-        ...(countryCode ? { country_code: countryCode } : {}),
-        seller_type: String(data.get("seller_type")),
-        reliability: String(data.get("reliability")),
-        risk_level: String(data.get("risk_level")),
-        transaction_protections: String(data.get("transaction_protections")),
-        reason: String(data.get("reason")),
-      });
+      await patchSellerProfile(
+        opportunityId,
+        {
+          ...(countryCode ? { country_code: countryCode } : {}),
+          seller_type: String(data.get("seller_type")),
+          reliability: String(data.get("reliability")),
+          risk_level: String(data.get("risk_level")),
+          transaction_protections: String(data.get("transaction_protections")),
+          reason: String(data.get("reason")),
+        },
+        version,
+      );
       form.reset();
     });
   }
@@ -293,6 +341,8 @@ export function SellerProfileForm({
       <SubmitRow
         isPending={isPending}
         error={error}
+        conflict={conflict}
+        onReload={reload}
         label="Corriger le vendeur"
       />
     </form>

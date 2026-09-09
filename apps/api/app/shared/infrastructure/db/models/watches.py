@@ -7,6 +7,7 @@ from decimal import Decimal
 from sqlalchemy import (
     CHAR,
     ForeignKey,
+    Index,
     LargeBinary,
     Numeric,
     Text,
@@ -16,7 +17,10 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.shared.infrastructure.db.base import Base
+from app.shared.infrastructure.db.base import (
+    Base,
+    portfolio_identity_index,
+)
 from app.shared.infrastructure.db.models.enums import (
     ReferenceConfirmationStatus,
     pg_enum,
@@ -99,4 +103,23 @@ class Seller(Base):
     country_code: Mapped[str | None] = mapped_column(CHAR(2))
     reliability_data: Mapped[dict[str, object]] = mapped_column(
         JSONB, nullable=False, server_default=text("'{}'::jsonb")
+    )
+    # Colonne présente en base depuis `schema.sql` et jusqu'ici absente du
+    # modèle : l'ORM ignorait donc la date de création d'un vendeur.
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=text("now()")
+    )
+
+    __table_args__ = (
+        portfolio_identity_index("sellers"),
+        # Partiel : un vendeur saisi à la main n'a pas d'identifiant de
+        # plateforme. Deux vendeurs anonymes doivent pouvoir coexister.
+        Index(
+            "sellers_external_identity_uq",
+            "portfolio_id",
+            "platform_id",
+            "external_id",
+            unique=True,
+            postgresql_where=text("external_id is not null"),
+        ),
     )

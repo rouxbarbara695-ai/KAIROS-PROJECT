@@ -216,6 +216,60 @@ jobs:
           path: apps/web/test-results/
           retention-days: 7
 
+  # Les images de production, construites et **démarrées** telles qu'elles
+  # seront déployées.
+  #
+  # Ajouté après le premier déploiement réel des lots 1 et 2, qui a livré un
+  # site en erreur 502 alors que tous les autres contrôles étaient verts :
+  #
+  #   - l'API importait `httpx`, déclaré seulement parmi les outils de test.
+  #     Les jobs ci-dessus installent `--extra dev` : ils voyaient la
+  #     bibliothèque. L'image, installée `--no-dev`, non ;
+  #   - l'interface démarrait par `pnpm`, dont la version n'est pas fixée. Une
+  #     version plus récente a tenté de réinstaller `node_modules` sous un
+  #     utilisateur sans droit d'écriture, et le conteneur redémarrait en boucle.
+  #
+  # Aucun des deux défauts n'est dans le code testé : ils sont dans l'image, et
+  # seul démarrer l'image les montre.
+  images:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Construire les images
+        run: |
+          docker build -f infra/docker/api.Dockerfile -t kairos-api-ci .
+          docker build -f infra/docker/web.Dockerfile -t kairos-web-ci .
+      # Pas de base ni de cache : l'application doit démarrer et répondre à la
+      # santé sans eux. Les dépendances de production suffisent, ou non.
+      - name: L'API démarre-t-elle avec les seules dépendances de production ?
+        run: |
+          docker run -d --name api --network host \
+            -e DATABASE_URL=postgresql+psycopg://x:x@127.0.0.1:1/x \
+            -e REDIS_URL=redis://127.0.0.1:1/0 \
+            -e CURSOR_SECRET=ci-cursor-secret-not-for-production \
+            -e ENVIRONMENT=production \
+            -e 'CORS_ALLOWED_ORIGINS=["https://ci.invalid"]' \
+            kairos-api-ci
+          ok=0
+          for _ in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:8000/api/v1/health >/dev/null; then ok=1; break; fi
+            sleep 1
+          done
+          if [ "$ok" != 1 ]; then docker logs api; exit 1; fi
+          echo "API : démarrée, santé répond."
+      # L'utilisateur est celui de l'image (`node`), sans droit d'écriture : c'est
+      # la condition qui a fait échouer le démarrage.
+      - name: L'interface démarre-t-elle sous l'utilisateur non privilégié ?
+        run: |
+          docker run -d --name web --network host kairos-web-ci
+          ok=0
+          for _ in $(seq 1 30); do
+            if curl -sf -o /dev/null http://127.0.0.1:3000/connexion; then ok=1; break; fi
+            sleep 1
+          done
+          if [ "$ok" != 1 ]; then docker logs web; exit 1; fi
+          echo "Interface : démarrée sous $(docker exec web id -un), /connexion répond."
+
   security:
     runs-on: ubuntu-latest
     steps:

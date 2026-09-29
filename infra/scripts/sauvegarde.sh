@@ -67,17 +67,28 @@ compose exec -T postgres \
 	openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -pass "file:$KEY_FILE" \
 		>"$temporaire"
 
-mv "$temporaire" "$destination"
-trap - EXIT
-
 # Une sauvegarde qu'on n'ouvre jamais n'est qu'une hypothèse. On vérifie ici
-# le seul point vérifiable sans restaurer : que le fichier se déchiffre et se
-# décompresse, et qu'il contient bien du SQL.
+# ce qui l'est sans restaurer : que le fichier se déchiffre, se décompresse, et
+# que le dump va **jusqu'au bout**. `pg_dump` écrit sa ligne de clôture en
+# dernier : un dump interrompu ne l'a pas.
+#
+# On lit tout le flux, jusqu'à la fin. La version précédente coupait la lecture
+# après 4 Ko (`head -c` puis `grep -q`) : l'étage en amont recevait SIGPIPE, et
+# `pipefail` transformait ce signal en échec. Sur un vrai dump, une sauvegarde
+# parfaitement bonne était déclarée inutilisable. Un dump minuscule, lui, tient
+# dans le tampon du tube et ne déclenchait jamais le défaut. `tail` lit tout ;
+# `grep -c` n'arrête pas sa lecture à la première ligne trouvée.
 if ! openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -pass "file:$KEY_FILE" \
-	-in "$destination" | gunzip | head -c 4096 | grep -q "PostgreSQL database dump"; then
-	echo "La sauvegarde $destination ne se relit pas. Elle est inutilisable." >&2
+	-in "$temporaire" | gunzip | tail -n 10 |
+	grep -c "PostgreSQL database dump complete" >/dev/null; then
+	echo "La sauvegarde ne se relit pas ou est incomplète : $destination n'a pas été créée." >&2
 	exit 1
 fi
+
+# Le nom définitif n'est donné qu'à un fichier déjà vérifié : un fichier
+# incomplet ne doit jamais porter un nom qu'on croirait valide.
+mv "$temporaire" "$destination"
+trap - EXIT
 
 taille="$(du -h "$destination" | cut -f1)"
 echo "Sauvegarde $destination ($taille) — relecture vérifiée."

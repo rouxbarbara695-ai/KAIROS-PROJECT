@@ -18,6 +18,7 @@
 #   KAIROS_BACKUP_DIR   destination        (défaut /var/backups/kairos)
 #   KAIROS_BACKUP_KEY   fichier de passe   (défaut /etc/kairos/backup.key)
 #   KAIROS_BACKUP_KEEP  nombre à conserver (défaut 14)
+#   KAIROS_ENV_FILE     configuration    (défaut infra/.env.production)
 
 set -euo pipefail
 
@@ -25,6 +26,22 @@ BACKUP_DIR="${KAIROS_BACKUP_DIR:-/var/backups/kairos}"
 KEY_FILE="${KAIROS_BACKUP_KEY:-/etc/kairos/backup.key}"
 KEEP="${KAIROS_BACKUP_KEEP:-14}"
 COMPOSE_FILE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/docker-compose.prod.yml"
+ENV_FILE="${KAIROS_ENV_FILE:-$(dirname "$COMPOSE_FILE")/.env.production}"
+
+# Sans ce fichier, Docker Compose ne sait pas résoudre les variables que le
+# fichier de composition déclare obligatoires (domaine, mot de passe de la
+# base) et refuse de s'exécuter. Il ne le lit pas seul : il ne cherche que
+# `.env`, pas `.env.production`. Une tâche planifiée qui ignorerait cela
+# échouerait chaque nuit sans que personne le voie.
+if [[ ! -r "$ENV_FILE" ]]; then
+	echo "Configuration illisible : $ENV_FILE" >&2
+	echo "Lancer avec sudo, ou indiquer un autre fichier : KAIROS_ENV_FILE=…" >&2
+	exit 1
+fi
+
+compose() {
+	docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" "$@"
+}
 
 if [[ ! -r "$KEY_FILE" ]]; then
 	echo "Clé de sauvegarde illisible : $KEY_FILE" >&2
@@ -44,7 +61,7 @@ trap 'rm -f "$temporaire"' EXIT
 
 # `pg_dump` dans le conteneur, chiffrement sur l'hôte : la clé n'entre jamais
 # dans le conteneur de base de données.
-docker compose -f "$COMPOSE_FILE" exec -T postgres \
+compose exec -T postgres \
 	pg_dump --username kairos --format plain --no-owner kairos |
 	gzip -9 |
 	openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -pass "file:$KEY_FILE" \
@@ -67,6 +84,12 @@ echo "Sauvegarde $destination ($taille) — relecture vérifiée."
 
 # Rotation. `ls -t` trie du plus récent au plus ancien ; on supprime la queue.
 mapfile -t anciennes < <(ls -t "$BACKUP_DIR"/kairos-*.sql.gz.enc 2>/dev/null | tail -n "+$((KEEP + 1))")
+# `if` plutôt que `[[ … ]] && …` : quand il n'y a rien à supprimer, le test est
+# faux, et ce « faux » deviendrait le code de sortie du script — une sauvegarde
+# réussie annoncée comme un échec.
 for fichier in "${anciennes[@]:-}"; do
-	[[ -n "$fichier" ]] && rm -f "$fichier" && echo "Rotation : $fichier supprimée."
+	if [[ -n "$fichier" ]]; then
+		rm -f "$fichier"
+		echo "Rotation : $fichier supprimée."
+	fi
 done

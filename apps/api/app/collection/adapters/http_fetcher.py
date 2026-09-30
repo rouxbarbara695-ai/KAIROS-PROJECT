@@ -46,7 +46,13 @@ _log = structlog.get_logger()
 # Se présenter honnêtement. Un agent qui se déguise en navigateur pour passer
 # un contrôle contournerait ce contrôle, ce que la validation d'accès interdit
 # explicitement.
-USER_AGENT = "KAIROS/1.0 (+récupération unitaire à la demande de l'utilisateur)"
+#
+# **ASCII seulement.** Un en-tête HTTP est une suite d'octets : `httpx` refuse
+# toute lettre accentuée avec `UnicodeEncodeError`, avant même d'ouvrir la
+# connexion. La version précédente disait « récupération » et « à la demande » :
+# elle n'a jamais pu émettre une seule requête réelle, et aucun test ne le
+# voyait puisqu'ils remplacent tous le récupérateur par un faux.
+USER_AGENT = "KAIROS/1.0 (recherche a la demande de l'utilisateur)"
 
 _ACCEPTED_TYPES = ("text/html", "application/xhtml+xml", "application/ld+json")
 

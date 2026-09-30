@@ -8,6 +8,7 @@ import {
   type ValuationResponse,
 } from "@/lib/api";
 import { formatAmount, formatDateTime } from "@/lib/labels";
+import { MARKET_CHANGED_EVENT } from "@/lib/recalculation";
 
 const CAP_LABELS: Record<string, string> = {
   no_ab: "Aucune preuve de classe A ou B",
@@ -47,18 +48,23 @@ export function ValuationPanel({ opportunityId }: { opportunityId: string }) {
   // qu'aucune cote n'existe alors que l'analyse vient de s'appuyer dessus.
   useEffect(() => {
     let cancelled = false;
-    getLatestValuation(opportunityId)
-      .then((latest) => {
-        if (!cancelled) setValuation(latest);
-      })
-      .catch(() => {
-        // Un échec de relecture ne doit pas empêcher de lancer un calcul.
-      })
-      .finally(() => {
-        if (!cancelled) setLoaded(true);
-      });
+    const load = () =>
+      getLatestValuation(opportunityId)
+        .then((latest) => {
+          if (!cancelled) setValuation(latest);
+        })
+        .catch(() => {
+          // Un échec de relecture ne doit pas empêcher de lancer un calcul.
+        })
+        .finally(() => {
+          if (!cancelled) setLoaded(true);
+        });
+    void load();
+    // Une cote recalculée automatiquement doit apparaître sans rechargement.
+    window.addEventListener(MARKET_CHANGED_EVENT, load);
     return () => {
       cancelled = true;
+      window.removeEventListener(MARKET_CHANGED_EVENT, load);
     };
   }, [opportunityId]);
 

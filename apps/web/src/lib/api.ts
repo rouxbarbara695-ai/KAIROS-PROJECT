@@ -255,18 +255,28 @@ export function importComparables(
   );
 }
 
+export type OverrideResponse = components["schemas"]["OverrideResponse"];
+
+/**
+ * Corrige, exclut ou réintègre un comparable.
+ *
+ * `opportunityId` dit quelle opportunité recalculer ensuite : un comparable
+ * appartient à une référence, pas à une opportunité, et sans cette précision
+ * l'API ne recalcule rien plutôt que de choisir à notre place.
+ */
 export function createOverride(
   comparableId: string,
+  opportunityId: string,
   body: {
     excluded: boolean;
     exclusion_reason?: string;
     reason: string;
   },
-): Promise<unknown> {
-  return request(`/comparables/${comparableId}/overrides`, {
-    method: "POST",
-    body: JSON.stringify(body),
-  });
+): Promise<OverrideResponse> {
+  return request<OverrideResponse>(
+    `/comparables/${comparableId}/overrides?opportunity_id=${opportunityId}`,
+    { method: "POST", body: JSON.stringify(body) },
+  );
 }
 
 /**

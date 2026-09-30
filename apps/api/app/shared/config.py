@@ -24,6 +24,18 @@ class Settings(BaseSettings):
     cursor_secret: SecretStr
     session_lifetime_days: int = 30
 
+    # Recherche autonome de comparables. Source : API officielle eBay (programme
+    # développeur gratuit). Sans identifiants, la source reste inerte : elle
+    # n'émet aucune requête et l'écran le dit. Les identifiants ne sont jamais
+    # journalisés.
+    ebay_client_id: SecretStr | None = None
+    ebay_client_secret: SecretStr | None = None
+    ebay_environment: Literal["production", "sandbox"] = "production"
+    # Places de marché interrogées, séparées par des virgules.
+    ebay_marketplaces: str = "EBAY_FR,EBAY_DE,EBAY_IT"
+    # Lancer la recherche dès qu'une référence est confirmée.
+    market_search_auto: bool = True
+
     # Valeur de développement uniquement. En production, une origine en dur
     # autoriserait un site qui n'est pas le nôtre à porter des requêtes
     # authentifiées : le validateur ci-dessous l'interdit.

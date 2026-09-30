@@ -63,6 +63,8 @@ def _recalculation(result: Recalculation) -> RecalculationResponse:
 def _to_response(
     comparable: Comparable, excluded: bool, exclusion_reason: str | None
 ) -> ComparableResponse:
+    raw_provenance = comparable.raw_data.get("provenance")
+    provenance = raw_provenance if isinstance(raw_provenance, dict) else None
     return ComparableResponse(
         id=comparable.id,
         source_name=comparable.source_name,
@@ -83,6 +85,8 @@ def _to_response(
         completeness_data=comparable.completeness_data,
         excluded=excluded,
         exclusion_reason=exclusion_reason,
+        origin="automatic_search" if provenance else "manual",
+        provenance=provenance,
     )
 
 

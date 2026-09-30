@@ -101,6 +101,12 @@ class ComparableResponse(BaseModel):
     completeness_data: dict[str, object]
     excluded: bool
     exclusion_reason: str | None
+    #: D'où vient le comparable : « manual » (saisie ou import) ou
+    #: « automatic_search » (recherche autonome).
+    origin: str = "manual"
+    #: Preuve d'une recherche automatique : annonce, adresse, contrôle
+    #: d'identité, version des réglages. Absente d'une saisie manuelle.
+    provenance: dict[str, object] | None = None
     # Renseigné à la création seulement ; absent des listes.
     recalculation: RecalculationResponse | None = None
 

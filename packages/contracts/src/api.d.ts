@@ -1212,6 +1212,24 @@ export interface components {
             value?: unknown;
         };
         /**
+         * InformationalItem
+         * @description Un prix relevé mais volontairement hors de l'estimation, avec son motif.
+         */
+        InformationalItem: {
+            /** Amount */
+            amount: string;
+            /** Code */
+            code: string;
+            /** Currency */
+            currency: string;
+            /** Detail */
+            detail: string;
+            /** Title */
+            title: string;
+            /** Url */
+            url: string;
+        };
+        /**
          * LedgerMovementCreate
          * @description Mouvement de trésorerie saisi par l'utilisateur.
          *
@@ -1761,6 +1779,19 @@ export interface components {
             /** Missing Reason */
             missing_reason?: string | null;
         };
+        /** PriceGroup */
+        PriceGroup: {
+            /** Count */
+            count: number;
+            /** Label */
+            label: string;
+            /** Max Eur */
+            max_eur: string;
+            /** Median Eur */
+            median_eur: string;
+            /** Min Eur */
+            min_eur: string;
+        };
         /** PriceInputCreate */
         PriceInputCreate: {
             /** Amount */
@@ -1939,6 +1970,10 @@ export interface components {
             insufficient_data_message: string | null;
             /** Observed At */
             observed_at: string | null;
+            /** Price Groups */
+            price_groups: {
+                [key: string]: components["schemas"]["PriceGroup"];
+            };
             /** Price Nature Note */
             price_nature_note: string | null;
             recalculation: components["schemas"]["RecalculationResponse"] | null;
@@ -2052,6 +2087,11 @@ export interface components {
              */
             already_known: number;
             /**
+             * Complete
+             * @default true
+             */
+            complete: boolean;
+            /**
              * Duplicates
              * @default 0
              */
@@ -2068,6 +2108,8 @@ export interface components {
              * @default 0
              */
             fx_unavailable: number;
+            /** Informational */
+            informational: components["schemas"]["InformationalItem"][];
             /** Message */
             message: string | null;
             /**
@@ -2226,6 +2268,8 @@ export interface components {
             cosmetic_condition?: string | null;
             /** Mechanical Condition */
             mechanical_condition?: string | null;
+            /** Model */
+            model?: string | null;
             /** Originality */
             originality?: string | null;
             /** Papers */
@@ -2273,6 +2317,8 @@ export interface components {
             id: string;
             /** Identification Confidence */
             identification_confidence: string | null;
+            /** Model */
+            model?: string | null;
             /** Reference */
             reference: string | null;
             /** Reference Id */

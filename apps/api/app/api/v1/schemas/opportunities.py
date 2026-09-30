@@ -35,6 +35,10 @@ class SourceCreate(BaseModel):
 class WatchCreate(BaseModel):
     brand: str = Field(min_length=1)
     reference: str = Field(min_length=1)
+    #: Modèle (« Reverso Duetto », « Constellation »). Facultatif. Sert aux sources
+    #: dont la recherche ne retrouve pas un numéro de référence : sans lui, elles
+    #: cherchent la marque seule et ne lisent qu'une petite part de leurs lots.
+    model: str | None = Field(default=None, max_length=120)
     reference_status: Literal["unconfirmed", "unknown"] = "unconfirmed"
     mechanical_condition: str | None = None
     cosmetic_condition: str | None = None
@@ -146,6 +150,7 @@ class WatchProfileResponse(BaseModel):
     id: uuid.UUID
     reference_id: uuid.UUID | None
     brand: str | None
+    model: str | None = None
     reference: str | None
     reference_status: str
     identification_confidence: DecimalString | None

@@ -115,9 +115,36 @@ def ok(*candidates: Candidate) -> SourceOutcome:
     )
 
 
+def fx_rates_fake(rates: dict[str, str], calls: list[set[str]] | None = None):
+    """Faux relevé de la BCE : insère les taux demandés qu'il connaît."""
+
+    async def refresh(session: AsyncSession, currencies: set[str]) -> int:
+        from app.shared.infrastructure.db.models.reference_data import FxRate
+
+        if calls is not None:
+            calls.append(set(currencies))
+        added = 0
+        for currency in sorted(currencies):
+            if currency in rates:
+                session.add(
+                    FxRate(
+                        base_currency=currency,
+                        quote_currency="EUR",
+                        rate=Decimal(rates[currency]),
+                        observed_at=datetime.now(UTC),
+                        source_name="BCE (référence du 2026-09-30)",
+                    )
+                )
+                added += 1
+        await session.commit()
+        return added
+
+    return refresh
+
+
 @pytest.fixture
 def install(_engine):
-    def _install(*sources: ComparableSource) -> list[ComparableSource]:
+    def _install(*sources: ComparableSource, fx_refresh=None) -> list[ComparableSource]:
         factory = async_sessionmaker(bind=_engine, expire_on_commit=False)
 
         @asynccontextmanager
@@ -126,10 +153,12 @@ def install(_engine):
         ) -> AsyncIterator[list[ComparableSource]]:
             yield list(sources)
 
+        extra = {"fx_refresh": fx_refresh} if fx_refresh else {}
         runtime = SearchRuntime(
             session_factory=lambda: factory,
             sources=sources_factory,
             policy=SearchPolicy(delay_between_requests_s=0),
+            **extra,
         )
         app.dependency_overrides[get_search_runtime] = lambda: runtime
         return list(sources)
@@ -369,9 +398,13 @@ async def test_unexpected_crash_is_written_in_the_run_not_raised(
     install(Exploding(ok()))
     opportunity = await _opportunity(client, default_portfolio_id, "MS-007")
     run = (await _latest(client, opportunity["id"]))["run"]
+    # Le plantage d'une source est un statut de CETTE source, pas une panne de la
+    # recherche : les autres continueraient, et rien de la panne ne fuit.
     assert run["status"] == "failed"
-    assert run["error_code"] == "INTERNAL_ERROR"
-    assert "12345" not in (run["error_message"] or "")
+    (source,) = run["sources"]
+    assert source["status"] == "error"
+    assert "erreur inattendue" in source["message"]
+    assert "12345" not in source["message"] + (run["error_message"] or "")
 
 
 # --- Sobriété : cache, quota, une recherche à la fois ------------------------
@@ -566,3 +599,238 @@ async def test_unknown_opportunity_is_not_found(client: AsyncClient, install) ->
         f"/api/v1/opportunities/{uuid.uuid4()}/market-searches/latest"
     )
     assert response.status_code == 404
+
+
+# --- Plusieurs sources : adjudications, marchands, devises ---------------------
+
+
+def hammer(
+    title: str,
+    amount: str,
+    currency: str,
+    *,
+    external_id: str,
+    sold_at: datetime,
+    source: str = "antiquorum",
+    description: str | None = None,
+) -> Candidate:
+    return Candidate(
+        source=source,
+        external_id=external_id,
+        title=title,
+        url=f"https://catalog.example/lots/{external_id}",
+        amount=Decimal(amount),
+        currency=currency,
+        price_kind="hammer",
+        observed_at=_now(),
+        sold_at=sold_at,
+        market_status="sold",
+        fees_status="unknown",
+        description=description,
+        source_country="CH",
+    )
+
+
+LOT_2013 = hammer(
+    "Tudor Black Bay 79030N lady's watch 18K gold bracelet",
+    "7750",
+    "CHF",
+    external_id="tudor-79030n-lot-272-285",
+    sold_at=datetime(2013, 5, 12, tzinfo=UTC),
+)
+LOT_2025 = hammer(
+    "TUDOR REF. 79030N BLACK BAY, leather strap",
+    "75000",
+    "HKD",
+    external_id="tudor-79030n-lot-378-277",
+    sold_at=datetime(2025, 5, 31, tzinfo=UTC),
+)
+SOLD_OUT = Candidate(
+    source="phigora",
+    external_id="4554194878521",
+    title="Tudor Black Bay 79030N Stainless Steel",
+    url="https://shop.example/products/tudor-79030n",
+    amount=Decimal("1699"),
+    currency="USD",
+    price_kind="asking",
+    observed_at=_now(),
+    market_status="sold",
+    source_country="US",
+)
+MERCHANT = Candidate(
+    source="vintage_watch_agency",
+    external_id="1448006",
+    title="Tudor Black Bay 79030N",
+    url="https://shop.example/tudor-79030n-pv-1448006.html",
+    amount=Decimal("1520"),
+    currency="EUR",
+    price_kind="asking",
+    observed_at=_now(),
+    market_status="active",
+    source_country="SE",
+)
+
+
+def named(name: str, *candidates: Candidate, delay: float = 0.0) -> FakeSource:
+    import asyncio
+
+    class Slow(FakeSource):
+        async def search(self, query: SearchQuery) -> SourceOutcome:
+            await asyncio.sleep(delay)
+            return await super().search(query)
+
+    outcome = SourceOutcome(source=name, status="ok", candidates=list(candidates))
+    return Slow(outcome, name=name)
+
+
+async def test_auction_results_keep_their_currency_date_and_class_b(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    default_portfolio_id: uuid.UUID,
+    install,
+) -> None:
+    calls: list[set[str]] = []
+    install(
+        named("antiquorum", LOT_2013, LOT_2025),
+        fx_refresh=fx_rates_fake({"CHF": "0.9480", "HKD": "0.1122"}, calls),
+    )
+    opportunity = await _opportunity(client, default_portfolio_id, "MS-020")
+
+    assert calls == [{"CHF", "HKD"}], "les taux manquants sont demandés, une fois"
+    rows = (
+        await db_session.execute(
+            text(
+                """
+                select price_kind::text, source_reliability::text, currency,
+                       amount_source, amount_eur, rate_to_eur, fx_source,
+                       extract(year from observed_at), extract(year from ended_at),
+                       market_status::text
+                from comparables order by amount_source
+                """
+            )
+        )
+    ).all()
+    assert len(rows) == 2
+    chf = next(r for r in rows if r[2] == "CHF")
+    assert chf[0] == "hammer" and chf[1] == "b"  # jamais A : pas une preuve de paiement
+    assert chf[3] == Decimal("7750.00") and chf[4] == Decimal("7347.00")
+    assert chf[6].startswith("BCE")
+    # La date du prix est celle de la vente, pas celle de la lecture : un résultat
+    # de 2013 doit peser comme un résultat de 2013.
+    assert int(chf[7]) == 2013 and int(chf[8]) == 2013
+    assert chf[9] == "sold"
+
+    comparables = await _comparables(client, opportunity["id"])
+    provenance = comparables[0]["provenance"]
+    assert provenance["fees_status"] == "unknown"
+    assert provenance["source_currency"] in ("CHF", "HKD")
+    assert provenance["sold_at"]
+    assert "commission acheteur" in provenance["price_nature_note"]
+
+
+async def test_markets_are_grouped_by_nature_never_averaged_together(
+    client: AsyncClient, default_portfolio_id: uuid.UUID, install
+) -> None:
+    install(
+        named("antiquorum", LOT_2013, LOT_2025),
+        named("vintage_watch_agency", MERCHANT),
+        fx_refresh=fx_rates_fake({"CHF": "0.9480", "HKD": "0.1122"}),
+    )
+    opportunity = await _opportunity(client, default_portfolio_id, "MS-021")
+    groups = (await _latest(client, opportunity["id"]))["run"]["summary"][
+        "price_groups"
+    ]
+
+    assert set(groups) == {"auction_results", "asking_active"}
+    assert groups["auction_results"]["count"] == 2
+    assert groups["asking_active"]["count"] == 1
+    assert groups["asking_active"]["min_eur"] == "1520.00"
+    # Deux fourchettes distinctes : rien n'est mélangé.
+    assert groups["auction_results"]["max_eur"] != groups["asking_active"]["max_eur"]
+
+
+async def test_no_exchange_rate_means_no_comparable_and_the_screen_says_so(
+    client: AsyncClient, default_portfolio_id: uuid.UUID, install
+) -> None:
+    install(named("antiquorum", LOT_2013), fx_refresh=fx_rates_fake({}))
+    opportunity = await _opportunity(client, default_portfolio_id, "MS-022")
+    source = (await _latest(client, opportunity["id"]))["run"]["sources"][0]
+    assert source["fx_unavailable"] == 1 and source["recorded"] == 0
+    assert await _comparables(client, opportunity["id"]) == []
+
+
+async def test_a_sold_out_undated_price_is_shown_but_kept_out_of_the_estimate(
+    client: AsyncClient, default_portfolio_id: uuid.UUID, install
+) -> None:
+    install(named("phigora", SOLD_OUT), fx_refresh=fx_rates_fake({"USD": "0.8807"}))
+    opportunity = await _opportunity(client, default_portfolio_id, "MS-023")
+    source = (await _latest(client, opportunity["id"]))["run"]["sources"][0]
+    assert source["rejected"] == {"sold_out_price_undated": 1}
+    (info,) = source["informational"]
+    assert info["amount"] == "1699" and info["currency"] == "USD"
+    assert "non retenu" in info["detail"]
+    assert await _comparables(client, opportunity["id"]) == []
+
+
+async def test_slow_source_does_not_delay_the_others_results(
+    client: AsyncClient, default_portfolio_id: uuid.UUID, install
+) -> None:
+    install(
+        named("sworders", LOT_2013, delay=0.3),
+        named("vintage_watch_agency", MERCHANT, delay=0.0),
+        fx_refresh=fx_rates_fake({"CHF": "0.9480"}),
+    )
+    opportunity = await _opportunity(client, default_portfolio_id, "MS-024")
+    run = (await _latest(client, opportunity["id"]))["run"]
+    # Les sources tournent en parallèle : la plus rapide est consignée la première.
+    assert [s["source"] for s in run["sources"]] == ["vintage_watch_agency", "sworders"]
+    assert run["status"] == "succeeded"
+
+
+async def test_configuration_read_from_the_listing_is_kept_not_used(
+    client: AsyncClient, default_portfolio_id: uuid.UUID, install
+) -> None:
+    install(named("antiquorum", LOT_2013), fx_refresh=fx_rates_fake({"CHF": "0.9480"}))
+    opportunity = await _opportunity(client, default_portfolio_id, "MS-025")
+    (comparable,) = await _comparables(client, opportunity["id"])
+    configuration = comparable["provenance"]["configuration"]
+    assert "yellow gold" in " ".join(configuration.get("métal", [])) or "gold" in str(
+        configuration
+    )
+    assert "bracelet métal" in configuration["bracelet"]
+
+
+async def test_model_is_kept_with_the_reference_and_completes_a_missing_one(
+    client: AsyncClient, default_portfolio_id: uuid.UUID, install
+) -> None:
+    install(named("antiquorum"))
+
+    async def create(ref: str, model: str | None) -> dict[str, object]:
+        response = await client.post(
+            "/api/v1/opportunities",
+            json={
+                "portfolio_id": str(default_portfolio_id),
+                "source": {"mode": "manual", "manual_identifier": ref},
+                "watch": {
+                    "brand": "Jaeger-LeCoultre",
+                    "reference": "266.1.44",
+                    "model": model,
+                    "mechanical_condition": "verified",
+                    "cosmetic_condition": "excellent",
+                    "originality": "original",
+                },
+                "seller": {"country_code": "FR", "seller_type": "private"},
+                "price": {"amount": "3000.00", "currency": "EUR"},
+            },
+        )
+        assert response.status_code == 201, response.text
+        return response.json()
+
+    first = await create("MODEL-1", None)
+    assert first["watch"]["model"] is None
+    second = await create("MODEL-2", "Reverso Duetto")
+    # Le modèle connu complète la référence partagée...
+    assert second["watch"]["model"] == "Reverso Duetto"
+    third = await create("MODEL-3", "Autre nom")
+    # ...et ne remplace jamais celui qui est déjà renseigné.
+    assert third["watch"]["model"] == "Reverso Duetto"

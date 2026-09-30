@@ -156,6 +156,7 @@ export function NewOpportunityForm({
             watch: {
               brand: String(data.get("brand")),
               reference: String(data.get("reference")),
+              model: String(data.get("model") ?? "").trim() || null,
               reference_status: "unconfirmed",
               mechanical_condition: String(data.get("mechanical_condition")),
               cosmetic_condition: String(data.get("cosmetic_condition")),
@@ -296,6 +297,20 @@ export function NewOpportunityForm({
             n&apos;est pas vérifiée.
           </p>
         )}
+
+        <Field label="Modèle (facultatif)">
+          <input
+            key={`model-${importVersion}`}
+            name="model"
+            defaultValue={text("model")}
+            placeholder="ex. Reverso Duetto, Constellation"
+            className={inputClass}
+          />
+          <p className="mt-1 text-xs text-fg-muted">
+            Aide KAIROS à chercher chez les maisons de ventes, dont la recherche
+            ne retrouve pas un numéro de référence.
+          </p>
+        </Field>
 
         <div className="grid grid-cols-2 gap-4">
           <Field label="État mécanique">

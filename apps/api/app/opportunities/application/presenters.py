@@ -42,6 +42,7 @@ def to_opportunity_response(
             id=watch.id,
             reference_id=watch.reference_id,
             brand=reference.brand if reference is not None else None,
+            model=reference.model if reference is not None else None,
             reference=reference.reference if reference is not None else None,
             reference_status=watch.reference_status,
             identification_confidence=watch.identification_confidence,

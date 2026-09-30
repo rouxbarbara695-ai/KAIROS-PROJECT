@@ -16,10 +16,12 @@ et l'échec d'une source sans attendre les autres.
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from collections import Counter
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from typing import Any
 
 import structlog
@@ -35,9 +37,11 @@ from app.market_search.domain.candidate import (
     SearchQuery,
     SourceOutcome,
 )
+from app.market_search.domain.configuration import configuration_hints
 from app.market_search.domain.dedupe import deduplicate
 from app.market_search.domain.policy import SearchPolicy
 from app.market_search.domain.screening import Verdict, screen
+from app.market_search.domain.source_registry import SOURCES
 from app.market_search.ports.source import ComparableSource
 from app.scoring.application.recalculate import (
     Recalculation,
@@ -56,7 +60,7 @@ logger = structlog.get_logger()
 
 # Nom sous lequel les comparables issus de la source sont enregistrés. Il fait
 # partie de l'identité unique (source, identifiant d'annonce, nature du prix).
-SOURCE_LABELS = {"ebay": "eBay"}
+SOURCE_LABELS = {code: info.label for code, info in SOURCES.items()}
 
 # Une recherche « en cours » depuis plus longtemps a été interrompue (redémarrage
 # du serveur) : sans ce délai, elle bloquerait toute nouvelle recherche.
@@ -313,30 +317,62 @@ async def _execute(
     recorded_by_kind: Counter[str] = Counter()
     total_recorded = 0
 
-    used_today = await _requests_last_24h(session)
+    used_today = await _requests_last_24h(session, "ebay")
 
     async with runtime.sources(settings, policy) as sources:
-        for source in sources:
-            if not source.is_configured():
-                continue
-            if used_today + policy.max_requests_per_run > policy.daily_request_limit:
+        active = [source for source in sources if source.is_configured()]
+
+        async def search(
+            source: ComparableSource,
+        ) -> tuple[ComparableSource, SourceOutcome | None]:
+            # Le quota quotidien est celui de l'API eBay ; les pages publiques
+            # n'en ont pas, leur garde-fou est le rythme et le nombre de requêtes.
+            if (
+                source.name == "ebay"
+                and used_today + policy.max_requests_per_run
+                > policy.daily_request_limit
+            ):
+                return source, None
+            try:
+                return source, await source.search(query)
+            except Exception as error:  # noqa: BLE001 — une source ne doit rien casser
+                logger.error(
+                    "source_crashed",
+                    source=source.name,
+                    error_type=type(error).__name__,
+                )
+                return source, SourceOutcome(
+                    source=source.name,
+                    status="error",
+                    message=f"Lecture impossible (erreur inattendue : "
+                    f"{type(error).__name__}).",
+                )
+
+        # Les sources tournent **en parallèle** (domaines différents, chacune à son
+        # rythme) : une maison de ventes à 10 s entre deux requêtes ne fait pas
+        # attendre les autres. Chaque résultat est traité dès qu'il arrive, et
+        # écrit tout de suite : l'écran montre des résultats partiels.
+        tasks = [asyncio.create_task(search(source)) for source in active]
+        for completed in asyncio.as_completed(tasks):
+            source, outcome = await completed
+            if outcome is None:
                 entry = _quota_entry(source.name, used_today, policy)
             else:
-                entry, recorded = await _search_one_source(
+                entry, recorded = await _process_outcome(
                     session,
                     principal,
                     opportunity_id,
                     run_id,
-                    source,
+                    source.name,
+                    outcome,
                     query,
                     settings,
                     policy,
+                    runtime,
                 )
-                used_today += entry["requests_count"]
                 recorded_by_kind.update(recorded)
                 total_recorded += sum(recorded.values())
             results.append(entry)
-            # Résultat visible dès que la source a fini, pas à la fin de tout.
             run = await session.get(MarketSearchRun, run_id)
             assert run is not None
             run.sources = list(results)
@@ -349,6 +385,7 @@ async def _execute(
     await session.commit()
 
     total_known = await _comparables_count(session, principal, reference_id)
+    price_groups = await _price_groups(session, principal, reference_id)
     recalculation: Recalculation | None = None
     # Recalculer quand quelque chose a changé, ou quand il n'y a pas assez de
     # comparables pour dire pourquoi : sans nouveauté, un recalcul ne ferait que
@@ -371,6 +408,7 @@ async def _execute(
         total_recorded=total_recorded,
         total_known=total_known,
         recalculation=recalculation,
+        price_groups=price_groups,
         elapsed_s=round((finished - started).total_seconds(), 1),
         observed_at=finished,
     )
@@ -393,6 +431,7 @@ def _summary(
     total_recorded: int,
     total_known: int,
     recalculation: Recalculation | None,
+    price_groups: dict[str, dict[str, Any]],
     elapsed_s: float,
     observed_at: datetime,
 ) -> dict[str, Any]:
@@ -408,6 +447,10 @@ def _summary(
         "comparables_recorded": total_recorded,
         "comparables_known_for_reference": total_known,
         "recorded_by_price_kind": dict(recorded_by_kind),
+        # Deux marchés qui ne se mélangent pas : ce que les maisons de ventes ont
+        # adjugé, et ce que les marchands demandent. Chacun avec sa fourchette,
+        # jamais une moyenne de l'ensemble.
+        "price_groups": price_groups,
         "insufficient_data": insufficient,
         "insufficient_data_message": (
             "Données insuffisantes : aucune estimation n'est produite. "
@@ -437,6 +480,68 @@ def _summary(
     }
 
 
+_GROUPS = (
+    ("auction_results", "Résultats d'adjudication publiés"),
+    ("asking_active", "Prix demandés, annonces actives"),
+    ("asking_last_seen", "Derniers prix demandés d'articles disparus"),
+    ("current_bids", "Enchères en cours"),
+)
+
+
+def _median(values: list[Decimal]) -> Decimal:
+    ordered = sorted(values)
+    middle = len(ordered) // 2
+    if len(ordered) % 2:
+        return ordered[middle]
+    return (ordered[middle - 1] + ordered[middle]) / 2
+
+
+async def _price_groups(
+    session: AsyncSession, principal: Principal, reference_id: uuid.UUID
+) -> dict[str, dict[str, Any]]:
+    """Fourchette de coût acheteur par **nature de prix**, pour la référence.
+
+    Reprend tous les comparables connus de la référence (saisis ou trouvés) et les
+    range par nature, jamais ensemble : résultats d'adjudication, prix demandés
+    actifs, derniers prix demandés d'articles disparus, enchères en cours. Ce sont
+    des observations, pas une estimation : la cote reste le travail du moteur.
+    """
+
+    rows = (
+        await session.execute(
+            select(
+                Comparable.price_kind,
+                Comparable.market_status,
+                Comparable.buyer_total_price_eur,
+            ).where(
+                Comparable.reference_id == reference_id,
+                Comparable.portfolio_id.in_(principal.portfolio_ids),
+            )
+        )
+    ).all()
+    buckets: dict[str, list[Decimal]] = {code: [] for code, _ in _GROUPS}
+    for kind, status, amount in rows:
+        if kind in ("hammer", "realized"):
+            buckets["auction_results"].append(amount)
+        elif kind == "current_bid":
+            buckets["current_bids"].append(amount)
+        elif kind == "asking":
+            key = "asking_active" if status == "active" else "asking_last_seen"
+            buckets[key].append(amount)
+    labels = dict(_GROUPS)
+    return {
+        code: {
+            "label": labels[code],
+            "count": len(values),
+            "min_eur": str(min(values)),
+            "median_eur": str(_median(values).quantize(Decimal("0.01"))),
+            "max_eur": str(max(values)),
+        }
+        for code, values in buckets.items()
+        if values
+    }
+
+
 def _quota_entry(name: str, used: int, policy: SearchPolicy) -> dict[str, Any]:
     now = _utcnow().isoformat()
     return {
@@ -460,10 +565,26 @@ def _quota_entry(name: str, used: int, policy: SearchPolicy) -> dict[str, Any]:
         "rejected": {},
         "rejected_examples": [],
         "recorded_items": [],
+        "informational": [],
     }
 
 
-async def _requests_last_24h(session: AsyncSession) -> int:
+async def _ensure_fx(
+    session: AsyncSession,
+    runtime: SearchRuntime,
+    settings: Settings,
+    currencies: set[str],
+) -> None:
+    missing = [
+        currency
+        for currency in sorted(currencies)
+        if await resolve_fx(session, currency, settings.fx_max_age_hours) is None
+    ]
+    if missing:
+        await runtime.fx_refresh(session, set(missing))
+
+
+async def _requests_last_24h(session: AsyncSession, source: str) -> int:
     since = _utcnow() - timedelta(hours=24)
     rows = (
         await session.execute(
@@ -474,6 +595,7 @@ async def _requests_last_24h(session: AsyncSession) -> int:
         int(entry.get("requests_count", 0) or 0)  # type: ignore[call-overload]
         for sources in rows
         for entry in sources
+        if entry.get("source") == source
     )
 
 
@@ -494,6 +616,40 @@ async def _comparables_count(
     )
 
 
+def reliability_for(candidate: Candidate) -> str:
+    """Classe de fiabilité d'un comparable de recherche.
+
+    Jamais **A** : un montant affiché n'est pas une preuve de paiement définitif.
+    Un résultat publié par une maison de ventes reconnue est **B** ; une annonce
+    active observée **C** ; le dernier prix demandé d'un article disparu **D** ;
+    un statut inconnu **E**. Règle provisoire : `open-questions.md`.
+    """
+
+    if candidate.price_kind == "hammer":
+        return "b"
+    if candidate.price_kind == "current_bid":
+        return "c"
+    if candidate.market_status == "active":
+        return "c"
+    if candidate.market_status in ("sold", "ended"):
+        return "d"
+    return "e"
+
+
+def _nature_note(candidate: Candidate) -> str:
+    if candidate.price_kind == "hammer":
+        note = (
+            "Résultat d'adjudication publié par la maison de ventes : pas une "
+            "preuve de paiement."
+        )
+        if candidate.fees_status == "unknown":
+            note += " La page ne dit pas si la commission acheteur est comprise."
+        return note
+    if candidate.price_kind == "current_bid":
+        return "Enchère en cours : mise actuelle, pas un prix final."
+    return "Prix demandé observé sur une annonce active : pas une vente conclue."
+
+
 def _box_and_papers(title: str) -> tuple[bool | None, bool | None]:
     """Boîte et papiers, seulement sur mention explicite : l'absence de mention
     n'est pas une absence de boîte."""
@@ -504,18 +660,19 @@ def _box_and_papers(title: str) -> tuple[bool | None, bool | None]:
     return None, None
 
 
-async def _search_one_source(
+async def _process_outcome(
     session: AsyncSession,
     principal: Principal,
     opportunity_id: uuid.UUID,
     run_id: uuid.UUID,
-    source: ComparableSource,
+    source_name: str,
+    outcome: SourceOutcome,
     query: SearchQuery,
     settings: Settings,
     policy: SearchPolicy,
+    runtime: SearchRuntime,
 ) -> tuple[dict[str, Any], Counter[str]]:
     started = _utcnow()
-    outcome: SourceOutcome = await source.search(query)
 
     # La même annonce lue par deux requêtes (les deux écritures de la référence)
     # est une redite, pas deux annonces : elle n'est comptée qu'une fois.
@@ -539,19 +696,48 @@ async def _search_one_source(
         for candidate in read
     ]
     rejected: Counter[str] = Counter(v.code for _, v in verdicts if not v.accepted)
+    # Les exemples montrent d'abord les écartés **intéressants** (parties, copie,
+    # enchère trop tôt…) : cinquante « autre référence » ne disent rien de plus.
+    ordered = sorted(
+        (item for item in verdicts if not item[1].accepted),
+        key=lambda item: item[1].code == "reference_not_stated",
+    )
     examples = [
-        {"title": c.title[:140], "code": v.code, "detail": v.detail}
-        for c, v in verdicts
-        if not v.accepted
+        {"title": c.title[:140], "code": v.code, "detail": v.detail} for c, v in ordered
     ][:_MAX_REJECTED_EXAMPLES]
+
+    # Prix relevés mais volontairement hors de l'estimation : montrés, jamais
+    # cachés, avec leur motif.
+    informational = [
+        {
+            "title": c.title[:140],
+            "url": c.url,
+            "amount": str(c.amount),
+            "currency": c.currency,
+            "code": v.code,
+            "detail": v.detail,
+        }
+        for c, v in verdicts
+        if v.code == "sold_out_price_undated"
+    ][:10]
 
     accepted = [(c, v) for c, v in verdicts if v.accepted]
     verdict_by_id = {c.external_id: v for c, v in accepted}
     deduped = deduplicate([c for c, _ in accepted])
 
-    label = SOURCE_LABELS.get(source.name, source.name)
+    label = SOURCE_LABELS.get(source_name, source_name)
     known_ids = await _known_external_ids(
         session, principal, label, [c.external_id for c in deduped.kept]
+    )
+
+    # Taux de change : la source publie dans SA devise ; sans taux frais, un
+    # comparable n'est pas enregistré (règle 3). Le taux est demandé à la BCE
+    # (données de référence publiques, gratuites) quand il manque.
+    await _ensure_fx(
+        session,
+        runtime,
+        settings,
+        {c.currency for c in deduped.kept if c.currency != "EUR"},
     )
 
     recorded: Counter[str] = Counter()
@@ -600,9 +786,10 @@ async def _search_one_source(
 
     finished = _utcnow()
     entry: dict[str, Any] = {
-        "source": source.name,
+        "source": source_name,
         "status": outcome.status,
         "message": outcome.message,
+        "complete": outcome.complete,
         "started_at": started.isoformat(),
         "finished_at": finished.isoformat(),
         "elapsed_s": round((finished - started).total_seconds(), 1),
@@ -625,6 +812,7 @@ async def _search_one_source(
         "rejected": dict(rejected),
         "rejected_examples": examples,
         "recorded_items": recorded_items,
+        "informational": informational,
     }
     return entry, recorded
 
@@ -687,12 +875,13 @@ async def _record(
         amount=candidate.amount,
         currency=candidate.currency,
         compulsory_shipping_eur=shipping_eur,
-        market_status="active",
+        market_status=candidate.market_status,
         listed_at=candidate.listed_at,
-        observed_at=candidate.observed_at,
-        # Annonce active observée : classe C. Jamais A ni B, qui exigent une
-        # vente ou un résultat public confirmé.
-        source_reliability="c",
+        ended_at=candidate.sold_at,
+        # La date du prix, pas celle de la lecture : un résultat d'adjudication de
+        # 2013 lu aujourd'hui est un prix de 2013, et son ancienneté doit peser.
+        observed_at=candidate.sold_at or candidate.observed_at,
+        source_reliability=reliability_for(candidate),
         box=box,
         papers=papers,
     )
@@ -717,11 +906,17 @@ async def _record(
         "bid_count": candidate.bid_count,
         "auction_ends_at": candidate.ends_at.isoformat() if candidate.ends_at else None,
         "shipping_included_in_total": shipping_eur is not None,
-        "price_nature_note": (
-            "Prix demandé observé sur une annonce active : pas une vente conclue."
-            if candidate.price_kind == "asking"
-            else "Enchère en cours : mise actuelle, pas un prix final."
-        ),
+        "read_at": candidate.observed_at.isoformat(),
+        "sold_at": candidate.sold_at.isoformat() if candidate.sold_at else None,
+        "fees_status": candidate.fees_status,
+        "source_country": candidate.source_country,
+        "source_amount": str(candidate.amount),
+        "source_currency": candidate.currency,
+        "description_excerpt": (candidate.description or "")[:400] or None,
+        # Relevé, pas déduit : la configuration que l'annonce dit (métal, bracelet,
+        # mouvement). Une même référence existe en plusieurs configurations.
+        "configuration": configuration_hints(candidate.title, candidate.description),
+        "price_nature_note": _nature_note(candidate),
     }
     return await create_comparable(
         session, principal, opportunity_id, payload, settings, provenance=provenance

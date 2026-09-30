@@ -36,6 +36,10 @@ class Settings(BaseSettings):
     ebay_api_base_url: str | None = None
     # Places de marché interrogées, séparées par des virgules.
     ebay_marketplaces: str = "EBAY_FR,EBAY_DE,EBAY_IT"
+    # Sources de la recherche autonome, séparées par des virgules. Par défaut
+    # eBay seul : une recherche ne doit jamais partir vers des sites tiers sans que
+    # l'exploitation l'ait décidé (le compose de production liste les autres).
+    market_search_sources: str = "ebay"
     # Lancer la recherche dès qu'une référence est confirmée.
     market_search_auto: bool = True
 

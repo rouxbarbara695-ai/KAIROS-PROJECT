@@ -24,14 +24,15 @@ from app.market_search.domain.reference import (
 # européennes et un titre allemand ne doit pas passer faute de mot-clé.
 _NOT_A_COMPLETE_WATCH = re.compile(
     r"\b("
-    r"for parts|spares?|spare parts|parts only|pour pieces|pieces detachees|"
+    r"for parts|for spares?|as spares?|spare parts|parts only|spares only|"
+    r"pour pieces|pieces detachees|"
     r"a reparer|for repair|not working|non funzionante|per ricambi|"
     r"defekt|ersatzteil\w*|bastler|"
     r"box only|empty box|boite seule|boite vide|nur box|nur schachtel|"
     r"bracelet only|strap only|band only|bracelet seul|armband nur|"
     r"dial only|cadran seul|movement only|mouvement seul|case only|boitier seul|"
     r"manual only|warranty card only|papers only|papiers seuls|"
-    r"crystal only|verre seul|links?|maillons?"
+    r"crystal only|verre seul|links only|spare links|extra links|maillons seuls"
     r")\b"
 )
 _COUNTERFEIT = re.compile(
@@ -70,17 +71,20 @@ def screen(
 
     now = now or datetime.now(UTC)
     title = candidate.title
+    # Les maisons de ventes écrivent la référence dans la description, pas dans
+    # le titre : elle est cherchée dans les deux, jamais ailleurs.
+    text = f"{title} {candidate.description or ''}"
 
-    if not match_reference(title, reference).found:
+    if not match_reference(text, reference).found:
         return _reject(
             "reference_not_stated",
-            "La référence exacte ne figure pas dans le titre : annonce voisine, "
+            "La référence exacte ne figure pas dans l'annonce : annonce voisine, "
             "non substituée.",
         )
-    if not brand_present(title, brand):
+    if not brand_present(text, brand):
         return _reject(
             "brand_not_stated",
-            "La marque ne figure pas dans le titre : la référence pourrait "
+            "La marque ne figure pas dans l'annonce : la référence pourrait "
             "appartenir à un autre fabricant.",
         )
 
@@ -97,6 +101,20 @@ def screen(
 
     if candidate.amount <= 0:
         return _reject("no_price", "Aucun prix exploitable.")
+
+    if (
+        candidate.price_kind == "asking"
+        and candidate.market_status in ("sold", "ended")
+        and candidate.sold_at is None
+    ):
+        # Le marchand affiche encore un prix pour un article vendu ou épuisé, sans
+        # dire quand : ce prix a peut-être des années. L'estimation le prendrait
+        # pour un prix d'aujourd'hui.
+        return _reject(
+            "sold_out_price_undated",
+            "Article vendu ou épuisé dont le dernier prix demandé n'est pas daté : "
+            "non retenu, aucun prix de vente n'est établi.",
+        )
 
     warnings: list[str] = []
     if model:

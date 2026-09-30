@@ -61,6 +61,7 @@ function source(overrides: Record<string, unknown> = {}) {
     started_at: NOW,
     finished_at: NOW,
     elapsed_s: 3.4,
+    complete: true,
     requests: [
       { label: "jeton OAuth", http_status: 200, elapsed_s: 0.3, note: null },
       {
@@ -85,6 +86,7 @@ function source(overrides: Record<string, unknown> = {}) {
         detail: "…",
       },
     ],
+    informational: [],
     recorded_items: [
       {
         comparable_id: "00000000-0000-4000-8000-000000000001",
@@ -117,6 +119,15 @@ function run(overrides: Record<string, unknown> = {}) {
       comparables_recorded: 2,
       comparables_known_for_reference: 2,
       recorded_by_price_kind: { asking: 2 },
+      price_groups: {
+        asking_active: {
+          label: "Prix demandés, annonces actives",
+          count: 2,
+          min_eur: "850.00",
+          median_eur: "900.00",
+          max_eur: "950.00",
+        },
+      },
       insufficient_data: false,
       insufficient_data_message: null,
       price_nature_note:

@@ -40,7 +40,7 @@ class CreateOpportunityResult:
 
 
 async def _get_or_create_watch_reference(
-    session: AsyncSession, brand: str, reference: str
+    session: AsyncSession, brand: str, reference: str, model: str | None = None
 ) -> WatchReference:
     existing = (
         await session.execute(
@@ -50,8 +50,12 @@ async def _get_or_create_watch_reference(
         )
     ).scalar_one_or_none()
     if existing is not None:
+        # Un modèle connu complète une référence qui n'en avait pas ; il n'en
+        # remplace jamais un déjà renseigné (la donnée de référence est partagée).
+        if model and not existing.model:
+            existing.model = model
         return existing
-    created = WatchReference(brand=brand, reference=reference)
+    created = WatchReference(brand=brand, reference=reference, model=model)
     session.add(created)
     await session.flush()
     return created
@@ -69,7 +73,7 @@ async def create_opportunity(
         )
 
     watch_reference = await _get_or_create_watch_reference(
-        session, request.watch.brand, request.watch.reference
+        session, request.watch.brand, request.watch.reference, request.watch.model
     )
 
     mechanical = vocab.normalize(

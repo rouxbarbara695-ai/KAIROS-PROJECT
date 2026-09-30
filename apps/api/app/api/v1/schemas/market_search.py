@@ -59,6 +59,17 @@ class RecordedItem(_Response):
     price_kind: str
 
 
+class InformationalItem(_Response):
+    """Un prix relevé mais volontairement hors de l'estimation, avec son motif."""
+
+    title: str
+    url: str
+    amount: str
+    currency: str
+    code: str
+    detail: str
+
+
 class SourceResult(_Response):
     """Ce qu'une source a réellement fait : requêtes, lectures, retenues, écartées.
 
@@ -80,9 +91,19 @@ class SourceResult(_Response):
     already_known: int = 0
     duplicates: int = 0
     fx_unavailable: int = 0
+    complete: bool = True
     rejected: dict[str, int] = Field(default_factory=dict)
     rejected_examples: list[RejectedExample] = Field(default_factory=list)
     recorded_items: list[RecordedItem] = Field(default_factory=list)
+    informational: list[InformationalItem] = Field(default_factory=list)
+
+
+class PriceGroup(_Response):
+    label: str
+    count: int
+    min_eur: str
+    median_eur: str
+    max_eur: str
 
 
 class SearchSummary(_Response):
@@ -92,6 +113,7 @@ class SearchSummary(_Response):
     comparables_recorded: int = 0
     comparables_known_for_reference: int | None = None
     recorded_by_price_kind: dict[str, int] = Field(default_factory=dict)
+    price_groups: dict[str, PriceGroup] = Field(default_factory=dict)
     insufficient_data: bool = False
     insufficient_data_message: str | None = None
     price_nature_note: str | None = None

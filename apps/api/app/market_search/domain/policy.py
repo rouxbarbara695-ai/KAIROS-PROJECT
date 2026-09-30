@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-POLICY_VERSION = "1.0.0"
+POLICY_VERSION = "1.1.0"
 
 
 @dataclass(frozen=True, slots=True)
@@ -33,3 +33,13 @@ class SearchPolicy:
     # Garde-fou du quota quotidien de la source (5 000 appels par jour pour le
     # programme gratuit eBay) : on s'arrête bien avant.
     daily_request_limit: int = 4000
+    # Sources de pages publiques (pas d'API) : politesse et plafonds propres.
+    # Le délai réellement appliqué est le plus grand de celui-ci, de celui de la
+    # source et du `crawl-delay` de son robots.txt.
+    page_source_min_delay_s: float = 3.0
+    page_source_max_requests: int = 30
+    page_source_max_bytes: int = 3 * 1024 * 1024
+    # Pages de résultats lues par requête de recherche, et fiches de détail lues
+    # quand la page de résultats ne suffit pas à prouver la référence.
+    max_result_pages: int = 3
+    max_detail_pages: int = 8

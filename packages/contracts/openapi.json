@@ -1268,6 +1268,45 @@
         "title": "ImportedFieldResponse",
         "type": "object"
       },
+      "InformationalItem": {
+        "description": "Un prix relev\u00e9 mais volontairement hors de l'estimation, avec son motif.",
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "string"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "url",
+          "amount",
+          "currency",
+          "code",
+          "detail"
+        ],
+        "title": "InformationalItem",
+        "type": "object"
+      },
       "LedgerMovementCreate": {
         "description": "Mouvement de tr\u00e9sorerie saisi par l'utilisateur.\n\nSeules les natures sans contrepartie ailleurs sont accept\u00e9es. Un paiement\nd'achat ou un encaissement de vente a sa ligne dans `purchases` ou\n`sales` : le saisir ici ferait diverger le registre des op\u00e9rations qu'il\nrefl\u00e8te.\n\nLe montant est toujours positif \u2014 c'est la nature qui porte le sens, comme\ndans le registre lui-m\u00eame.",
         "properties": {
@@ -2824,6 +2863,39 @@
         "title": "PriceCreate",
         "type": "object"
       },
+      "PriceGroup": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "max_eur": {
+            "title": "Max Eur",
+            "type": "string"
+          },
+          "median_eur": {
+            "title": "Median Eur",
+            "type": "string"
+          },
+          "min_eur": {
+            "title": "Min Eur",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "count",
+          "min_eur",
+          "median_eur",
+          "max_eur"
+        ],
+        "title": "PriceGroup",
+        "type": "object"
+      },
       "PriceInputCreate": {
         "properties": {
           "amount": {
@@ -3330,6 +3402,13 @@
             ],
             "title": "Observed At"
           },
+          "price_groups": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/PriceGroup"
+            },
+            "title": "Price Groups",
+            "type": "object"
+          },
           "price_nature_note": {
             "anyOf": [
               {
@@ -3377,6 +3456,7 @@
           "comparables_recorded",
           "comparables_known_for_reference",
           "recorded_by_price_kind",
+          "price_groups",
           "insufficient_data",
           "insufficient_data_message",
           "price_nature_note",
@@ -3697,6 +3777,11 @@
             "title": "Already Known",
             "type": "integer"
           },
+          "complete": {
+            "default": true,
+            "title": "Complete",
+            "type": "boolean"
+          },
           "duplicates": {
             "default": 0,
             "title": "Duplicates",
@@ -3723,6 +3808,13 @@
             "default": 0,
             "title": "Fx Unavailable",
             "type": "integer"
+          },
+          "informational": {
+            "items": {
+              "$ref": "#/components/schemas/InformationalItem"
+            },
+            "title": "Informational",
+            "type": "array"
           },
           "message": {
             "anyOf": [
@@ -3822,9 +3914,11 @@
           "already_known",
           "duplicates",
           "fx_unavailable",
+          "complete",
           "rejected",
           "rejected_examples",
-          "recorded_items"
+          "recorded_items",
+          "informational"
         ],
         "title": "SourceResult",
         "type": "object"
@@ -4120,6 +4214,18 @@
             ],
             "title": "Mechanical Condition"
           },
+          "model": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
           "originality": {
             "anyOf": [
               {
@@ -4271,6 +4377,17 @@
               }
             ],
             "title": "Identification Confidence"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
           },
           "reference": {
             "anyOf": [

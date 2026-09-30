@@ -19,6 +19,7 @@ import {
   rejectionLabel,
   SOURCE_STATUS_LABELS,
   sourceName,
+  sourceNature,
 } from "@/lib/marketSearch";
 import { announceMarketChange } from "@/lib/recalculation";
 
@@ -52,7 +53,17 @@ function SourceBlock({ source }: { source: MarketSearchSource }) {
           {source.requests_count} requête{source.requests_count > 1 ? "s" : ""}
           {source.elapsed_s ? ` · ${source.elapsed_s} s` : ""}
         </span>
+        {!source.complete && (
+          <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs text-amber-500 ring-1 ring-inset ring-amber-500/30">
+            lecture partielle
+          </span>
+        )}
       </div>
+      {sourceNature(source.source) && (
+        <p className="mt-1 text-xs text-fg-muted">
+          Publie : {sourceNature(source.source)}.
+        </p>
+      )}
 
       {/* Le diagnostic exact d'un échec est affiché tel quel : il ne se
           remplace pas par « aucun résultat ». */}
@@ -62,6 +73,7 @@ function SourceBlock({ source }: { source: MarketSearchSource }) {
       {counts && <p className="mt-1.5 text-xs text-fg-muted">{counts}</p>}
 
       {(source.recorded_items.length > 0 ||
+        source.informational.length > 0 ||
         rejected.length > 0 ||
         source.requests.length > 0) && (
         <div className="mt-2">
@@ -85,6 +97,33 @@ function SourceBlock({ source }: { source: MarketSearchSource }) {
                           — {formatAmount(item.amount, item.currency)} ·{" "}
                           {labels.priceKind(item.price_kind)}
                         </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {source.informational.length > 0 && (
+                <div>
+                  <p className="mb-1 font-medium text-fg">
+                    Prix relevés mais hors de l&apos;estimation
+                  </p>
+                  <ul className="space-y-1 text-fg-muted">
+                    {source.informational.map((item) => (
+                      <li key={item.url}>
+                        <a
+                          href={item.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline-offset-2 hover:underline"
+                        >
+                          {item.title}
+                        </a>{" "}
+                        <span className="numeric">
+                          — {Number(item.amount).toLocaleString("fr-FR")}{" "}
+                          {item.currency}
+                        </span>{" "}
+                        ({item.detail})
                       </li>
                     ))}
                   </ul>
@@ -282,6 +321,32 @@ export function MarketSearchPanel({
 
           {run.error_message && (
             <p className="text-xs text-danger">{run.error_message}</p>
+          )}
+
+          {Object.keys(run.summary.price_groups).length > 0 && (
+            <div
+              className="rounded-md border border-border p-3"
+              data-testid="price-groups"
+            >
+              <p className="mb-2 text-xs font-medium text-fg">
+                Ce que disent les marchés — séparés, jamais moyennés ensemble
+              </p>
+              <ul className="space-y-1 text-xs text-fg-muted">
+                {Object.entries(run.summary.price_groups).map(([code, group]) => (
+                  <li key={code}>
+                    {group.label} ({group.count}) :{" "}
+                    <span className="numeric text-fg">
+                      {formatAmount(group.min_eur, "EUR")} à{" "}
+                      {formatAmount(group.max_eur, "EUR")}
+                    </span>
+                    , médiane{" "}
+                    <span className="numeric">
+                      {formatAmount(group.median_eur, "EUR")}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
 
           {run.sources.length > 0 && (

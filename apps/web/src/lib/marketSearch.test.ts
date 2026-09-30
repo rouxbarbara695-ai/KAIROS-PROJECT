@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { MarketSearchRun, MarketSearchSource } from "@/lib/api";
 import {
   describeFreshness,
+  describeProvenance,
   describeSourceCounts,
   headline,
   isActive,
@@ -19,6 +20,7 @@ function summary(overrides: Partial<Summary> = {}): Summary {
     comparables_recorded: 0,
     comparables_known_for_reference: 0,
     recorded_by_price_kind: {},
+    price_groups: {},
     insufficient_data: false,
     insufficient_data_message: null,
     price_nature_note: null,
@@ -121,6 +123,7 @@ describe("describeSourceCounts", () => {
     started_at: null,
     finished_at: null,
     elapsed_s: 1.2,
+    complete: true,
     requests: [],
     requests_count: 2,
     read: 40,
@@ -132,11 +135,18 @@ describe("describeSourceCounts", () => {
     rejected: { reference_not_stated: 35, brand_not_stated: 2 },
     rejected_examples: [],
     recorded_items: [],
+    informational: [],
   };
 
   it("compte lues, retenues et écartées", () => {
     expect(describeSourceCounts(base)).toBe(
       "40 annonces lues · 2 retenues · 37 écartées · 1 déjà connue(s) · 1 doublon(s) fusionné(s)",
+    );
+  });
+
+  it("signale une lecture partielle : l'absence d'une annonce n'est alors pas une preuve", () => {
+    expect(describeSourceCounts({ ...base, complete: false })).toContain(
+      "lecture partielle",
     );
   });
 
@@ -158,5 +168,28 @@ describe("rejectionLabel", () => {
   it("traduit les motifs connus et rend les inconnus tels quels", () => {
     expect(rejectionLabel("reference_not_stated")).toContain("voisine");
     expect(rejectionLabel("motif_futur")).toBe("motif_futur");
+  });
+});
+
+describe("describeProvenance", () => {
+  it("garde la devise et la date d'origine, et dit ce qui est inconnu", () => {
+    const lines = describeProvenance({
+      source_amount: "7750",
+      source_currency: "CHF",
+      sold_at: "2013-05-12T00:00:00+00:00",
+      fees_status: "unknown",
+      configuration: {
+        "métal": ["yellow gold"],
+        bracelet: ["bracelet métal"],
+      },
+    });
+    expect(lines[0]).toContain("CHF");
+    expect(lines.join(" ")).toContain("2013");
+    expect(lines).toContain("commission acheteur : inconnue");
+    expect(lines.join(" ")).toContain("yellow gold");
+  });
+
+  it("ne dit rien d'une saisie manuelle", () => {
+    expect(describeProvenance(null)).toEqual([]);
   });
 });

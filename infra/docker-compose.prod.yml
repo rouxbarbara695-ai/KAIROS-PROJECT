@@ -78,6 +78,9 @@ services:
       EBAY_CLIENT_ID: ${EBAY_CLIENT_ID:-}
       EBAY_CLIENT_SECRET: ${EBAY_CLIENT_SECRET:-}
       EBAY_MARKETPLACES: ${EBAY_MARKETPLACES:-EBAY_FR,EBAY_DE,EBAY_IT}
+      # Sources interrogées à la demande (jamais en continu). Retirer un nom pour
+      # désactiver la source ; voir docs/decisions/registre-sources.md.
+      MARKET_SEARCH_SOURCES: ${MARKET_SEARCH_SOURCES:-ebay,phigora,antiquorum,sworders,vintage_watch_agency}
       # Le navigateur ne parle qu'à l'origine de l'interface : CORS ne sert
       # jamais en pratique. La configuration l'exige quand même hors local, et
       # elle a raison — une origine locale laissée en place autoriserait des

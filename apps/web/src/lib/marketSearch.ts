@@ -20,9 +20,30 @@ export const REJECTION_LABELS: Record<string, string> = {
   auction_already_ended: "Enchère terminée",
   auction_too_early: "Enchère loin de sa clôture : la mise n'est pas un prix",
   auction_without_bids: "Enchère sans aucune mise",
+  sold_out_price_undated:
+    "Article vendu ou épuisé au dernier prix non daté : aucun prix de vente établi",
 };
 
-export const SOURCE_NAMES: Record<string, string> = { ebay: "eBay" };
+export const SOURCE_NAMES: Record<string, string> = {
+  ebay: "eBay",
+  phigora: "Phigora",
+  antiquorum: "Antiquorum",
+  sworders: "Sworders",
+  vintage_watch_agency: "Vintage Watch Agency",
+};
+
+/** Ce que chaque source publie : dit à côté de ses chiffres, jamais implicite. */
+export const SOURCE_NATURE: Record<string, string> = {
+  ebay: "prix demandés et enchères en cours",
+  phigora: "prix demandés d'un marchand (États-Unis, en dollars)",
+  antiquorum: "résultats d'adjudication publiés (frais acheteur inconnus)",
+  sworders: "résultats d'adjudication publiés (frais acheteur inconnus)",
+  vintage_watch_agency: "prix demandés d'un marchand (Suède, en euros)",
+};
+
+export function sourceNature(code: string): string {
+  return SOURCE_NATURE[code] ?? "";
+}
 
 export const SOURCE_STATUS_LABELS: Record<string, string> = {
   ok: "Interrogée",
@@ -105,6 +126,7 @@ export function describeSourceCounts(source: MarketSearchSource): string {
   ];
   if (source.already_known > 0) parts.push(`${source.already_known} déjà connue(s)`);
   if (source.duplicates > 0) parts.push(`${source.duplicates} doublon(s) fusionné(s)`);
+  if (!source.complete) parts.push("lecture partielle");
   if (source.fx_unavailable > 0)
     parts.push(`${source.fx_unavailable} sans taux de change`);
   return parts.join(" · ");
@@ -118,4 +140,37 @@ export function refreshBlockedUntil(
   if (!run?.next_refresh_allowed_at) return null;
   const at = new Date(run.next_refresh_allowed_at);
   return at.getTime() > now.getTime() ? at : null;
+}
+
+type Provenance = Record<string, unknown> | null | undefined;
+
+/**
+ * Ce que la source a publié, dans SA devise et avec SES dates : le montant
+ * converti en euros est un calcul, l'original est la donnée.
+ */
+export function describeProvenance(provenance: Provenance): string[] {
+  if (!provenance) return [];
+  const lines: string[] = [];
+  const amount = provenance.source_amount;
+  const currency = provenance.source_currency;
+  if (typeof amount === "string" && typeof currency === "string") {
+    lines.push(`Affiché : ${Number(amount).toLocaleString("fr-FR")} ${currency}`);
+  }
+  const soldAt = provenance.sold_at;
+  if (typeof soldAt === "string") {
+    lines.push(
+      `adjugé le ${new Date(soldAt).toLocaleDateString("fr-FR", { dateStyle: "long" })}`,
+    );
+  }
+  if (provenance.fees_status === "unknown") {
+    lines.push("commission acheteur : inconnue");
+  }
+  const configuration = provenance.configuration;
+  if (configuration && typeof configuration === "object") {
+    const parts = Object.values(configuration as Record<string, unknown>)
+      .flatMap((values) => (Array.isArray(values) ? values : []))
+      .filter((value): value is string => typeof value === "string");
+    if (parts.length > 0) lines.push(`relevé : ${parts.join(", ")}`);
+  }
+  return lines;
 }

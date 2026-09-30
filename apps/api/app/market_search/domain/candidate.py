@@ -13,7 +13,9 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Literal
 
-PriceKind = Literal["asking", "current_bid"]
+PriceKind = Literal["asking", "current_bid", "hammer"]
+MarketStatus = Literal["active", "sold", "ended", "unknown"]
+FeesStatus = Literal["not_applicable", "included", "excluded", "unknown"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -42,6 +44,20 @@ class Candidate:
     condition_text: str | None = None
     marketplace: str | None = None
     offers_accepted: bool = False
+    #: Texte descriptif complet de l'annonce, **déjà nettoyé** (balises, numéros de
+    #: série). Sert au contrôle d'identité quand le titre ne porte pas la
+    #: référence (maisons de ventes) ; il n'est jamais conservé tel quel.
+    description: str | None = None
+    #: Statut affiché par la source. « sold » n'est utilisé que si la source le
+    #: dit expressément : une disparition n'est jamais une vente.
+    market_status: MarketStatus = "active"
+    #: Date de la vente si la source la publie (adjudication).
+    sold_at: datetime | None = None
+    #: Les frais acheteur sont-ils dans le montant ? `unknown` tant que la source
+    #: ne le dit pas : jamais normalisé en silence.
+    fees_status: FeesStatus = "not_applicable"
+    #: Lieu de la source (pays) : sépare marchés, devises et fiscalité.
+    source_country: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -86,3 +102,7 @@ class SourceOutcome:
     candidates: list[Candidate] = field(default_factory=list)
     requests: list[RequestRecord] = field(default_factory=list)
     message: str | None = None
+    #: La recherche a-t-elle vu **tous** les résultats de la source ? `False`
+    #: quand une limite (pages, requêtes) a coupé la lecture : l'absence d'une
+    #: annonce n'est alors pas une preuve.
+    complete: bool = True

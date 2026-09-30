@@ -11,6 +11,7 @@ import {
 } from "@/lib/api";
 import { Disclosure } from "@/components/Disclosure";
 import { formatAmount, labels, options, PRICE_KIND_OPTIONS } from "@/lib/labels";
+import { describeProvenance } from "@/lib/marketSearch";
 import {
   announceMarketChange,
   changedSomething,
@@ -237,6 +238,11 @@ export function ComparablesPanel({
                             </a>
                           </>
                         )}
+                      </span>
+                    )}
+                    {describeProvenance(item.provenance).length > 0 && (
+                      <span className="block text-xs text-fg-muted">
+                        {describeProvenance(item.provenance).join(" · ")}
                       </span>
                     )}
                     {item.excluded && item.exclusion_reason && (

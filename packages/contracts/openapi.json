@@ -587,6 +587,16 @@
             "title": "Imported",
             "type": "integer"
           },
+          "recalculation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecalculationResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "rejected": {
             "items": {
               "$ref": "#/components/schemas/ComparableImportRow"
@@ -745,6 +755,16 @@
           "rate_to_eur": {
             "title": "Rate To Eur",
             "type": "string"
+          },
+          "recalculation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecalculationResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "source_name": {
             "title": "Source Name",
@@ -1718,6 +1738,16 @@
           "reason": {
             "title": "Reason",
             "type": "string"
+          },
+          "recalculation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecalculationResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -2582,6 +2612,72 @@
           "reason"
         ],
         "title": "PurchaseCreate",
+        "type": "object"
+      },
+      "RecalculationResponse": {
+        "description": "Ce que le recalcul automatique a fait apr\u00e8s un changement de comparables.\n\nPr\u00e9sent sur les r\u00e9ponses qui modifient les comparables. Il dit la v\u00e9rit\u00e9,\ny compris quand rien n'a \u00e9t\u00e9 calcul\u00e9 : \u00ab pas assez de comparables \u00bb n'est\npas une erreur, et \u00ab le calcul a \u00e9chou\u00e9, votre saisie est enregistr\u00e9e \u00bb ne\ndoit jamais se confondre avec un succ\u00e8s.",
+        "properties": {
+          "analysis_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Analysis Id"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "status": {
+            "enum": [
+              "recalculated",
+              "valuation_only",
+              "skipped",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "valuation_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valuation Id"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "RecalculationResponse",
         "type": "object"
       },
       "ReferenceConfirmationRequest": {
@@ -3559,6 +3655,25 @@
               "format": "uuid",
               "title": "Comparable Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "Opportunit\u00e9 \u00e0 recalculer apr\u00e8s la correction. Un comparable appartient \u00e0 une r\u00e9f\u00e9rence, pas \u00e0 une opportunit\u00e9 : sans pr\u00e9cision, rien n'est recalcul\u00e9 automatiquement.",
+            "in": "query",
+            "name": "opportunity_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opportunit\u00e9 \u00e0 recalculer apr\u00e8s la correction. Un comparable appartient \u00e0 une r\u00e9f\u00e9rence, pas \u00e0 une opportunit\u00e9 : sans pr\u00e9cision, rien n'est recalcul\u00e9 automatiquement.",
+              "title": "Opportunity Id"
             }
           }
         ],

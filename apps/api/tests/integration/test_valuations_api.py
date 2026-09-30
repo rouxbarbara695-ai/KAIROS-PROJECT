@@ -175,6 +175,21 @@ async def test_recalculation_creates_a_new_immutable_version(
     for index, amount in enumerate(["3000.00", "3100.00", "3200.00"]):
         await _add(client, opportunity["id"], amount, seller=f"s{index}")
 
+    async def versions() -> int:
+        return (
+            await db_session.execute(
+                text(
+                    "select count(*) from market_valuations "
+                    "where opportunity_id = :opportunity_id"
+                ),
+                {"opportunity_id": opportunity["id"]},
+            )
+        ).scalar_one()
+
+    # Le recalcul automatique a déjà publié des versions en chemin : ce test
+    # porte sur la demande manuelle, donc on compte à partir de là.
+    before = await versions()
+
     first = (
         await client.post(f"/api/v1/opportunities/{opportunity['id']}/valuations")
     ).json()
@@ -183,17 +198,7 @@ async def test_recalculation_creates_a_new_immutable_version(
     ).json()
 
     assert first["id"] != second["id"]
-
-    count = (
-        await db_session.execute(
-            text(
-                "select count(*) from market_valuations "
-                "where opportunity_id = :opportunity_id"
-            ),
-            {"opportunity_id": opportunity["id"]},
-        )
-    ).scalar_one()
-    assert count == 2
+    assert await versions() == before + 2
 
     with pytest.raises(Exception) as exc:
         await db_session.execute(
@@ -234,17 +239,25 @@ async def test_the_latest_valuation_can_be_read_back(
     prétendrait qu'aucune cote n'existe."""
 
     opportunity = await _opportunity(client, default_portfolio_id, "VAL-100")
-    await _add(client, opportunity["id"], "3000.00", seller="s1")
-    await _add(client, opportunity["id"], "3100.00", seller="s2")
 
+    # Un seul comparable : pas de cote, donc rien à relire.
+    await _add(client, opportunity["id"], "3000.00", seller="s1")
     absent = await client.get(
         f"/api/v1/opportunities/{opportunity['id']}/valuations/latest"
     )
     assert absent.status_code == 404
 
+    # Le deuxième déclenche le calcul automatique : la cote se relit sans clic.
+    await _add(client, opportunity["id"], "3100.00", seller="s2")
+    automatic = await client.get(
+        f"/api/v1/opportunities/{opportunity['id']}/valuations/latest"
+    )
+    assert automatic.status_code == 200
+
     created = (
         await client.post(f"/api/v1/opportunities/{opportunity['id']}/valuations")
     ).json()
+    assert created["id"] != automatic.json()["id"]
     second = (
         await client.post(f"/api/v1/opportunities/{opportunity['id']}/valuations")
     ).json()

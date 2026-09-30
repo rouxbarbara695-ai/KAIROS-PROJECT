@@ -52,7 +52,13 @@ async def test_valid_rows_are_imported(
         json={"content": csv_content},
     )
     assert response.status_code == 200, response.text
-    assert response.json() == {"imported": 2, "rejected": []}
+    body = response.json()
+    assert body["imported"] == 2
+    assert body["rejected"] == []
+    # Deux lignes valides suffisent à une cote : le recalcul automatique a eu
+    # lieu, une seule fois pour tout le fichier (voir
+    # test_comparable_recalculation_api.py pour le détail).
+    assert body["recalculation"] is not None
 
     listed = await client.get(f"/api/v1/opportunities/{opportunity_id}/comparables")
     assert len(listed.json()["items"]) == 2

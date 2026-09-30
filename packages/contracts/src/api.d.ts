@@ -886,6 +886,7 @@ export interface components {
         ComparableImportResult: {
             /** Imported */
             imported: number;
+            recalculation?: components["schemas"]["RecalculationResponse"] | null;
             /** Rejected */
             rejected: components["schemas"]["ComparableImportRow"][];
         };
@@ -952,6 +953,7 @@ export interface components {
             price_kind: string;
             /** Rate To Eur */
             rate_to_eur: string;
+            recalculation?: components["schemas"]["RecalculationResponse"] | null;
             /** Source Name */
             source_name: string;
             /** Source Reliability */
@@ -1367,6 +1369,7 @@ export interface components {
             previous_override_id: string | null;
             /** Reason */
             reason: string;
+            recalculation?: components["schemas"]["RecalculationResponse"] | null;
         };
         /**
          * PayoutCreate
@@ -1631,6 +1634,30 @@ export interface components {
             purchased_at?: string | null;
             /** Reason */
             reason: string;
+        };
+        /**
+         * RecalculationResponse
+         * @description Ce que le recalcul automatique a fait après un changement de comparables.
+         *
+         *     Présent sur les réponses qui modifient les comparables. Il dit la vérité,
+         *     y compris quand rien n'a été calculé : « pas assez de comparables » n'est
+         *     pas une erreur, et « le calcul a échoué, votre saisie est enregistrée » ne
+         *     doit jamais se confondre avec un succès.
+         */
+        RecalculationResponse: {
+            /** Analysis Id */
+            analysis_id?: string | null;
+            /** Detail */
+            detail?: string | null;
+            /** Reason */
+            reason?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "recalculated" | "valuation_only" | "skipped" | "failed";
+            /** Valuation Id */
+            valuation_id?: string | null;
         };
         /** ReferenceConfirmationRequest */
         ReferenceConfirmationRequest: {
@@ -1995,7 +2022,10 @@ export interface operations {
     };
     create_override_route_api_v1_comparables__comparable_id__overrides_post: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Opportunité à recalculer après la correction. Un comparable appartient à une référence, pas à une opportunité : sans précision, rien n'est recalculé automatiquement. */
+                opportunity_id?: string | null;
+            };
             header?: never;
             path: {
                 comparable_id: string;

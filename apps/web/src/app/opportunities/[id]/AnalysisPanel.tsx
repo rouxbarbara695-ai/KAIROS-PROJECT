@@ -7,6 +7,7 @@ import {
   getLatestAnalysis,
   type AnalysisResponse,
 } from "@/lib/api";
+import { MARKET_CHANGED_EVENT } from "@/lib/recalculation";
 import { formatAmount, formatDateTime, labels } from "@/lib/labels";
 
 /** Poids des piliers (scoring-engine.md § 1), pour situer chaque note. */
@@ -122,19 +123,24 @@ export function AnalysisPanel({ opportunityId }: { opportunityId: string }) {
 
   useEffect(() => {
     let cancelled = false;
-    getLatestAnalysis(opportunityId)
-      .then((latest) => {
-        if (!cancelled) setAnalysis(latest);
-      })
-      .catch(() => {
-        // Un échec de relecture ne doit pas empêcher de lancer une analyse :
-        // le bouton reste disponible.
-      })
-      .finally(() => {
-        if (!cancelled) setLoaded(true);
-      });
+    const load = () =>
+      getLatestAnalysis(opportunityId)
+        .then((latest) => {
+          if (!cancelled) setAnalysis(latest);
+        })
+        .catch(() => {
+          // Un échec de relecture ne doit pas empêcher de lancer une analyse :
+          // le bouton reste disponible.
+        })
+        .finally(() => {
+          if (!cancelled) setLoaded(true);
+        });
+    void load();
+    // Une analyse recalculée automatiquement doit apparaître sans rechargement.
+    window.addEventListener(MARKET_CHANGED_EVENT, load);
     return () => {
       cancelled = true;
+      window.removeEventListener(MARKET_CHANGED_EVENT, load);
     };
   }, [opportunityId]);
 

@@ -1169,6 +1169,100 @@
         "listings_portfolio_watch_identity_uq": "CREATE UNIQUE INDEX listings_portfolio_watch_identity_uq ON public.listings USING btree (portfolio_id, id, watch_id)"
       }
     },
+    "market_search_runs": {
+      "columns": {
+        "created_at": {
+          "default": "now()",
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        "error_code": {
+          "default": null,
+          "nullable": true,
+          "type": "text"
+        },
+        "error_message": {
+          "default": null,
+          "nullable": true,
+          "type": "text"
+        },
+        "finished_at": {
+          "default": null,
+          "nullable": true,
+          "type": "timestamp with time zone"
+        },
+        "id": {
+          "default": "gen_random_uuid()",
+          "nullable": false,
+          "type": "uuid"
+        },
+        "opportunity_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "policy_version": {
+          "default": null,
+          "nullable": false,
+          "type": "text"
+        },
+        "portfolio_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "reference_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "requested_by_user_id": {
+          "default": null,
+          "nullable": false,
+          "type": "uuid"
+        },
+        "sources": {
+          "default": "'[]'::jsonb",
+          "nullable": false,
+          "type": "jsonb"
+        },
+        "started_at": {
+          "default": null,
+          "nullable": true,
+          "type": "timestamp with time zone"
+        },
+        "status": {
+          "default": "'queued'::job_status",
+          "nullable": false,
+          "type": "job_status"
+        },
+        "summary": {
+          "default": "'{}'::jsonb",
+          "nullable": false,
+          "type": "jsonb"
+        },
+        "trigger_kind": {
+          "default": null,
+          "nullable": false,
+          "type": "text"
+        }
+      },
+      "constraints": {
+        "market_search_runs_check": "CHECK (((finished_at IS NULL) OR (started_at IS NULL) OR (finished_at >= started_at)))",
+        "market_search_runs_opportunity_same_portfolio_fk": "FOREIGN KEY (portfolio_id, opportunity_id) REFERENCES opportunities(portfolio_id, id)",
+        "market_search_runs_pkey": "PRIMARY KEY (id)",
+        "market_search_runs_portfolio_id_fkey": "FOREIGN KEY (portfolio_id) REFERENCES portfolios(id)",
+        "market_search_runs_reference_id_fkey": "FOREIGN KEY (reference_id) REFERENCES watch_references(id)",
+        "market_search_runs_requested_by_user_id_fkey": "FOREIGN KEY (requested_by_user_id) REFERENCES users(id)",
+        "market_search_runs_trigger_kind_check": "CHECK ((trigger_kind = ANY (ARRAY['reference_confirmed'::text, 'refresh'::text])))"
+      },
+      "indexes": {
+        "market_search_runs_active_uq": "CREATE UNIQUE INDEX market_search_runs_active_uq ON public.market_search_runs USING btree (portfolio_id, reference_id) WHERE (status = ANY (ARRAY['queued'::job_status, 'running'::job_status]))",
+        "market_search_runs_opportunity_idx": "CREATE INDEX market_search_runs_opportunity_idx ON public.market_search_runs USING btree (opportunity_id, created_at DESC)",
+        "market_search_runs_pkey": "CREATE UNIQUE INDEX market_search_runs_pkey ON public.market_search_runs USING btree (id)",
+        "market_search_runs_reference_idx": "CREATE INDEX market_search_runs_reference_idx ON public.market_search_runs USING btree (portfolio_id, reference_id, created_at DESC)"
+      }
+    },
     "market_valuations": {
       "columns": {
         "calculated_at": {

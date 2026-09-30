@@ -418,6 +418,125 @@ réécrit pas l’événement précédent.
 Les nombres de cet exemple illustrent la **forme du contrat**, pas une fixture
 arithmétique. Les fixtures faisant foi sont dans la stratégie de tests.
 
+## Recalcul automatique après un changement de comparables
+
+`workflow-and-states.md` fait d'un comparable **ajouté, corrigé, exclu ou
+réintégré** un déclencheur de recalcul. Trois routes l'appliquent :
+
+| Route | Recalcul |
+|---|---|
+| `POST /opportunities/{id}/comparables` | toujours, après l'enregistrement |
+| `POST /opportunities/{id}/comparables/import` | **une seule fois** pour tout le fichier, et seulement si au moins une ligne a été importée |
+| `POST /comparables/{id}/overrides?opportunity_id=…` | seulement si `opportunity_id` est fourni |
+
+Le recalcul enchaîne les deux calculs existants — la cote, puis l'analyse — sans
+rien changer à leurs règles. L'analyse est publiée avec
+`trigger_type = "comparable_changed"` ; une demande explicite de l'utilisateur
+reste `manual`.
+
+### Ce que la réponse dit
+
+Les réponses de ces trois routes portent un champ `recalculation` :
+
+```json
+{
+  "status": "recalculated | valuation_only | skipped | failed",
+  "reason": "code stable ou null",
+  "detail": "phrase pour l'utilisateur ou null",
+  "valuation_id": "uuid ou null",
+  "analysis_id": "uuid ou null"
+}
+```
+
+| `status` | Sens |
+|---|---|
+| `recalculated` | une cote et une analyse neuves existent |
+| `valuation_only` | la cote est à jour, l'analyse n'a pas pu l'être (`detail` dit pourquoi, par exemple un portefeuille sans capital) |
+| `skipped` | rien à calculer : moins de deux comparables recevables. **Ce n'est pas une erreur** |
+| `failed` | échec inattendu. Le comparable, lui, est enregistré |
+
+### Garanties
+
+- **La saisie n'est jamais perdue.** Le comparable est enregistré avant le
+  recalcul, dans sa propre transaction. Une panne du moteur ne produit ni `500`
+  ni perte : elle se lit dans `recalculation.status`.
+- **Rien n'est écrasé** (règle 4). Chaque recalcul ajoute une version de cote et
+  une analyse chaînée à la précédente. L'index unique sur
+  `previous_analysis_id` protège deux recalculs simultanés : le perdant rend
+  `valuation_only` avec `reason = "concurrent_recalculation"`.
+- **Rien de la panne ne fuit.** Le journal garde le type de l'erreur et
+  l'étape, jamais la trace complète (règle 11 : une exception SQLAlchemy
+  embarque ses paramètres).
+
+### Limite assumée
+
+Un comparable appartient à une **référence**, pas à une opportunité. Le recalcul
+ne porte que sur **l'opportunité désignée** (chemin de la route, ou
+`opportunity_id`). Les autres opportunités de la même référence gardent leur
+dernière cote jusqu'à leur propre recalcul. Décider lesquelles sont « ouvertes »
+serait une règle métier : voir `open-questions.md`.
+
+## Recherche autonome de comparables
+
+KAIROS cherche lui-même les annonces comparables d'une montre à référence
+**confirmée**. La recherche dure plusieurs secondes : elle s'exécute après la
+réponse, et l'écran relit son avancement.
+
+| Route | Rôle |
+|---|---|
+| `POST /opportunities/{id}/market-searches` | lance une recherche. `202` si elle démarre ; `200` si la demande est ramenée à une recherche existante (`reused`) |
+| `GET /opportunities/{id}/market-searches/latest` | dernière recherche de la référence, et sources configurées |
+
+La confirmation de la référence (`POST …/reference-confirmations`) la lance
+aussi, sans que l'utilisateur ait à le demander. Elle ne dépend jamais de la
+recherche : si celle-ci ne peut pas démarrer, la confirmation réussit.
+
+Corps du `POST` : `{"force": false}`. `reused` vaut `running` (une recherche est
+déjà en cours), `fresh` (la précédente est plus récente que
+`cache_ttl_hours`) ou `too_soon` (`force` demandé, mais moins de
+`min_refresh_minutes` se sont écoulées). Chaque requête coûte du quota à la
+source : une demande qui n'apprendrait rien n'en émet aucune.
+
+Erreurs : `REFERENCE_UNCONFIRMED` (422) tant que la référence n'est pas
+confirmée ; `COLLECTOR_UNAVAILABLE` (503) quand aucune source n'est configurée.
+
+### Ce que la réponse dit
+
+`status` : `queued`, `running`, `succeeded`, `partial` (une source au moins a
+répondu), `failed`. Chaque source rend son propre résultat, **dès qu'elle a
+fini** — l'écran affiche des résultats partiels sans attendre les autres :
+
+- `status` : `ok`, `blocked` (refus explicite), `rate_limited`,
+  `budget_exhausted` (limite par recherche ou quota quotidien de prudence),
+  `error` ;
+- `message` : le diagnostic exact d'un échec ;
+- `requests` : chaque requête réellement émise, avec son statut HTTP ;
+- `read`, `accepted`, `recorded`, `already_known`, `duplicates`,
+  `fx_unavailable` ; `rejected` : nombre d'annonces écartées **par motif**
+  (`reference_not_stated`, `brand_not_stated`, `not_a_complete_watch`,
+  `counterfeit_marker`, `multiple_items`, `no_price`, `auction_*`) ;
+- `recorded_items` : les annonces retenues, avec leur adresse.
+
+Un échec est un statut : il n'est jamais rendu comme « aucune annonce », et
+n'efface aucune donnée valide (règle 7).
+
+`summary` porte `insufficient_data` (avec son message) quand moins de deux
+comparables exacts existent : **aucune estimation n'est alors produite**.
+`price_nature_note` rappelle que ce sont des prix demandés et des enchères en
+cours, pas des ventes. `recalculation` est le même objet que ci-dessus : un
+**seul** recalcul par recherche, et aucun s'il n'y a rien de nouveau.
+
+`age_minutes`, `stale` et `cache_ttl_hours` disent la fraîcheur : l'âge des
+données est toujours affiché.
+
+### Provenance des comparables
+
+Chaque comparable issu d'une recherche porte `origin = "automatic_search"` et
+`provenance` : annonce (titre, adresse, identifiant), source, place de marché,
+contrôle d'identité (référence, verdict, avertissements), version des réglages,
+recherche d'origine. Le vendeur n'est **pas** conservé (`seller_fingerprint`
+reste nul) : donnée personnelle au sens du contrat de licence de l'API.
+
 ## Analyse impossible
 
 Une réponse publiée peut contenir `recommendation=analysis_impossible`,

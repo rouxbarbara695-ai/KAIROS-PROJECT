@@ -17,6 +17,7 @@ import {
   WatchProfileForm,
 } from "./CorrectionForms";
 import { ComparablesPanel } from "./ComparablesPanel";
+import { MarketSearchPanel } from "./MarketSearchPanel";
 import { AnalysisPanel } from "./AnalysisPanel";
 import { OperationPanel } from "./OperationPanel";
 import { ValuationPanel } from "./ValuationPanel";
@@ -191,6 +192,20 @@ export default async function OpportunityDetailPage({
           <ValuationPanel opportunityId={opportunity.id} />
         </Card>
       </div>
+
+      {/* La recherche de comparables alimente la cote juste au-dessus : elle en
+          est la source, elle se lit donc avant l'analyse qui en découle. */}
+      <Card>
+        <h2 className="mb-3 text-sm font-semibold text-fg-muted">
+          Recherche de marché
+        </h2>
+        <MarketSearchPanel
+          opportunityId={opportunity.id}
+          referenceConfirmed={["confirmed", "corrected"].includes(
+            opportunity.watch.reference_status,
+          )}
+        />
+      </Card>
 
       {/* L'analyse occupe toute la largeur : c'est la conclusion du dossier,
           et sa justification tient mal dans une colonne. */}

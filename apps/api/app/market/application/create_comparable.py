@@ -24,6 +24,7 @@ async def create_comparable(
     opportunity_id: uuid.UUID,
     request: ComparableCreate,
     settings: Settings,
+    provenance: dict[str, object] | None = None,
 ) -> Comparable:
     """Enregistre un comparable rattaché à la référence de l'opportunité.
 
@@ -32,6 +33,10 @@ async def create_comparable(
     § 2). Les frais fournis sont ceux réellement constatés sur l'annonce ; la
     grille de plateforme n'est pas appliquée d'office, faute de savoir de quelle
     plateforme provient une saisie manuelle.
+
+    `provenance` décrit d'où vient le comparable quand il n'est pas saisi à la
+    main (recherche automatique : source, annonce, preuve d'identité, version
+    des réglages). Elle est conservée telle quelle avec la donnée brute.
     """
 
     opportunity = (
@@ -117,7 +122,10 @@ async def create_comparable(
         completeness_data={
             "level": vocab.completeness_level(request.box, request.papers)
         },
-        raw_data=request.model_dump(mode="json"),
+        raw_data={
+            **request.model_dump(mode="json"),
+            **({"provenance": provenance} if provenance else {}),
+        },
         created_by_user_id=principal.user_id,
     )
 

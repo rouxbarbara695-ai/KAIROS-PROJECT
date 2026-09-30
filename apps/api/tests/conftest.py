@@ -40,6 +40,7 @@ _ALEMBIC_INI = _REPO_ROOT / "apps" / "api" / "alembic.ini"
 # et son portefeuille par défaut restent stables sur toute la session ; seule
 # la donnée métier qu'ils possèdent est réinitialisée ci-dessous.
 _TRUNCATE_TABLES = (
+    "market_search_runs",
     "alerts",
     "telemetry_events",
     "collection_jobs",

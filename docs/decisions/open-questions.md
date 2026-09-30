@@ -277,3 +277,98 @@ Catawiki par le lien. L'interface le dit à chaque import.
 écrit dans une observation d'annonce, qui est append-only : un second relevé
 s'ajoute au premier plutôt que de l'écraser, ce qui permet de voir si une
 enchère s'emballe.
+
+## Estimation automatique — sources de données de marché (30 septembre 2026)
+
+Le moteur d'estimation existe et fonctionne ; il attend au moins deux
+comparables, et l'utilisateur les saisissait à la main. Ce qui reste à
+automatiser est **l'arrivée des données**, pas le calcul.
+
+### Recalcul automatique — décisions provisoires
+
+Issu de `workflow-and-states.md` (déclencheurs de recalcul), implémenté sans
+nouvelle règle de calcul. Deux choix restent **provisoires** et à confirmer :
+
+| Choix | Valeur retenue | Pourquoi |
+|---|---|---|
+| Portée d'un changement de comparable | l'opportunité désignée seulement | un comparable appartient à une référence ; recalculer toutes les opportunités de la référence impose de définir « ouverte » |
+| Nombre de versions | une analyse par changement de comparable | conforme au texte (« comparable ajouté → analyse enfant ») ; un import CSV n'en produit qu'une |
+
+À arbitrer : recalculer aussi les autres opportunités ouvertes de la même
+référence, et lesquelles.
+
+### Sources examinées — constat du 30 septembre 2026
+
+| Source | Constat | Statut |
+|---|---|---|
+| Catawiki, lots clos | accès serveur bloqué (Akamai) | **collage assisté seulement** ; un exemple réel de lot clos est nécessaire pour ne rien inventer sur ses libellés |
+| Chrono24 | bloqué (Cloudflare) ; aucune API de prix officielle trouvée | assisté seulement. Les « scrapers » tiers contournent la protection : **exclus** |
+| eBay, ventes réalisées | l'API (Marketplace Insights) est réservée aux partenaires agréés | fermé aux particuliers |
+| eBay, annonces actives | API Browse officielle : prix demandés seulement | possible avec des identifiants développeur et une validation écrite |
+| WatchCharts | API officielle payante (adhésion Professional, environ 99 à 199 $/mois, plus des crédits) | **décision de l'utilisateur** : coût, licence d'usage interne à lire (page de licence inaccessible à la vérification : 403), couverture des références anciennes à mesurer avant tout achat |
+| Watchfinder | récupération unitaire automatique déjà autorisée et essayée | prix demandés, classe C |
+| Opérations réelles de l'utilisateur | données internes, gratuites | classe A ; volume faible |
+
+**Règle 9 inchangée** : aucun accès automatisé à une plateforme n'est activé
+sans validation écrite du mode d'accès, des conditions et de la fréquence. Les
+protections techniques constatées ne sont pas contournées, ni directement ni
+par un prestataire.
+
+
+## Recherche autonome de comparables — validation écrite et réglages provisoires (30 septembre 2026)
+
+**Décision du propriétaire, 30 septembre 2026 (« Correction de périmètre »).**
+KAIROS cherche lui-même les comparables : ni extension de navigateur, ni
+ouverture manuelle de sites, ni collage. Déclenchée par l'ajout d'une montre
+(référence confirmée) ou par une demande d'actualisation ; **pas de surveillance
+permanente** ; aucun abonnement ni service payant. Cette décision **remplace** la
+limite « récupération unitaire à la demande » de Q-04/05/06 pour les seules
+sources ci-dessous ; elle ne lève ni les protections techniques ni les
+conditions d'un tiers.
+
+### Ce qui est validé par écrit
+
+| Source | Mode | Conditions | Fréquence |
+|---|---|---|---|
+| eBay | **API officielle Browse** (programme développeur gratuit) | contrat de licence de l'API : aucune donnée personnelle conservée (le pseudonyme du vendeur n'est jamais stocké) ; âge des annonces affichées dit (au-delà de six heures) ; aucune information de réserve ; aucune statistique de catégorie ; pas de ventes conclues (API Marketplace Insights réservée aux partenaires) | quota publié 5 000 appels par jour ; **plafond de prudence 4 000** ; au plus 12 requêtes par recherche ; pas de nouvelle recherche avant 15 minutes ; résultat réutilisé 6 heures |
+
+Activation : variables `EBAY_CLIENT_ID` et `EBAY_CLIENT_SECRET` (jamais
+journalisées). Sans elles, la source reste inerte et l'écran le dit. La récupération
+des **pages** eBay reste `FORBIDDEN` dans `access_policy.py` : ce sont deux modes
+distincts.
+
+### Ce qui n'est PAS validé (et pourquoi)
+
+| Source / mode | Raison |
+|---|---|
+| Catawiki, lecture automatisée de lots et plan du site | conditions générales : « Scraping our website is not allowed » — **décision propriétaire** requise ; recommandation : non |
+| Chrono24 | défi anti-robot Cloudflare : jamais contourné |
+| Autres sources sondées | voir `faisabilite-recherche-autonome.md` |
+
+### Réglages provisoires (`SearchPolicy` 1.0.0)
+
+Configurables, versionnés, enregistrés avec chaque recherche. Ils bornent la
+**collecte**, pas la cote ; les pondérations du score ne sont pas modifiées.
+
+| Réglage | Valeur | À confirmer |
+|---|---|---|
+| fraîcheur d'une recherche | 6 h | alignée sur la limite d'âge de la licence eBay |
+| délai minimal avant actualisation | 15 min | économie de quota |
+| requêtes par recherche | 12 | |
+| annonces par page / pages par requête | 50 / 2 | |
+| enchère retenue seulement si clôture < 24 h et ≥ 1 mise | 24 h, 1 mise | **règle de collecte provisoire** : une mise loin de la clôture n'est pas un prix |
+| classe de fiabilité d'une annonce active | C | jamais A ni B |
+| places de marché | EBAY_FR, EBAY_DE, EBAY_IT | devises : EUR seulement tant qu'aucun taux de change n'est saisi |
+| vendeur | non conservé | limite : deux annonces du même vendeur ne sont pas reconnues comme telles ; le poids d'indépendance reste « indépendant » |
+
+### Décisions encore ouvertes
+
+1. **Comparables voisins explicites** (même famille, même mouvement, même
+   matière) quand une référence n'a pas de vente exacte : règle métier, avec
+   confiance plafonnée. Non implémenté.
+2. **Catawiki** : accepter ou non le risque contractuel d'une lecture
+   automatisée.
+3. **Mélange des marchés** : le moteur pondère par fiabilité de source mais ne
+   distingue pas la nature du prix dans le calcul (`calculation-spec.md`). Les
+   prix demandés d'eBay se mêlent donc aux ventes saisies ; à arbitrer avant de
+   s'y fier pour décider.

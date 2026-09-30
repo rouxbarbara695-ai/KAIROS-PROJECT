@@ -837,6 +837,37 @@ create table collection_jobs (
   unique (portfolio_id, idempotency_key)
 );
 
+-- Recherche autonome de comparables : une ligne par recherche, avec ce que
+-- chaque source a réellement fait (requêtes émises, candidats, exclusions).
+create table market_search_runs (
+  id uuid primary key default gen_random_uuid(),
+  portfolio_id uuid not null references portfolios(id),
+  opportunity_id uuid not null,
+  reference_id uuid not null references watch_references(id),
+  requested_by_user_id uuid not null references users(id),
+  trigger_kind text not null
+    check (trigger_kind in ('reference_confirmed', 'refresh')),
+  status job_status not null default 'queued',
+  policy_version text not null,
+  sources jsonb not null default '[]'::jsonb,
+  summary jsonb not null default '{}'::jsonb,
+  error_code text,
+  error_message text,
+  created_at timestamptz not null default now(),
+  started_at timestamptz,
+  finished_at timestamptz,
+  check (finished_at is null or started_at is null or finished_at >= started_at)
+);
+-- Une seule recherche active par référence : deux clics rapprochés ne doublent
+-- ni les requêtes ni le quota de la source.
+create unique index market_search_runs_active_uq
+  on market_search_runs (portfolio_id, reference_id)
+  where status in ('queued', 'running');
+create index market_search_runs_reference_idx
+  on market_search_runs (portfolio_id, reference_id, created_at desc);
+create index market_search_runs_opportunity_idx
+  on market_search_runs (opportunity_id, created_at desc);
+
 create table alerts (
   id uuid primary key default gen_random_uuid(),
   portfolio_id uuid not null references portfolios(id),
@@ -1174,6 +1205,10 @@ alter table collection_jobs
   add constraint jobs_listing_same_portfolio_fk
   foreign key (portfolio_id, listing_id)
   references listings (portfolio_id, id);
+alter table market_search_runs
+  add constraint market_search_runs_opportunity_same_portfolio_fk
+  foreign key (portfolio_id, opportunity_id)
+  references opportunities (portfolio_id, id);
 alter table alerts
   add constraint alerts_opportunity_same_portfolio_fk
   foreign key (portfolio_id, opportunity_id)

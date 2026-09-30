@@ -1,0 +1,151 @@
+{
+ "releve_le": "2026-09-30",
+ "client": "HttpFetcher de production (httpx, User-Agent honnête, 2 s entre requêtes)",
+ "lots": [
+  {
+   "reference_cible": "jlc",
+   "url_demandee": "https://www.catawiki.com/en/l/106583853-jaeger-lecoultre-reverso-duetto-diamonds-266-1-44-serviced-women-2010-2020",
+   "http": [
+    "308 https://www.catawiki.com/en/l/106945165",
+    "200"
+   ],
+   "url_finale": "https://www.catawiki.com/en/l/106945165",
+   "duree_s": 1.5,
+   "titre": "Jaeger-LeCoultre - Reverso Duetto Diamonds - 266.1.44 - Serviced - Women - 2010-2020",
+   "lot_id": 106945165,
+   "statut": {
+    "closed": true,
+    "sold": false,
+    "reservePriceMet": false,
+    "closeStatus": "Closed"
+   },
+   "prix": {
+    "montant_eur": 5075,
+    "nature": "enchère finale affichée (hors frais acheteur)",
+    "estimation_catawiki_eur": [
+     8300,
+     9200
+    ]
+   },
+   "dates": {
+    "ouverture": "2026-09-18T10:00Z",
+    "cloture": "2026-09-25T18:23Z"
+   },
+   "specifications": {
+    "Brand": "Jaeger-LeCoultre",
+    "Gender": "Women",
+    "Model": "Reverso Duetto Diamonds",
+    "Reference number": "266.1.44 - Serviced",
+    "Band material": "Leather",
+    "Shipped insured": "Yes",
+    "Period": "2010-2020",
+    "Repainted dial": "No",
+    "Movement": "Manual winding",
+    "Dial colour": "Silver",
+    "Case material": "Yellow gold",
+    "Original box included": "No",
+    "Original papers included": "No",
+    "Case diameter": "21 mm",
+    "Original warranty included": "No",
+    "Condition": "Unworn - no signs of wear"
+   },
+   "vendeur_pays": "France"
+  },
+  {
+   "reference_cible": "cartier",
+   "url_demandee": "https://www.catawiki.com/en/l/106501518-cartier-must-de-cartier-vendome-no-reserve-price-w1002253-women-1990-1999",
+   "http": [
+    "200"
+   ],
+   "url_finale": "https://www.catawiki.com/en/l/106501518-cartier-must-de-cartier-vendome-no-reserve-price-w1002253-women-1990-1999",
+   "duree_s": 0.54,
+   "titre": "Cartier - Must de Cartier Vendome - No reserve price - W1002253 - Women - 1990-1999",
+   "lot_id": 106501518,
+   "statut": {
+    "closed": true,
+    "sold": true,
+    "reservePriceMet": null,
+    "closeStatus": "Closed"
+   },
+   "prix": {
+    "montant_eur": 1200,
+    "nature": "enchère finale affichée (hors frais acheteur)",
+    "estimation_catawiki_eur": [
+     1200,
+     1400
+    ]
+   },
+   "dates": {
+    "ouverture": "2026-09-04T10:00Z",
+    "cloture": "2026-09-10T19:58Z"
+   },
+   "specifications": {
+    "Brand": "Cartier",
+    "Gender": "Women",
+    "Model": "Must de Cartier Vendome",
+    "Reference number": "W1002253",
+    "Band material": "Leather",
+    "Shipped insured": "Yes",
+    "Period": "1990-1999",
+    "Repainted dial": "No",
+    "Movement": "Quartz",
+    "Dial colour": "Champagne",
+    "Case material": "Gold-plated, Silver",
+    "Original box included": "Yes",
+    "Original papers included": "No",
+    "Case diameter": "24 mm",
+    "Original warranty included": "No",
+    "Condition": "Very good - minor signs of wear"
+   },
+   "vendeur_pays": "Italy"
+  },
+  {
+   "reference_cible": "omega",
+   "url_demandee": "https://www.catawiki.com/en/l/106613690-omega-constellation-no-reserve-price-1561-61-00-women-1990-1999",
+   "http": [
+    "200"
+   ],
+   "url_finale": "https://www.catawiki.com/en/l/106613690-omega-constellation-no-reserve-price-1561-61-00-women-1990-1999",
+   "duree_s": 1.1,
+   "titre": "Omega - Constellation - No reserve price - 1561.61.00 - Women - 1990-1999",
+   "lot_id": 106613690,
+   "statut": {
+    "closed": true,
+    "sold": true,
+    "reservePriceMet": null,
+    "closeStatus": "Closed"
+   },
+   "prix": {
+    "montant_eur": 800,
+    "nature": "enchère finale affichée (hors frais acheteur)",
+    "estimation_catawiki_eur": [
+     800,
+     900
+    ]
+   },
+   "dates": {
+    "ouverture": "2026-09-07T15:00Z",
+    "cloture": "2026-09-13T19:16Z"
+   },
+   "specifications": {
+    "Brand": "Omega",
+    "Gender": "Women",
+    "Model": "Constellation",
+    "Reference number": "1561.61.00",
+    "Band material": "Steel",
+    "Shipped insured": "Yes",
+    "Period": "1990-1999",
+    "Repainted dial": "No",
+    "Movement": "Quartz",
+    "Dial colour": "Salmon",
+    "Case material": "Steel",
+    "Original box included": "No",
+    "Original papers included": "No",
+    "Case diameter": "22 mm",
+    "Original warranty included": "Yes",
+    "Condition": "Good - visible signs of wear"
+   },
+   "vendeur_pays": "Italy"
+  }
+ ]
+}

@@ -311,6 +311,8 @@ async def run_analysis(
     principal: Principal,
     opportunity_id: uuid.UUID,
     settings: Settings,
+    *,
+    trigger_type: str = "manual",
 ) -> Analysis:
     """Calcule une analyse et la fige avec sa trace complète.
 
@@ -465,6 +467,7 @@ async def run_analysis(
         ruleset_id=ruleset_id,
         strategy_version=strategy_version,
         platform_rule_id=platform_rule_id,
+        trigger_type=trigger_type,
         price_eur=price_eur,
         outcome=outcome,
         record=record,
@@ -495,6 +498,7 @@ def _to_row(
     ruleset_id: uuid.UUID,
     strategy_version: StrategyVersion,
     platform_rule_id: uuid.UUID | None,
+    trigger_type: str,
     price_eur: Decimal,
     outcome: AnalysisOutcome,
     record: RecordCompleteness,
@@ -519,7 +523,7 @@ def _to_row(
         ruleset_id=ruleset_id,
         strategy_version_id=strategy_version.id,
         platform_rule_id=platform_rule_id,
-        trigger_type="manual",
+        trigger_type=trigger_type,
         # Publiée d'emblée, et non « brouillon ». Rien ne se passe entre le
         # calcul et l'affichage : aucune étape humaine ne vient compléter une
         # analyse. La laisser en brouillon la laisserait modifiable — le

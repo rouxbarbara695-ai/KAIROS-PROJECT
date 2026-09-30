@@ -11,6 +11,13 @@ import {
 } from "@/lib/api";
 import { Disclosure } from "@/components/Disclosure";
 import { formatAmount, labels, options, PRICE_KIND_OPTIONS } from "@/lib/labels";
+import {
+  announceMarketChange,
+  changedSomething,
+  describeRecalculation,
+  MARKET_CHANGED_EVENT,
+  type Recalculation,
+} from "@/lib/recalculation";
 
 const inputClass =
   "w-full rounded-md border border-border bg-bg px-3 py-2 text-sm outline-none focus:border-accent";
@@ -69,18 +76,30 @@ export function ComparablesPanel({
 
   useEffect(() => {
     void refresh();
+    // Une recherche automatique ajoute des comparables sans qu'aucune action de
+    // ce panneau ne les ait provoqués : il doit relire à son signal.
+    const reload = () => void refresh();
+    window.addEventListener(MARKET_CHANGED_EVENT, reload);
+    return () => window.removeEventListener(MARKET_CHANGED_EVENT, reload);
     // La liste ne dépend que de l'opportunité affichée.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opportunityId]);
 
-  function run(action: () => Promise<unknown>, success?: string) {
+  // Ce que l'action a fait remonter, s'il y a lieu : le recalcul automatique
+  // dit lui-même ce qu'il a calculé, et l'écran le répète tel quel.
+  type Outcome = { recalculation?: Recalculation | null } | void;
+
+  function run(action: () => Promise<Outcome>, success?: string) {
     setError(null);
     setNotice(null);
     startTransition(async () => {
       try {
-        await action();
+        const outcome = await action();
         await refresh();
-        if (success) setNotice(success);
+        const recalculation = outcome ? outcome.recalculation : null;
+        if (success) setNotice(describeRecalculation(success, recalculation));
+        // Les panneaux de cote et d'analyse relisent seulement s'il y a du neuf.
+        if (changedSomething(recalculation)) announceMarketChange();
       } catch (err) {
         setError(
           err instanceof ApiError ? err.message : "L'opération a échoué.",
@@ -94,7 +113,7 @@ export function ComparablesPanel({
     const form = event.currentTarget;
     const data = new FormData(form);
     run(async () => {
-      await createComparable(opportunityId, {
+      const created = await createComparable(opportunityId, {
         source_name: String(data.get("source_name")),
         seller_fingerprint: String(data.get("seller_fingerprint") || "") || null,
         price_kind: String(data.get("price_kind")) as "asking",
@@ -109,6 +128,7 @@ export function ComparablesPanel({
         papers: data.get("papers") === "on",
       });
       form.reset();
+      return created;
     }, "Comparable ajouté.");
   }
 
@@ -128,14 +148,16 @@ export function ComparablesPanel({
       const result = await importComparables(opportunityId, content);
       form.reset();
       const rejected = result.rejected.length;
-      setNotice(
+      const summary =
         rejected === 0
           ? `${result.imported} comparable(s) importé(s).`
           : `${result.imported} importé(s), ${rejected} ligne(s) rejetée(s) : ` +
             result.rejected
               .map((row) => `ligne ${row.line} — ${row.error}`)
-              .join(" ; "),
-      );
+              .join(" ; ") +
+            ".";
+      setNotice(describeRecalculation(summary, result.recalculation));
+      if (changedSomething(result.recalculation)) announceMarketChange();
     });
   }
 
@@ -149,7 +171,7 @@ export function ComparablesPanel({
 
     run(
       () =>
-        createOverride(comparable.id, {
+        createOverride(comparable.id, opportunityId, {
           excluded: !comparable.excluded,
           ...(comparable.excluded ? {} : { exclusion_reason: reason }),
           reason,
@@ -199,6 +221,24 @@ export function ComparablesPanel({
                 >
                   <td className="py-2">
                     {item.source_name}
+                    {item.origin === "automatic_search" && (
+                      <span className="ml-2 text-xs text-fg-muted">
+                        recherche automatique
+                        {typeof item.provenance?.url === "string" && (
+                          <>
+                            {" · "}
+                            <a
+                              href={item.provenance.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="underline-offset-2 hover:underline"
+                            >
+                              annonce
+                            </a>
+                          </>
+                        )}
+                      </span>
+                    )}
                     {item.excluded && item.exclusion_reason && (
                       <span className="ml-2 text-xs text-danger">
                         exclu — {item.exclusion_reason}

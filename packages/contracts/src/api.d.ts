@@ -347,6 +347,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/opportunities/{opportunity_id}/market-searches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Market Search
+         * @description Lance la recherche autonome de comparables et rend la main tout de suite.
+         *
+         *     La recherche dure plusieurs secondes : elle s'exécute après la réponse, et
+         *     l'écran relit son avancement. `202` quand elle démarre ; `200` quand la
+         *     demande est ramenée à une recherche déjà en cours ou encore fraîche.
+         */
+        post: operations["start_market_search_api_v1_opportunities__opportunity_id__market_searches_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/opportunities/{opportunity_id}/market-searches/latest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Latest Market Search */
+        get: operations["latest_market_search_api_v1_opportunities__opportunity_id__market_searches_latest_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/opportunities/{opportunity_id}/payout": {
         parameters: {
             query?: never;
@@ -886,6 +927,7 @@ export interface components {
         ComparableImportResult: {
             /** Imported */
             imported: number;
+            recalculation?: components["schemas"]["RecalculationResponse"] | null;
             /** Rejected */
             rejected: components["schemas"]["ComparableImportRow"][];
         };
@@ -948,10 +990,20 @@ export interface components {
              * Format: date-time
              */
             observed_at: string;
+            /**
+             * Origin
+             * @default manual
+             */
+            origin: string;
             /** Price Kind */
             price_kind: string;
+            /** Provenance */
+            provenance?: {
+                [key: string]: unknown;
+            } | null;
             /** Rate To Eur */
             rate_to_eur: string;
+            recalculation?: components["schemas"]["RecalculationResponse"] | null;
             /** Source Name */
             source_name: string;
             /** Source Reliability */
@@ -1267,6 +1319,134 @@ export interface components {
             /** Password */
             password: string;
         };
+        /** MarketSearchLatestResponse */
+        MarketSearchLatestResponse: {
+            /** Configured Sources */
+            configured_sources: string[];
+            run: components["schemas"]["MarketSearchRunResponse"] | null;
+        };
+        /** MarketSearchRunResponse */
+        MarketSearchRunResponse: {
+            /** Age Minutes */
+            age_minutes: number | null;
+            /** Cache Ttl Hours */
+            cache_ttl_hours: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Error Code */
+            error_code: string | null;
+            /** Error Message */
+            error_message: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Next Refresh Allowed At */
+            next_refresh_allowed_at: string | null;
+            /**
+             * Opportunity Id
+             * Format: uuid
+             */
+            opportunity_id: string;
+            /** Policy Version */
+            policy_version: string;
+            /** Sources */
+            sources: components["schemas"]["SourceResult"][];
+            /**
+             * Stale
+             * @default false
+             */
+            stale: boolean;
+            /** Started At */
+            started_at: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "succeeded" | "failed" | "partial";
+            summary: components["schemas"]["SearchSummary"];
+            /**
+             * Trigger Kind
+             * @enum {string}
+             */
+            trigger_kind: "reference_confirmed" | "refresh";
+        };
+        /**
+         * MarketSearchStartRequest
+         * @description `force` demande une actualisation avant l'expiration de la fraîcheur.
+         *
+         *     Elle reste refusée (résultat précédent renvoyé) si la dernière recherche date
+         *     de moins de quelques minutes : chaque requête coûte du quota à la source.
+         */
+        MarketSearchStartRequest: {
+            /**
+             * Force
+             * @default false
+             */
+            force: boolean;
+        };
+        /** MarketSearchStartResponse */
+        MarketSearchStartResponse: {
+            /** Age Minutes */
+            age_minutes: number | null;
+            /** Cache Ttl Hours */
+            cache_ttl_hours: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Error Code */
+            error_code: string | null;
+            /** Error Message */
+            error_message: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Launched */
+            launched: boolean;
+            /** Next Refresh Allowed At */
+            next_refresh_allowed_at: string | null;
+            /**
+             * Opportunity Id
+             * Format: uuid
+             */
+            opportunity_id: string;
+            /** Policy Version */
+            policy_version: string;
+            /** Reused */
+            reused: ("running" | "fresh" | "too_soon") | null;
+            /** Sources */
+            sources: components["schemas"]["SourceResult"][];
+            /**
+             * Stale
+             * @default false
+             */
+            stale: boolean;
+            /** Started At */
+            started_at: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "succeeded" | "failed" | "partial";
+            summary: components["schemas"]["SearchSummary"];
+            /**
+             * Trigger Kind
+             * @enum {string}
+             */
+            trigger_kind: "reference_confirmed" | "refresh";
+        };
         /** OpportunityPage */
         OpportunityPage: {
             /** Items */
@@ -1367,6 +1547,7 @@ export interface components {
             previous_override_id: string | null;
             /** Reason */
             reason: string;
+            recalculation?: components["schemas"]["RecalculationResponse"] | null;
         };
         /**
          * PayoutCreate
@@ -1632,6 +1813,48 @@ export interface components {
             /** Reason */
             reason: string;
         };
+        /**
+         * RecalculationResponse
+         * @description Ce que le recalcul automatique a fait après un changement de comparables.
+         *
+         *     Présent sur les réponses qui modifient les comparables. Il dit la vérité,
+         *     y compris quand rien n'a été calculé : « pas assez de comparables » n'est
+         *     pas une erreur, et « le calcul a échoué, votre saisie est enregistrée » ne
+         *     doit jamais se confondre avec un succès.
+         */
+        RecalculationResponse: {
+            /** Analysis Id */
+            analysis_id?: string | null;
+            /** Detail */
+            detail?: string | null;
+            /** Reason */
+            reason?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "recalculated" | "valuation_only" | "skipped" | "failed";
+            /** Valuation Id */
+            valuation_id?: string | null;
+        };
+        /** RecordedItem */
+        RecordedItem: {
+            /** Amount */
+            amount: string;
+            /**
+             * Comparable Id
+             * Format: uuid
+             */
+            comparable_id: string;
+            /** Currency */
+            currency: string;
+            /** Price Kind */
+            price_kind: string;
+            /** Title */
+            title: string;
+            /** Url */
+            url: string;
+        };
         /** ReferenceConfirmationRequest */
         ReferenceConfirmationRequest: {
             /** Reason */
@@ -1643,6 +1866,15 @@ export interface components {
              * @enum {string}
              */
             status: "suggested" | "confirmed" | "corrected" | "unknown";
+        };
+        /** RejectedExample */
+        RejectedExample: {
+            /** Code */
+            code: string;
+            /** Detail */
+            detail: string;
+            /** Title */
+            title: string;
         };
         /**
          * SaleCreate
@@ -1686,6 +1918,40 @@ export interface components {
             platform_code?: string | null;
             /** Reason */
             reason: string;
+        };
+        /** SearchSummary */
+        SearchSummary: {
+            /** Comparables Known For Reference */
+            comparables_known_for_reference: number | null;
+            /**
+             * Comparables Recorded
+             * @default 0
+             */
+            comparables_recorded: number;
+            /** Elapsed S */
+            elapsed_s: number | null;
+            /**
+             * Insufficient Data
+             * @default false
+             */
+            insufficient_data: boolean;
+            /** Insufficient Data Message */
+            insufficient_data_message: string | null;
+            /** Observed At */
+            observed_at: string | null;
+            /** Price Nature Note */
+            price_nature_note: string | null;
+            recalculation: components["schemas"]["RecalculationResponse"] | null;
+            /** Recorded By Price Kind */
+            recorded_by_price_kind: {
+                [key: string]: number;
+            };
+            /**
+             * Stage
+             * @default queued
+             * @enum {string}
+             */
+            stage: "queued" | "searching" | "recalculating" | "done";
         };
         /**
          * SellerCreate
@@ -1755,6 +2021,89 @@ export interface components {
             platform_code?: string | null;
             /** Url */
             url?: string | null;
+        };
+        /** SourceRequestRecord */
+        SourceRequestRecord: {
+            /** Elapsed S */
+            elapsed_s: number;
+            /** Http Status */
+            http_status: number | null;
+            /** Label */
+            label: string;
+            /** Note */
+            note: string | null;
+        };
+        /**
+         * SourceResult
+         * @description Ce qu'une source a réellement fait : requêtes, lectures, retenues, écartées.
+         *
+         *     Un échec est un statut, avec son diagnostic exact — jamais une liste vide qui
+         *     se ferait passer pour « aucune annonce ».
+         */
+        SourceResult: {
+            /**
+             * Accepted
+             * @default 0
+             */
+            accepted: number;
+            /**
+             * Already Known
+             * @default 0
+             */
+            already_known: number;
+            /**
+             * Duplicates
+             * @default 0
+             */
+            duplicates: number;
+            /**
+             * Elapsed S
+             * @default 0
+             */
+            elapsed_s: number;
+            /** Finished At */
+            finished_at: string | null;
+            /**
+             * Fx Unavailable
+             * @default 0
+             */
+            fx_unavailable: number;
+            /** Message */
+            message: string | null;
+            /**
+             * Read
+             * @default 0
+             */
+            read: number;
+            /**
+             * Recorded
+             * @default 0
+             */
+            recorded: number;
+            /** Recorded Items */
+            recorded_items: components["schemas"]["RecordedItem"][];
+            /** Rejected */
+            rejected: {
+                [key: string]: number;
+            };
+            /** Rejected Examples */
+            rejected_examples: components["schemas"]["RejectedExample"][];
+            /** Requests */
+            requests: components["schemas"]["SourceRequestRecord"][];
+            /**
+             * Requests Count
+             * @default 0
+             */
+            requests_count: number;
+            /** Source */
+            source: string;
+            /** Started At */
+            started_at: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "not_configured" | "blocked" | "rate_limited" | "budget_exhausted" | "error";
         };
         /** StatusChangeRequest */
         StatusChangeRequest: {
@@ -1995,7 +2344,10 @@ export interface operations {
     };
     create_override_route_api_v1_comparables__comparable_id__overrides_post: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Opportunité à recalculer après la correction. Un comparable appartient à une référence, pas à une opportunité : sans précision, rien n'est recalculé automatiquement. */
+                opportunity_id?: string | null;
+            };
             header?: never;
             path: {
                 comparable_id: string;
@@ -2549,6 +2901,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ImportTracePage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_market_search_api_v1_opportunities__opportunity_id__market_searches_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                opportunity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MarketSearchStartRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MarketSearchStartResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    latest_market_search_api_v1_opportunities__opportunity_id__market_searches_latest_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                opportunity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MarketSearchLatestResponse"];
                 };
             };
             /** @description Validation Error */

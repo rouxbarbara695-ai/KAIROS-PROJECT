@@ -65,6 +65,22 @@ class ComparableCreate(BaseModel):
         return self
 
 
+class RecalculationResponse(BaseModel):
+    """Ce que le recalcul automatique a fait après un changement de comparables.
+
+    Présent sur les réponses qui modifient les comparables. Il dit la vérité,
+    y compris quand rien n'a été calculé : « pas assez de comparables » n'est
+    pas une erreur, et « le calcul a échoué, votre saisie est enregistrée » ne
+    doit jamais se confondre avec un succès.
+    """
+
+    status: Literal["recalculated", "valuation_only", "skipped", "failed"]
+    reason: str | None = None
+    detail: str | None = None
+    valuation_id: uuid.UUID | None = None
+    analysis_id: uuid.UUID | None = None
+
+
 class ComparableResponse(BaseModel):
     id: uuid.UUID
     source_name: str
@@ -85,6 +101,14 @@ class ComparableResponse(BaseModel):
     completeness_data: dict[str, object]
     excluded: bool
     exclusion_reason: str | None
+    #: D'où vient le comparable : « manual » (saisie ou import) ou
+    #: « automatic_search » (recherche autonome).
+    origin: str = "manual"
+    #: Preuve d'une recherche automatique : annonce, adresse, contrôle
+    #: d'identité, version des réglages. Absente d'une saisie manuelle.
+    provenance: dict[str, object] | None = None
+    # Renseigné à la création seulement ; absent des listes.
+    recalculation: RecalculationResponse | None = None
 
 
 class ComparablePage(BaseModel):
@@ -120,6 +144,7 @@ class OverrideResponse(BaseModel):
     corrected_data: dict[str, object]
     reason: str
     created_at: datetime
+    recalculation: RecalculationResponse | None = None
 
 
 class ComparableImportRow(BaseModel):
@@ -137,6 +162,9 @@ class ComparableImportResult(BaseModel):
 
     imported: int
     rejected: list[ComparableImportRow]
+    # Un seul recalcul pour tout le fichier, et seulement si des lignes ont été
+    # importées : le refaire à chaque ligne publierait autant de versions.
+    recalculation: RecalculationResponse | None = None
 
 
 class ValuationResponse(BaseModel):

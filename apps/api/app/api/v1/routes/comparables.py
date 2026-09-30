@@ -14,6 +14,7 @@ from app.api.v1.schemas.comparables import (
     ComparableResponse,
     OverrideCreate,
     OverrideResponse,
+    RecalculationResponse,
     ValuationResponse,
 )
 from app.market.application.comparable_overrides import apply_override
@@ -21,6 +22,10 @@ from app.market.application.compute_valuation import compute_valuation
 from app.market.application.create_comparable import create_comparable
 from app.market.application.import_comparables import import_comparables
 from app.market.application.list_comparables import ComparableView, list_comparables
+from app.scoring.application.recalculate import (
+    Recalculation,
+    recalculate_after_comparable_change,
+)
 from app.shared.config import Settings, get_settings
 from app.shared.domain.errors import DomainError, ErrorCode
 from app.shared.domain.page import clamp_limit
@@ -45,9 +50,21 @@ def _request_id(request: Request) -> uuid.UUID | None:
         return None
 
 
+def _recalculation(result: Recalculation) -> RecalculationResponse:
+    return RecalculationResponse(
+        status=result.status,
+        reason=result.reason,
+        detail=result.detail,
+        valuation_id=result.valuation_id,
+        analysis_id=result.analysis_id,
+    )
+
+
 def _to_response(
     comparable: Comparable, excluded: bool, exclusion_reason: str | None
 ) -> ComparableResponse:
+    raw_provenance = comparable.raw_data.get("provenance")
+    provenance = raw_provenance if isinstance(raw_provenance, dict) else None
     return ComparableResponse(
         id=comparable.id,
         source_name=comparable.source_name,
@@ -68,6 +85,8 @@ def _to_response(
         completeness_data=comparable.completeness_data,
         excluded=excluded,
         exclusion_reason=exclusion_reason,
+        origin="automatic_search" if provenance else "manual",
+        provenance=provenance,
     )
 
 
@@ -86,7 +105,19 @@ async def create_comparable_route(
     comparable = await create_comparable(
         session, principal, opportunity_id, body, settings
     )
-    return _to_response(comparable, excluded=False, exclusion_reason=None)
+    # La réponse est bâtie **avant** le recalcul : celui-ci commit ou annule sur
+    # la même session, ce qui périme les objets qu'elle porte, et lire ensuite
+    # `comparable` déclencherait une lecture de base interdite ici.
+    response = _to_response(comparable, excluded=False, exclusion_reason=None)
+
+    # Le comparable est déjà enregistré : le recalcul ne peut plus le faire
+    # perdre, il rend son échec dans la réponse plutôt que par une exception.
+    response.recalculation = _recalculation(
+        await recalculate_after_comparable_change(
+            session, principal, opportunity_id, settings
+        )
+    )
+    return response
 
 
 @router.get(
@@ -123,9 +154,18 @@ async def import_comparables_route(
     principal: Principal = Depends(get_current_principal),
     settings: Settings = Depends(get_settings),
 ) -> ComparableImportResult:
-    return await import_comparables(
+    result = await import_comparables(
         session, principal, opportunity_id, body.content, settings
     )
+    if result.imported > 0:
+        # Un seul recalcul pour tout le fichier : en faire un par ligne
+        # publierait autant de versions de cote et d'analyse.
+        result.recalculation = _recalculation(
+            await recalculate_after_comparable_change(
+                session, principal, opportunity_id, settings
+            )
+        )
+    return result
 
 
 @router.post(
@@ -137,13 +177,23 @@ async def create_override_route(
     comparable_id: uuid.UUID,
     body: OverrideCreate,
     request: Request,
+    opportunity_id: uuid.UUID | None = Query(
+        default=None,
+        description=(
+            "Opportunité à recalculer après la correction. Un comparable "
+            "appartient à une référence, pas à une opportunité : sans "
+            "précision, rien n'est recalculé automatiquement."
+        ),
+    ),
     session: AsyncSession = Depends(get_session),
     principal: Principal = Depends(get_current_principal),
+    settings: Settings = Depends(get_settings),
 ) -> OverrideResponse:
     override = await apply_override(
         session, principal, comparable_id, body, _request_id(request)
     )
-    return OverrideResponse(
+    # Bâtie avant le recalcul, pour la même raison qu'à la création.
+    response = OverrideResponse(
         id=override.id,
         comparable_id=override.comparable_id,
         previous_override_id=override.previous_override_id,
@@ -153,6 +203,13 @@ async def create_override_route(
         reason=override.reason,
         created_at=override.created_at,
     )
+    if opportunity_id is not None:
+        response.recalculation = _recalculation(
+            await recalculate_after_comparable_change(
+                session, principal, opportunity_id, settings
+            )
+        )
+    return response
 
 
 @router.post(

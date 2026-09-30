@@ -24,6 +24,21 @@ class Settings(BaseSettings):
     cursor_secret: SecretStr
     session_lifetime_days: int = 30
 
+    # Recherche autonome de comparables. Source : API officielle eBay (programme
+    # développeur gratuit). Sans identifiants, la source reste inerte : elle
+    # n'émet aucune requête et l'écran le dit. Les identifiants ne sont jamais
+    # journalisés.
+    ebay_client_id: SecretStr | None = None
+    ebay_client_secret: SecretStr | None = None
+    ebay_environment: Literal["production", "sandbox"] = "production"
+    # Adresse de l'API eBay, seulement pour la remplacer par un serveur d'essai
+    # (parcours navigateur de la CI). Vide : l'adresse officielle du programme.
+    ebay_api_base_url: str | None = None
+    # Places de marché interrogées, séparées par des virgules.
+    ebay_marketplaces: str = "EBAY_FR,EBAY_DE,EBAY_IT"
+    # Lancer la recherche dès qu'une référence est confirmée.
+    market_search_auto: bool = True
+
     # Valeur de développement uniquement. En production, une origine en dur
     # autoriserait un site qui n'est pas le nôtre à porter des requêtes
     # authentifiées : le validateur ci-dessous l'interdit.
@@ -33,6 +48,13 @@ class Settings(BaseSettings):
     def _refuse_local_defaults_outside_local(self) -> "Settings":
         if self.environment == "local":
             return self
+
+        # Envoyer des identifiants eBay en clair vers une adresse qui n'est pas
+        # en HTTPS serait les divulguer : refusé hors développement local.
+        if self.ebay_api_base_url and not self.ebay_api_base_url.startswith("https://"):
+            raise ValueError(
+                "EBAY_API_BASE_URL doit être en https hors développement local."
+            )
 
         local_origins = {
             origin

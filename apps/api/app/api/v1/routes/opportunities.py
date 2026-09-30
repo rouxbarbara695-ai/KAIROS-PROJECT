@@ -3,7 +3,15 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Query, Request, Response, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    Query,
+    Request,
+    Response,
+    status,
+)
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,6 +37,8 @@ from app.audit.application.list_events import list_opportunity_events
 from app.identity.application.reference_confirmation import confirm_reference
 from app.identity.application.seller_profile import patch_seller_profile
 from app.identity.application.watch_profile import patch_watch_profile
+from app.market_search.application.runtime import SearchRuntime, get_search_runtime
+from app.market_search.application.search_run import execute_run, start_search
 from app.operations.application.change_status import change_status
 from app.operations.application.record_purchase import record_purchase
 from app.operations.application.sell import (
@@ -225,13 +235,37 @@ async def confirm_reference_route(
     body: ReferenceConfirmationRequest,
     request: Request,
     response: Response,
+    background: BackgroundTasks,
     session: AsyncSession = Depends(get_session),
     principal: Principal = Depends(get_current_principal),
+    settings: Settings = Depends(get_settings),
+    runtime: SearchRuntime = Depends(get_search_runtime),
 ) -> OpportunityResponse:
     await confirm_reference(
         session, principal, opportunity_id, body, _request_id(request)
     )
-    return await _present(session, principal, opportunity_id, response)
+    presented = await _present(session, principal, opportunity_id, response)
+
+    # La référence vient d'être confirmée : c'est le moment où KAIROS peut
+    # chercher les comparables **sans que l'utilisateur ait à le faire**. La
+    # confirmation ne dépend jamais de la recherche : si celle-ci ne peut pas
+    # démarrer (aucune source configurée, résultat encore frais), rien n'est dit
+    # ici et l'écran de recherche en donne la raison.
+    if settings.market_search_auto:
+        try:
+            started = await start_search(
+                session,
+                principal,
+                opportunity_id,
+                settings,
+                runtime,
+                trigger="reference_confirmed",
+            )
+        except DomainError:
+            started = None
+        if started is not None and started.launched:
+            background.add_task(execute_run, started.run.id, settings, runtime)
+    return presented
 
 
 @router.patch(

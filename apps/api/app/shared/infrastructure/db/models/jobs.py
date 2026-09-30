@@ -3,7 +3,15 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, Index, Integer, Text, UniqueConstraint, text
+from sqlalchemy import (
+    CheckConstraint,
+    ForeignKey,
+    Index,
+    Integer,
+    Text,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -192,5 +200,79 @@ class TelemetryEvent(Base):
     __table_args__ = (
         same_portfolio_fk(
             "opportunity_id", "opportunities", "telemetry_opportunity_same_portfolio_fk"
+        ),
+    )
+
+
+class MarketSearchRun(Base):
+    __tablename__ = "market_search_runs"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    portfolio_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("portfolios.id"), nullable=False
+    )
+    opportunity_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), nullable=False
+    )
+    reference_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("watch_references.id"), nullable=False
+    )
+    requested_by_user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
+    )
+    trigger_kind: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(
+        pg_enum(JobStatus, "job_status"),
+        nullable=False,
+        server_default=text("'queued'"),
+    )
+    policy_version: Mapped[str] = mapped_column(Text, nullable=False)
+    sources: Mapped[list[dict[str, object]]] = mapped_column(
+        JSONB, nullable=False, server_default=text("'[]'::jsonb")
+    )
+    summary: Mapped[dict[str, object]] = mapped_column(
+        JSONB, nullable=False, server_default=text("'{}'::jsonb")
+    )
+    error_code: Mapped[str | None] = mapped_column(Text)
+    error_message: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=text("now()")
+    )
+    started_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+
+    __table_args__ = (
+        CheckConstraint(
+            "trigger_kind in ('reference_confirmed', 'refresh')",
+            name="market_search_runs_trigger_kind_check",
+        ),
+        CheckConstraint(
+            "finished_at is null or started_at is null or finished_at >= started_at",
+            name="market_search_runs_check",
+        ),
+        same_portfolio_fk(
+            "opportunity_id",
+            "opportunities",
+            "market_search_runs_opportunity_same_portfolio_fk",
+        ),
+        Index(
+            "market_search_runs_active_uq",
+            "portfolio_id",
+            "reference_id",
+            unique=True,
+            postgresql_where=text("status in ('queued', 'running')"),
+        ),
+        Index(
+            "market_search_runs_reference_idx",
+            "portfolio_id",
+            "reference_id",
+            text("created_at desc"),
+        ),
+        Index(
+            "market_search_runs_opportunity_idx",
+            "opportunity_id",
+            text("created_at desc"),
         ),
     )

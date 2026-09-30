@@ -418,6 +418,64 @@ réécrit pas l’événement précédent.
 Les nombres de cet exemple illustrent la **forme du contrat**, pas une fixture
 arithmétique. Les fixtures faisant foi sont dans la stratégie de tests.
 
+## Recalcul automatique après un changement de comparables
+
+`workflow-and-states.md` fait d'un comparable **ajouté, corrigé, exclu ou
+réintégré** un déclencheur de recalcul. Trois routes l'appliquent :
+
+| Route | Recalcul |
+|---|---|
+| `POST /opportunities/{id}/comparables` | toujours, après l'enregistrement |
+| `POST /opportunities/{id}/comparables/import` | **une seule fois** pour tout le fichier, et seulement si au moins une ligne a été importée |
+| `POST /comparables/{id}/overrides?opportunity_id=…` | seulement si `opportunity_id` est fourni |
+
+Le recalcul enchaîne les deux calculs existants — la cote, puis l'analyse — sans
+rien changer à leurs règles. L'analyse est publiée avec
+`trigger_type = "comparable_changed"` ; une demande explicite de l'utilisateur
+reste `manual`.
+
+### Ce que la réponse dit
+
+Les réponses de ces trois routes portent un champ `recalculation` :
+
+```json
+{
+  "status": "recalculated | valuation_only | skipped | failed",
+  "reason": "code stable ou null",
+  "detail": "phrase pour l'utilisateur ou null",
+  "valuation_id": "uuid ou null",
+  "analysis_id": "uuid ou null"
+}
+```
+
+| `status` | Sens |
+|---|---|
+| `recalculated` | une cote et une analyse neuves existent |
+| `valuation_only` | la cote est à jour, l'analyse n'a pas pu l'être (`detail` dit pourquoi, par exemple un portefeuille sans capital) |
+| `skipped` | rien à calculer : moins de deux comparables recevables. **Ce n'est pas une erreur** |
+| `failed` | échec inattendu. Le comparable, lui, est enregistré |
+
+### Garanties
+
+- **La saisie n'est jamais perdue.** Le comparable est enregistré avant le
+  recalcul, dans sa propre transaction. Une panne du moteur ne produit ni `500`
+  ni perte : elle se lit dans `recalculation.status`.
+- **Rien n'est écrasé** (règle 4). Chaque recalcul ajoute une version de cote et
+  une analyse chaînée à la précédente. L'index unique sur
+  `previous_analysis_id` protège deux recalculs simultanés : le perdant rend
+  `valuation_only` avec `reason = "concurrent_recalculation"`.
+- **Rien de la panne ne fuit.** Le journal garde le type de l'erreur et
+  l'étape, jamais la trace complète (règle 11 : une exception SQLAlchemy
+  embarque ses paramètres).
+
+### Limite assumée
+
+Un comparable appartient à une **référence**, pas à une opportunité. Le recalcul
+ne porte que sur **l'opportunité désignée** (chemin de la route, ou
+`opportunity_id`). Les autres opportunités de la même référence gardent leur
+dernière cote jusqu'à leur propre recalcul. Décider lesquelles sont « ouvertes »
+serait une règle métier : voir `open-questions.md`.
+
 ## Analyse impossible
 
 Une réponse publiée peut contenir `recommendation=analysis_impossible`,

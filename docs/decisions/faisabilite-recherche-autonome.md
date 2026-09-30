@@ -1,106 +1,154 @@
 # Faisabilité de la recherche autonome de comparables — constat du 30 septembre 2026
 
-**Statut : la fonctionnalité n'est PAS livrée.** Ce document est le constat
-demandé par la décision « Correction de périmètre » : l'essai réel a été mené
-avant toute infrastructure, et il ne réussit pas sur les sources nécessaires.
+**Statut : la fonctionnalité n'est PAS livrée, et aucun mode n'est validé de
+bout en bout.** Ce document est la preuve de faisabilité demandée par la
+décision « Correction de périmètre » (pas d'extension, pas d'ouverture manuelle
+de site, pas de collage). Toutes les mesures viennent de **requêtes réelles**
+faites avec le client de production de KAIROS (`HttpFetcher`, agent honnête,
+`robots.txt` lu, 2 s entre deux requêtes, aucune nouvelle tentative après un
+blocage, aucun contournement). Aucune intervention humaine n'a été nécessaire.
+Preuves brutes : `faisabilite-preuves/lots-clos-catawiki-2026-09-30.json`.
 
-## Ce qui a été fait
+## 1. Les trois lots clos, lus par leur URL
 
-Un essai **réel** (pas une fixture) sur les trois références, avec le client
-HTTP de production de KAIROS : agent honnête, `robots.txt` respecté, deux
-secondes entre deux requêtes d'un même domaine, aucune nouvelle tentative après
-un blocage, aucun contournement de défi.
-
-- Sonde multi-sources : 13 sources, 39 sondages, **33,7 s**.
-- Recherche Catawiki lot par lot : 12 recherches, 3 × 14 pages de lot lues,
-  **152,4 s**.
-- Interventions humaines nécessaires : **aucune** pour ces essais.
-
-## Résultat par source
-
-| Source | Nature attendue | Résultat réel | Diagnostic exact |
+| | JLC Reverso Duetto 266.1.44 | Cartier Vendôme W1002253 | Omega Constellation 1561.61.00 |
 |---|---|---|---|
-| Chrono24 | prix demandé (revente) | **Bloquée** | `403`, `cf-mitigated: challenge` (défi Cloudflare). Source arrêtée, rien contourné. |
-| Catawiki | enchère en cours / marteau | **Accessible, 0 comparable exact** | Recherche et pages de lot en `200`. Voir ci-dessous. |
-| Watchfinder | prix demandé | Bloquée | `robots.txt` en `403` (CloudFront) : aucune recherche émise. |
-| Bonhams, Interenchères | résultats de vente | Bloquées | `robots.txt` en `403` (Cloudflare). |
-| Vestiaire Collective, LiveAuctioneers, Phillips | — | Non interrogées | `robots.txt` interdit le chemin de recherche. |
-| Christie's, Bucherer | — | Inexploitables | `200` mais coquille JavaScript : aucune donnée dans le HTML. |
-| The RealReal | prix demandé | Accessible, inexploitable | `200`, produits présents mais à noms génériques : la référence ne se prouve pas sans page produit ; ses conditions interdisent les robots. |
-| Drouot | résultats de vente | Inexploitable | `404` : le gabarit d'URL de recherche est inconnu. |
-| 1stDibs | prix demandé | Échec | `ReadTimeout`, source arrêtée. |
-| eBay | — | Non interrogée | Interdit par la table d'accès (`FORBIDDEN`). |
+| URL demandée | `…/en/l/106583853-jaeger-lecoultre-reverso-duetto-diamonds-266-1-44-serviced-women-2010-2020` | `…/en/l/106501518-cartier-must-de-cartier-vendome-no-reserve-price-w1002253-women-1990-1999` | `…/en/l/106613690-omega-constellation-no-reserve-price-1561-61-00-women-1990-1999` |
+| HTTP | `308` → `…/en/l/106945165`, puis `200` (1,5 s) | `200` (0,5 s) | `200` (1,1 s) |
+| Statut structuré de la page | `closed: true`, **`sold: false`**, `reservePriceMet: false`, `closeStatus: Closed` | `closed: true`, `sold: true`, `closeStatus: Closed` | `closed: true`, `sold: true`, `closeStatus: Closed` |
+| Montant | 5 075 € | 1 200 € | 800 € |
+| Nature du prix | dernière enchère, réserve **non atteinte** : **pas une vente** | enchère finale affichée (marteau), hors frais acheteur | enchère finale affichée (marteau), hors frais acheteur |
+| Estimation Catawiki (à part) | 8 300–9 200 € | 1 200–1 400 € | 800–900 € |
+| Dates | ouverture 18/09 10:00 UTC, clôture 25/09/2026 18:23 UTC | 04/09 → clôture 10/09/2026 19:58 UTC | 07/09 → clôture 13/09/2026 19:16 UTC |
+| Référence identifiée | `266.1.44` (titre, description, fiche « 266.1.44 - Serviced ») | `W1002253` (titre, description, fiche) | `1561.61.00` (titre, description, fiche) |
+| Manquant ou contradictoire | **Matière : description « or blanc 18 carats », fiche et sous-titre « Yellow gold ».** Le lot demandé (106583853) est redirigé vers une **republication** (106945165) : l'issue du lot d'origine n'est pas lisible. Ni boîte ni papiers. | Bracelet non d'origine (« aftermarket »). Sans papiers. Frais acheteur et pays de l'acheteur absents. | Diamètre 22 mm (fiche) contre 22,5 mm (description). Datation « circa 1998 » estimée par le vendeur. Frais acheteur absents. |
 
-### Catawiki, en détail
+Contrôles appliqués :
+- les statuts se lisent dans les **champs structurés** (`closed`, `sold`,
+  `reservePriceMet`, `closeStatus`), pas dans le texte visible : les mots
+  « Sold », « Reserve price not met » apparaissent dans toutes les pages, y
+  compris pour un lot qui n'a pas ce statut (chaînes de traduction) ;
+- Omega : la page indique `sold: true` et 800 €, comme l'a rapporté la
+  recherche web de ChatGPT — **aucune divergence** ; la valeur vient de la page,
+  pas d'un extrait ;
+- un « vendu » affiché n'est **pas une preuve de paiement** : la classe de
+  fiabilité maximale (A) ne leur est pas attribuée automatiquement. Proposition
+  provisoire, à inscrire au jeu de règles : **B au plus**, jamais A tant que le
+  paiement n'est pas établi ;
+- déduplication : `106583853` et `106945165` sont la **même montre**
+  republiée, comptée une fois ; la seule issue lisible est la non-vente à
+  5 075 € (jamais un comparable de vente).
 
-| Référence | Recherches | Lots en cours vus | Lots lus | **Référence exacte trouvée** |
+## 2. Toutes les sources interrogées par la sonde (13 sources, 39 sondages, 33,7 s)
+
+| Source | Rôle | Résultat | Diagnostic exact | Nature de l'obstacle |
 |---|---|---|---|---|
-| JLC Reverso Duetto 266.1.44 | 4 (`200`) | 71 | 14 | **0** |
-| Cartier Vendôme W1002253 | 4 (`200`) | 70 | 14 | **0** |
-| Omega Constellation 1561.61.00 | 4 (`200`) | 67 | 14 | **0** |
+| Chrono24 | revente | **Bloquée** | `403`, `cf-mitigated: challenge` | protection technique |
+| Catawiki | enchères | Accessible, **0 comparable exact** | recherche et lots `200` | contrat + absence de données (§3) |
+| Watchfinder | revente | Bloquée | `robots.txt` `403` (CloudFront) | protection technique |
+| Bonhams | enchères | Bloquée | `robots.txt` `403` (Cloudflare) | protection technique |
+| Interenchères | enchères | Bloquée | `robots.txt` `403` (Cloudflare) | protection technique |
+| Vestiaire Collective | revente | Non interrogée | `robots.txt` interdit la recherche | convention d'exclusion |
+| LiveAuctioneers | enchères | Non interrogée | `robots.txt` interdit la recherche | convention d'exclusion |
+| Phillips | enchères | Non interrogée | `robots.txt` interdit la recherche | convention d'exclusion |
+| Christie's | enchères | Inexploitable | `200`, coquille JavaScript, aucune donnée | absence de données dans le HTML |
+| Bucherer | revente | Inexploitable | `200`, coquille JavaScript | absence de données dans le HTML |
+| The RealReal | revente | Inexploitable | `200`, produits à noms génériques, référence non prouvable | absence de données ; conditions interdisant les robots |
+| Drouot | enchères | Inexploitable | `404`, gabarit de recherche inconnu | absence de méthode de découverte |
+| 1stDibs | revente | Échec | `ReadTimeout` | technique |
+| eBay | — | Non interrogée | interdit par la table d'accès `FORBIDDEN` | contrat ; l'API officielle est un autre mode (§6) |
 
-- Chaque recherche affiche « Aucun résultat exact » : les lots renvoyés sont des
-  **voisins sémantiques** (`isVectorSearchResult`), pas la référence demandée.
-  Les substituer serait exactement le remplacement silencieux interdit.
-- Le moteur de recherche de Catawiki ne renvoie **que les lots ouverts**. Une
-  enchère en cours (`current_bid`) n'est de toute façon pas un prix réalisé.
-- Les trois lots **clôturés** connus (collés le 8 septembre) sont lisibles par
-  leur URL — Cartier 1 200 € au marteau, Omega 800 € au marteau, JLC réserve
-  **non atteinte** (donc **pas une vente**, et l'URL redirige vers un lot
-  republié) — mais **rien ne permet de les découvrir** sans connaître l'URL.
-- Total : **0 comparable exploitable** sur les 3 références.
+Boutiques et archives pour les prix demandés (essai complémentaire, 26 hôtes
+sondés) :
 
-## Trois obstacles
+| Source | Résultat |
+|---|---|
+| Analog:Shift (Shopify, `products.json` autorisé) | `429` dès la page de catalogue : source arrêtée, catalogue non lu |
+| Crown & Caliber, Wempe, WatchBox / 1916 Company | plan du site lisible ; **aucune URL** portant l'une des trois références |
+| Chronext, Hodinkee | aucun plan du site déclaré dans `robots.txt` |
+| Shop Hodinkee, Fashionphile, Tutti, Gear Patrol, Rolex Forums | défi Cloudflare (`429`/`403`) |
+| Subito, Watchfinder UK | `robots.txt` `403` (Akamai / CloudFront) |
+| Leboncoin, Ricardo | `403` sur le point d'accès testé |
+| Marktplaats, Kleinanzeigen, 2ememain, Vinted | `robots.txt` lisible ; pas de point d'accès de catalogue public utilisable sans recherche |
+| WatchUseek, TheWatchForum | `ReadTimeout` |
 
-1. **Découverte des ventes clôturées.** C'est ce dont l'estimation a besoin
-   (prix réalisés, classes A/B). Aucune source accessible ne les liste. Les
-   archives publiques (Wayback CDX, Common Crawl) sont injoignables depuis le
-   bac à sable ; un moteur de recherche à clé gratuite (Google Programmable
-   Search, Brave) exige de créer une clé : geste humain, et un extrait de
-   résultat ne prouve ni un prix ni une vente.
-2. **Côté revente, Chrono24 est bloquée** par un défi anti-robot. La consigne
-   interdit de le contourner. Sans elle, il n'y a aucun prix demandé de revente.
-3. **Conditions d'utilisation.** Les conditions générales de Catawiki (en
-   vigueur au 15 septembre 2026) déclarent que l'extraction automatisée n'est
-   pas autorisée et que Catawiki peut prendre des mesures ; celles de The RealReal
-   interdisent robots et extraction sans accord écrit. L'accès technique n'est
-   pas une permission contractuelle. La décision de l'utilisateur autorise
-   KAIROS ; elle ne peut pas modifier les conditions d'un tiers. À trancher
-   par une personne qui peut engager l'organisation, pas par le code.
+**Aucun prix demandé à la revente n'a été obtenu pour les trois références.**
 
-## Fragilité constatée
+## 3. Catawiki : trois modes de découverte, testés
 
-Avec le même agent honnête, `httpx` reçoit `200` de Catawiki et `curl` reçoit
-`403` : Akamai décide selon l'empreinte de la connexion. L'accès n'est donc ni
-garanti ni stable. Non testé : l'adresse du serveur OVH peut être traitée
-autrement que celle du bac à sable.
+| Mode | Résultat |
+|---|---|
+| Recherche interne (12 requêtes, `200`) | lots **ouverts** seulement ; « Aucun résultat exact » à chaque fois ; 208 voisins sémantiques (`isVectorSearchResult`), 42 lots lus, **0 référence exacte** |
+| Lot connu, lu par son URL | fonctionne (§1) ; lot **clos** lisible tant que l'URL est connue |
+| **Plan du site des lots clos** (nouveau) | `sitemap_closed_index_en.xml` : 47 fichiers, 5 Mo chacun, **2 331 613 lots**, lu en 147 s. **Ni déclaré dans `robots.txt`, ni indexable** (`noindex` dans le nom). Il s'arrête à l'identifiant 106 371 780 (lots clos avant août 2026) : aucun des trois lots ci-dessus n'y figure. Ce qu'il contient : 15 317 lots Omega, 10 243 Cartier, 918 Jaeger. **0 lot portant l'une des trois références exactes.** |
 
-## Défaut trouvé pendant l'essai (POL-094)
+Le plan du site est un vrai moyen de **découverte locale sans moteur de
+recherche** (repérer une référence dans l'adresse du lot), mais son retard le
+rend aveugle aux lots des dernières semaines, exactement ceux que la recherche
+web de ChatGPT a trouvés.
 
-Le `User-Agent` du collecteur de production contenait des lettres accentuées.
-`httpx` refuse tout en-tête non ASCII (`UnicodeEncodeError`) : **le collecteur
-de production n'a jamais pu envoyer une seule requête**. Tous ses tests
-utilisaient un faux collecteur, d'où un défaut invisible. Corrigé (ASCII) et
-couvert par un test qui utilise la vraie bibliothèque.
+## 4. Découverte par un moteur de recherche utilisable par KAIROS, sans abonnement
 
-## Possibilités restantes (aucune n'est engagée)
+| Moyen | Résultat |
+|---|---|
+| DuckDuckGo (HTML) | `202` + défi anti-robot : arrêté, rien contourné |
+| Bing (page de résultats) | répond `200`, mais aucune API gratuite ne l'accompagne et je n'ai pas vérifié ses conditions pour un usage automatisé : non retenu, à ne pas supposer autorisé |
+| Google Programmable Search (API JSON) | **fermée aux nouveaux clients**, arrêt annoncé le 1er janvier 2027 ([source](https://developers.google.com/custom-search/v1/overview)) |
+| Brave Search API | plus de palier gratuit : 5 $ de crédit mensuel, **carte enregistrée facturée au-delà** ([source](https://www.implicator.ai/brave-drops-free-search-api-tier-puts-all-developers-on-metered-billing/)) : c'est un engagement de paiement |
+| Wayback Machine (disponibilité) | joignable, mais pour une **URL connue** : aucune capture du lot Omega ; l'index CDX et Common Crawl sont injoignables depuis cet environnement |
+| Instance publique SearXNG | joignable, mais gérée par des bénévoles : non interrogée, non fiable pour un logiciel |
 
-1. **Accord ou canal officiel.** Demander à Catawiki et à Chrono24 un accès
-   autorisé (API partenaire, export). Seule voie durable pour les deux sources
-   nécessaires. Décision et démarche humaines.
-2. **Découverte par moteur à clé gratuite**, pour retrouver des URL de lots
-   clôturés, puis lecture de chaque page publique. Geste humain unique (créer
-   la clé), quota limité, et le point 3 ci-dessus reste entier.
-3. **Boutiques publiques accessibles** (à inventorier une par une avec la même
-   méthode) pour des prix demandés — utile mais insuffisant seul : ce sont des
-   prix d'offre (classe C), jamais des prix réalisés.
-4. **Recherche limitée à ce qui est accessible et permis** : lots Catawiki en
-   cours dont la référence exacte apparaît, affichés comme enchères en cours,
-   sans estimation si les données sont insuffisantes. Honnête, mais n'atteint
-   pas l'objectif « estimation de prix réalisé ».
+**Blocage précis, distinct de l'accès aux pages : il n'existe pas de moteur de
+recherche à la fois gratuit, sans carte, autorisé pour un usage automatisé et
+joignable.** Les outils web de ChatGPT et de Claude ne sont pas disponibles au
+logiciel.
 
-L'architecture de la recherche autonome (port de source, adaptateur par site,
-déduplication, cache, limites, arrêt sur blocage, tâche de fond avec progression
-et erreurs par source) est réalisable, mais la bâtir avant de disposer d'une
-source qui livre des comparables exacts produirait un moteur vide. Elle n'est
-pas engagée tant que les points 1 à 3 ne sont pas tranchés.
+## 5. Restrictions, par nature
+
+| Source | Contractuelle | Technique | Données | Découverte |
+|---|---|---|---|---|
+| Catawiki | **Conditions générales (en vigueur au 15/09/2026), rubrique « Respect intellectual property » : « Scraping our website is not allowed. We may take any measures available to us under applicable law to prevent or address scraping. »** ([PDF officiel](https://cdn.catawiki.net/assets/marketing/terms/2026/web/general-terms/general-terms-en-092026.pdf?t=497113)) | Akamai : `httpx` `200`, `curl` `403` avec la même identité → accès instable | 0 référence exacte | interne : ouverts seulement ; plan du site : en retard |
+| Chrono24 | texte des conditions non lu : la page renvoie le défi | défi Cloudflare sur la recherche **et** sur les conditions | — | — |
+| The RealReal | conditions interdisant robots et extraction (rapporté par recherche web ; la page renvoie `403` à mon client) | aucune sur la recherche | noms génériques | — |
+| Autres | voir §2 | voir §2 | voir §2 | voir §2 |
+
+L'accès technique n'est pas une permission contractuelle. La décision du
+propriétaire autorise KAIROS mais ne peut pas lever les conditions d'un tiers.
+
+## 6. Ce qui est réellement validé aujourd'hui
+
+**Rien de bout en bout.** Un mode est validé s'il réunit : accès réel, aucune
+exclusion contractuelle, données exactes, découverte automatique.
+
+| Mode | Accès réel | Contrat | Données exactes | Découverte | Verdict |
+|---|---|---|---|---|---|
+| Catawiki, lecture de lot par URL | oui (instable) | **exclu** | 3 lots connus | non | non validé |
+| Catawiki, lots ouverts | oui | **exclu** | 0 | oui | non validé |
+| Catawiki, plan du site des lots clos | oui | **exclu** | 0 | partielle | non validé |
+| Chrono24 | non | inconnu | — | — | non validé |
+| Boutiques accessibles | partiel | à vérifier une à une | 0 | non | non validé |
+| eBay, API officielle (clé développeur gratuite, 5 000 appels/jour) | **non testé** : demande une clé, donc un geste humain unique ; annonces en cours seulement, jamais des ventes | permis par l'API | non testé | oui | à valider |
+
+Conséquence : le parcours autonome n'est pas développé. Le construire
+maintenant produirait un moteur vide, ou reposerait sur un mode contractuellement
+exclu.
+
+## 7. Défaut trouvé pendant l'essai (POL-094)
+
+Le `User-Agent` du collecteur de production contenait des accents et `httpx`
+refuse tout en-tête non ASCII : **le collecteur n'a jamais pu envoyer une
+requête réelle**. Aucun test ne le voyait, tous utilisaient un faux collecteur.
+Corrigé, avec un test qui construit de vrais en-têtes.
+
+## 8. Décisions à prendre
+
+1. **Catawiki : accepter ou non le risque contractuel.** Cette décision engage
+   le propriétaire (suspension de compte, action de Catawiki), pas le code.
+   Recommandation : ne pas l'accepter pour un usage automatisé.
+2. **Comparables voisins explicites.** Le moteur pondère déjà la similarité. Autoriser,
+   pour une référence sans vente exacte, des ventes proches **affichées comme
+   voisines** (même famille, même mouvement, même matière) ne serait pas une
+   substitution silencieuse, mais donnerait une confiance plafonnée. C'est une
+   règle métier : elle relève du jeu de règles, pas du code.
+3. **Clé développeur eBay gratuite**, pour tester le seul mode officiel
+   restant. Prix demandés et enchères en cours seulement.

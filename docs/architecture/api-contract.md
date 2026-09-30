@@ -529,6 +529,22 @@ cours, pas des ventes. `recalculation` est le même objet que ci-dessus : un
 `age_minutes`, `stale` et `cache_ttl_hours` disent la fraîcheur : l'âge des
 données est toujours affiché.
 
+### Plusieurs sources, plusieurs natures de prix
+
+Les sources tournent **en parallèle** ; chacune est consignée dès qu'elle a fini.
+`SourceResult` porte en plus : `complete` (`false` quand une limite a coupé la
+lecture : l'absence d'une annonce n'est alors pas une preuve) et `informational`
+(prix relevés mais **hors de l'estimation**, avec leur motif : article vendu dont
+le dernier prix n'est pas daté).
+
+`summary.price_groups` range les comparables connus de la référence **par nature** —
+`auction_results` (adjudications publiées), `asking_active`, `asking_last_seen`,
+`current_bids` — avec nombre, minimum, médiane et maximum en euros. Ce sont des
+observations, jamais une moyenne de l'ensemble.
+
+`POST /opportunities` accepte `watch.model` (facultatif) : les maisons de ventes ne
+retrouvent pas un numéro de référence et cherchent par marque et modèle.
+
 ### Provenance des comparables
 
 Chaque comparable issu d'une recherche porte `origin = "automatic_search"` et

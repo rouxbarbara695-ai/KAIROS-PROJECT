@@ -372,3 +372,21 @@ Configurables, versionnés, enregistrés avec chaque recherche. Ils bornent la
    distingue pas la nature du prix dans le calcul (`calculation-spec.md`). Les
    prix demandés d'eBay se mêlent donc aux ventes saisies ; à arbitrer avant de
    s'y fier pour décider.
+
+
+## Recherche multi-sources — règles provisoires (30 septembre 2026)
+
+Complète « Recherche autonome de comparables » ci-dessus. Registre : `registre-sources.md`.
+
+| Choix | Valeur retenue | À confirmer |
+|---|---|---|
+| Sources de pages publiques (Antiquorum, Sworders, Vintage Watch Agency) et catalogue UCP (Phigora) | activées à la demande, statut « conditionnel » | **décision propriétaire** : une part de leurs conditions n'a pas pu être lue ; retirer le nom de `MARKET_SEARCH_SOURCES` désactive la source |
+| Classe de fiabilité d'une adjudication publiée | **B** | jamais **A** : un montant affiché n'est pas une preuve de paiement |
+| Date d'un résultat d'adjudication | la date de la vente (`observed_at`) | son ancienneté pèse via le facteur de récence existant |
+| Annonce disparue ou vendue d'un marchand, prix non daté | montrée, **hors de l'estimation** | classe D si une date existe un jour |
+| Frais acheteur d'une adjudication | inconnus (`fees_status = unknown`), non normalisés | lire les conditions de chaque vente |
+| Devises | taux de la BCE (gratuit), enregistrés avec devise, sens, source, date ; sans taux, rien n'est enregistré | |
+| Modèle de la montre | champ facultatif ; sans lui, les maisons de ventes lisent la marque seule (lecture partielle déclarée) | |
+| Configuration (métal, bracelet, mouvement) | relevée dans l'annonce, affichée, **ni filtrée ni pondérée** | règle de comparabilité : décision métier |
+| Plafonds de lecture | 3 pages de résultats, 8 fiches de détail par source, 30 requêtes | `SearchPolicy` 1.1.0 |
+| Marchés | deux fourchettes séparées (adjudications, prix demandés), jamais moyennées ensemble | le moteur, lui, mélange toujours par fiabilité de source (`calculation-spec.md`) |

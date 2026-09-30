@@ -172,3 +172,15 @@ ventes.
   jeton OAuth d'eBay est joignable et refuse de faux identifiants avec le
   diagnostic exact (HTTP 401).
 - Catawiki et Chrono24 restent **non validés** : aucune lecture automatisée.
+
+## 10. Suite : découverte autonome prouvée sur quatre sources
+
+À la demande du propriétaire (document de passation du 30 septembre 2026), quatre
+sources publiques ont été éprouvées **sans liste d'URL** : Phigora (catalogue UCP),
+Antiquorum, Sworders, Vintage Watch Agency. Une recherche par marque, modèle et
+référence retrouve seule : 3 adjudications Antiquorum et 1 adjudication Sworders
+pour la JLC 266.1.44, 1 fiche en stock pour l'Omega 1561.61.00, 2 pour la
+Speedmaster 3570.50.00 (référence nouvelle). Aucune fiche exacte pour la Cartier
+W1002253. Détail, limites et conditions : `registre-sources.md`.
+
+Catawiki reste **exclu** (clause citée), Chrono24 aussi : aucun contournement.

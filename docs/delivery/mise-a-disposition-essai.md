@@ -54,21 +54,28 @@ Je peux le faire si vous préférez une séparation stricte. Dites-le.
 
 ## Chemin A — commandes prêtes
 
-Toutes sont à jouer sur la machine, en `ssh root@<votre-machine>`.
+Toutes sont à jouer sur la machine. **L'utilisateur est `ubuntu`, pas `root`** :
+sur une image Ubuntu d'OVH, `root` ne peut pas se connecter par mot de passe.
+Les commandes qui touchent Docker, aux sauvegardes ou à `/opt/kairos` passent
+donc par `sudo`.
+
+```bash
+ssh ubuntu@<adresse-ip-du-serveur>
+```
 
 ### 1. Sauvegarder, et vérifier que la sauvegarde existe
 
 ```bash
-/opt/kairos/infra/scripts/sauvegarde.sh
-ls -lh /var/backups/kairos/ | tail -3
+sudo /opt/kairos/infra/scripts/sauvegarde.sh
+sudo ls -lh /var/backups/kairos/ | tail -3
 ```
 
 ### 2. Noter le point de retour
 
 ```bash
 cd /opt/kairos
-git rev-parse HEAD > /root/kairos-retour-arriere.txt
-cat /root/kairos-retour-arriere.txt
+sudo git rev-parse HEAD > ~/kairos-retour-arriere.txt
+cat ~/kairos-retour-arriere.txt
 ```
 
 Ce fichier est le retour arrière. Sans lui, revenir demande de retrouver le
@@ -78,17 +85,17 @@ bon commit dans l'historique.
 
 ```bash
 cd /opt/kairos
-git fetch origin
-git checkout main
-git pull
-docker compose --env-file infra/.env.production \
+sudo git fetch origin
+sudo git checkout main
+sudo git pull
+sudo docker compose --env-file infra/.env.production \
   -f infra/docker-compose.prod.yml up -d --build
 ```
 
 ### 4. Vérifier que ça tourne
 
 ```bash
-docker compose --env-file infra/.env.production \
+sudo docker compose --env-file infra/.env.production \
   -f infra/docker-compose.prod.yml ps
 curl -sf https://<votre-domaine>/api/v1/health && echo " — API vivante"
 ```
@@ -100,8 +107,8 @@ Les quatre services (`postgres`, `redis`, `api`, `web`, `caddy`) doivent être
 
 ```bash
 cd /opt/kairos
-git checkout "$(cat /root/kairos-retour-arriere.txt)"
-docker compose --env-file infra/.env.production \
+sudo git checkout "$(cat ~/kairos-retour-arriere.txt)"
+sudo docker compose --env-file infra/.env.production \
   -f infra/docker-compose.prod.yml up -d --build
 ```
 
@@ -112,7 +119,7 @@ Les opportunités créées pendant l'essai resteront, et se rangent en
 Si vous voulez malgré tout revenir à l'état d'avant :
 
 ```bash
-/opt/kairos/infra/scripts/restauration.sh /var/backups/kairos/<fichier>.sql.gz.enc
+sudo /opt/kairos/infra/scripts/restauration.sh /var/backups/kairos/<fichier>.sql.gz.enc
 ```
 
 ## Coûts et accès supplémentaires

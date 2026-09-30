@@ -16,6 +16,7 @@ set -euo pipefail
 
 KEY_FILE="${KAIROS_BACKUP_KEY:-/etc/kairos/backup.key}"
 COMPOSE_FILE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/docker-compose.prod.yml"
+ENV_FILE="${KAIROS_ENV_FILE:-$(dirname "$COMPOSE_FILE")/.env.production}"
 
 if [[ $# -ne 1 ]]; then
 	echo "Usage : $0 <fichier de sauvegarde>" >&2
@@ -31,6 +32,17 @@ archive="$1"
 	echo "Clé illisible : $KEY_FILE" >&2
 	exit 1
 }
+# Compose ne lit pas `.env.production` de lui-même (voir sauvegarde.sh). On le
+# vérifie ici, avant de demander confirmation et surtout avant d'arrêter l'API.
+[[ -r "$ENV_FILE" ]] || {
+	echo "Configuration illisible : $ENV_FILE" >&2
+	echo "Lancer avec sudo, ou indiquer un autre fichier : KAIROS_ENV_FILE=…" >&2
+	exit 1
+}
+
+compose() {
+	docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" "$@"
+}
 
 echo "Cette opération remplace TOUT le contenu de la base par $archive."
 echo "Les données saisies depuis cette sauvegarde seront perdues."
@@ -42,32 +54,32 @@ read -r -p "Taper « restaurer » pour continuer : " confirmation
 
 # L'API est arrêtée pendant la restauration : la laisser écrire dans une base
 # qu'on est en train de remplacer produirait un mélange des deux états.
-docker compose -f "$COMPOSE_FILE" stop api web
+compose stop api web
 
 # On repart d'une base vide plutôt que de superposer : un dump restauré
 # par-dessus des données existantes échouerait sur chaque clé déjà présente et
 # laisserait un état à moitié ancien, à moitié neuf.
-docker compose -f "$COMPOSE_FILE" exec -T postgres \
+compose exec -T postgres \
 	psql --username kairos --dbname postgres \
 	-c "drop database if exists kairos_restauration;" \
 	-c "create database kairos_restauration owner kairos;"
 
 openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -pass "file:$KEY_FILE" -in "$archive" |
 	gunzip |
-	docker compose -f "$COMPOSE_FILE" exec -T postgres \
+	compose exec -T postgres \
 		psql --username kairos --dbname kairos_restauration --quiet --set ON_ERROR_STOP=on
 
 # La bascule n'a lieu qu'une fois le dump entièrement chargé : si quoi que ce
 # soit échoue au-dessus, `set -e` arrête ici et la base d'origine est intacte.
-docker compose -f "$COMPOSE_FILE" exec -T postgres \
+compose exec -T postgres \
 	psql --username kairos --dbname postgres \
 	-c "drop database if exists kairos_precedente;" \
 	-c "alter database kairos rename to kairos_precedente;" \
 	-c "alter database kairos_restauration rename to kairos;"
 
-docker compose -f "$COMPOSE_FILE" start api web
+compose start api web
 
 echo "Restauration terminée. L'ancienne base est conservée sous « kairos_precedente »."
 echo "La supprimer une fois la vérification faite :"
-echo "  docker compose -f $COMPOSE_FILE exec -T postgres \\"
+echo "  docker compose --env-file $ENV_FILE -f $COMPOSE_FILE exec -T postgres \\"
 echo "    psql --username kairos --dbname postgres -c 'drop database kairos_precedente;'"

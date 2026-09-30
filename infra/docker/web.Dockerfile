@@ -46,7 +46,6 @@ RUN pnpm --filter @kairos/web build
 FROM node:22-slim AS runtime
 
 WORKDIR /srv
-RUN corepack enable
 ENV NODE_ENV=production
 
 COPY --from=build /srv/node_modules node_modules
@@ -58,5 +57,24 @@ COPY --from=build /srv/apps/web apps/web
 # doit pas donner root dans le conteneur.
 USER node
 
+# Next.js est lancé directement, sans passer par pnpm.
+#
+# Le démarrage passait par `pnpm --filter @kairos/web start`. Rien ne fixe la
+# version de pnpm : `corepack` prend la plus récente. Les versions récentes
+# vérifient, avant d'exécuter une commande, que `node_modules` est à jour, et
+# tentent de le réinstaller. Or l'utilisateur `node` n'a pas le droit d'écrire
+# dans `/srv` — c'est voulu — et le conteneur redémarrait en boucle :
+#
+#   ERR_PNPM_PACKAGE_MANAGER_REMOVE_MODULES_DIR
+#   Failed to remove /srv/node_modules/.pnpm from the modules directory:
+#   Permission denied (os error 13)
+#
+# Huit semaines plus tôt, la version de pnpm de l'époque ne le faisait pas :
+# l'image n'a pas changé, c'est l'outil qui a bougé sous elle. Servir des
+# pages n'a pas besoin de gestionnaire de paquets. Le lancer directement
+# retire la dépendance à sa version — et le téléchargement de pnpm par
+# `corepack` à chaque démarrage du conteneur.
+WORKDIR /srv/apps/web
+
 EXPOSE 3000
-CMD ["pnpm", "--filter", "@kairos/web", "start"]
+CMD ["./node_modules/.bin/next", "start"]

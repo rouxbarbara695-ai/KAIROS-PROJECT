@@ -73,6 +73,11 @@ services:
       CURSOR_SECRET: ${CURSOR_SECRET:?secret de curseur manquant}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       ACTIVE_RULESET_VERSION: ${ACTIVE_RULESET_VERSION:-1.2.0}
+      # Recherche autonome de comparables (API officielle eBay). Vides : la source
+      # reste inerte, l'écran le dit, et rien n'est interrogé.
+      EBAY_CLIENT_ID: ${EBAY_CLIENT_ID:-}
+      EBAY_CLIENT_SECRET: ${EBAY_CLIENT_SECRET:-}
+      EBAY_MARKETPLACES: ${EBAY_MARKETPLACES:-EBAY_FR,EBAY_DE,EBAY_IT}
       # Le navigateur ne parle qu'à l'origine de l'interface : CORS ne sert
       # jamais en pratique. La configuration l'exige quand même hors local, et
       # elle a raison — une origine locale laissée en place autoriserait des

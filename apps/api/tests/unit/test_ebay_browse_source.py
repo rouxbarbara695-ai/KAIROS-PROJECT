@@ -308,3 +308,22 @@ def test_ebay_credentials_are_never_sent_over_plain_http_outside_local() -> None
         **common,  # type: ignore[arg-type]
     )
     assert local.ebay_api_base_url == "http://127.0.0.1:9099"
+
+
+async def test_empty_environment_variables_leave_the_source_inert() -> None:
+    """Le compose de production passe `EBAY_CLIENT_ID=` (vide) quand rien n'est
+    renseigné : une chaîne vide ne doit jamais compter comme un identifiant."""
+
+    from app.market_search.application.runtime import default_sources
+    from app.shared.config import Settings
+
+    settings = Settings(
+        database_url="postgresql+psycopg://x",  # type: ignore[arg-type]
+        redis_url="redis://x",  # type: ignore[arg-type]
+        cursor_secret="s",  # type: ignore[arg-type]
+        ebay_client_id="",  # type: ignore[arg-type]
+        ebay_client_secret="",  # type: ignore[arg-type]
+        ebay_marketplaces="",
+    )
+    async with default_sources(settings, SearchPolicy()) as sources:
+        assert [s.is_configured() for s in sources] == [False]

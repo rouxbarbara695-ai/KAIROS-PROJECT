@@ -1328,7 +1328,7 @@ export interface components {
         /** MarketSearchRunResponse */
         MarketSearchRunResponse: {
             /** Age Minutes */
-            age_minutes?: number | null;
+            age_minutes: number | null;
             /** Cache Ttl Hours */
             cache_ttl_hours: number;
             /**
@@ -1337,9 +1337,9 @@ export interface components {
              */
             created_at: string;
             /** Error Code */
-            error_code?: string | null;
+            error_code: string | null;
             /** Error Message */
-            error_message?: string | null;
+            error_message: string | null;
             /** Finished At */
             finished_at: string | null;
             /**
@@ -1348,7 +1348,7 @@ export interface components {
              */
             id: string;
             /** Next Refresh Allowed At */
-            next_refresh_allowed_at?: string | null;
+            next_refresh_allowed_at: string | null;
             /**
              * Opportunity Id
              * Format: uuid
@@ -1394,7 +1394,7 @@ export interface components {
         /** MarketSearchStartResponse */
         MarketSearchStartResponse: {
             /** Age Minutes */
-            age_minutes?: number | null;
+            age_minutes: number | null;
             /** Cache Ttl Hours */
             cache_ttl_hours: number;
             /**
@@ -1403,9 +1403,9 @@ export interface components {
              */
             created_at: string;
             /** Error Code */
-            error_code?: string | null;
+            error_code: string | null;
             /** Error Message */
-            error_message?: string | null;
+            error_message: string | null;
             /** Finished At */
             finished_at: string | null;
             /**
@@ -1416,7 +1416,7 @@ export interface components {
             /** Launched */
             launched: boolean;
             /** Next Refresh Allowed At */
-            next_refresh_allowed_at?: string | null;
+            next_refresh_allowed_at: string | null;
             /**
              * Opportunity Id
              * Format: uuid
@@ -1425,7 +1425,7 @@ export interface components {
             /** Policy Version */
             policy_version: string;
             /** Reused */
-            reused?: ("running" | "fresh" | "too_soon") | null;
+            reused: ("running" | "fresh" | "too_soon") | null;
             /** Sources */
             sources: components["schemas"]["SourceResult"][];
             /**
@@ -1922,28 +1922,28 @@ export interface components {
         /** SearchSummary */
         SearchSummary: {
             /** Comparables Known For Reference */
-            comparables_known_for_reference?: number | null;
+            comparables_known_for_reference: number | null;
             /**
              * Comparables Recorded
              * @default 0
              */
             comparables_recorded: number;
             /** Elapsed S */
-            elapsed_s?: number | null;
+            elapsed_s: number | null;
             /**
              * Insufficient Data
              * @default false
              */
             insufficient_data: boolean;
             /** Insufficient Data Message */
-            insufficient_data_message?: string | null;
+            insufficient_data_message: string | null;
             /** Observed At */
-            observed_at?: string | null;
+            observed_at: string | null;
             /** Price Nature Note */
-            price_nature_note?: string | null;
-            recalculation?: components["schemas"]["RecalculationResponse"] | null;
+            price_nature_note: string | null;
+            recalculation: components["schemas"]["RecalculationResponse"] | null;
             /** Recorded By Price Kind */
-            recorded_by_price_kind?: {
+            recorded_by_price_kind: {
                 [key: string]: number;
             };
             /**
@@ -2031,7 +2031,7 @@ export interface components {
             /** Label */
             label: string;
             /** Note */
-            note?: string | null;
+            note: string | null;
         };
         /**
          * SourceResult
@@ -2062,14 +2062,14 @@ export interface components {
              */
             elapsed_s: number;
             /** Finished At */
-            finished_at?: string | null;
+            finished_at: string | null;
             /**
              * Fx Unavailable
              * @default 0
              */
             fx_unavailable: number;
             /** Message */
-            message?: string | null;
+            message: string | null;
             /**
              * Read
              * @default 0
@@ -2081,15 +2081,15 @@ export interface components {
              */
             recorded: number;
             /** Recorded Items */
-            recorded_items?: components["schemas"]["RecordedItem"][];
+            recorded_items: components["schemas"]["RecordedItem"][];
             /** Rejected */
-            rejected?: {
+            rejected: {
                 [key: string]: number;
             };
             /** Rejected Examples */
-            rejected_examples?: components["schemas"]["RejectedExample"][];
+            rejected_examples: components["schemas"]["RejectedExample"][];
             /** Requests */
-            requests?: components["schemas"]["SourceRequestRecord"][];
+            requests: components["schemas"]["SourceRequestRecord"][];
             /**
              * Requests Count
              * @default 0
@@ -2098,7 +2098,7 @@ export interface components {
             /** Source */
             source: string;
             /** Started At */
-            started_at?: string | null;
+            started_at: string | null;
             /**
              * Status
              * @enum {string}

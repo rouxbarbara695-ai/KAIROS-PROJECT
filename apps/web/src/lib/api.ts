@@ -530,3 +530,34 @@ export function login(email: string, password: string): Promise<unknown> {
 export function logout(): Promise<unknown> {
   return request("/auth/logout", { method: "POST" });
 }
+
+
+export type MarketSearchRun = components["schemas"]["MarketSearchRunResponse"];
+export type MarketSearchLatest =
+  components["schemas"]["MarketSearchLatestResponse"];
+export type MarketSearchStart =
+  components["schemas"]["MarketSearchStartResponse"];
+export type MarketSearchSource = components["schemas"]["SourceResult"];
+
+/** La dernière recherche de comparables pour la référence de cette montre. */
+export function getMarketSearch(
+  opportunityId: string,
+): Promise<MarketSearchLatest> {
+  return request<MarketSearchLatest>(
+    `/opportunities/${opportunityId}/market-searches/latest`,
+  );
+}
+
+/**
+ * Lance (ou relance) la recherche. L'API rend la main tout de suite ; c'est
+ * `getMarketSearch` qui suit l'avancement.
+ */
+export function startMarketSearch(
+  opportunityId: string,
+  force = false,
+): Promise<MarketSearchStart> {
+  return request<MarketSearchStart>(
+    `/opportunities/${opportunityId}/market-searches`,
+    { method: "POST", body: JSON.stringify({ force }) },
+  );
+}

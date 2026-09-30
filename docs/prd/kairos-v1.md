@@ -16,6 +16,14 @@ marché de la montre, puis en calculant coûts, rentabilité, délai, risque et
 impact sur le portefeuille. Il produit un verdict expliqué : **acheter,
 surveiller ou abandonner**.
 
+> **Périmètre mis à jour le 30 septembre 2026.** L'utilisateur ne doit pas avoir
+> à chercher lui-même les comparables : KAIROS les cherche, à l'ajout d'une
+> montre (référence confirmée) ou sur demande d'actualisation, dans les sources
+> dont le mode d'accès est validé. Ce n'est pas une surveillance permanente. La
+> saisie manuelle reste le repli. Voir `product/mvp.md`,
+> `product/sources-and-monitoring.md` et
+> `decisions/faisabilite-recherche-autonome.md`.
+
 ## 2. Utilisateurs V1
 
 ### Revendeur / associé
@@ -120,6 +128,7 @@ aux résultats. Cette comparaison alimente une revue humaine des règles.
 | FR-003 | Confirmer/corriger/refuser la référence avec audit | Must |
 | FR-004 | Normaliser état et set sans perdre le brut | Must |
 | FR-005 | Ajouter/corriger/exclure des comparables avec motif | Must |
+| FR-005a | Rechercher automatiquement les comparables d'une référence confirmée dans les sources validées (référence exacte, motif de chaque annonce écartée, déduplication, provenance, fraîcheur, un seul recalcul) | Must |
 | FR-006 | Calculer cote pondérée et `valuation_confidence` | Must |
 | FR-007 | Calculer trois scénarios, prix maximal, profit, ROI et délai | Must |
 | FR-008 | Évaluer les cinq portes avant le score | Must |

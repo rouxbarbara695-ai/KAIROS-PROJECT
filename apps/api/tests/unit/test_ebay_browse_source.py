@@ -263,7 +263,7 @@ async def test_rejected_credentials_emit_no_search() -> None:
     assert outcome.status == "blocked"
     assert len(calls) == 1
     assert "identifiants" in (outcome.message or "")
-    assert "b" != outcome.message  # le secret n'est jamais recopié
+    assert outcome.message != "b"  # le secret n'est jamais recopié
 
 
 async def test_request_budget_is_enforced() -> None:
@@ -282,3 +282,29 @@ async def test_network_failure_is_reported_not_raised() -> None:
     outcome = await run(fake)
     assert outcome.status == "error"
     assert outcome.candidates == []
+
+
+def test_ebay_credentials_are_never_sent_over_plain_http_outside_local() -> None:
+    from pydantic import ValidationError
+
+    from app.shared.config import Settings
+
+    common = {
+        "database_url": "postgresql+psycopg://x",
+        "redis_url": "redis://x",
+        "cursor_secret": "s",
+        "cors_allowed_origins": ["https://kairos.example"],
+    }
+    with pytest.raises(ValidationError):
+        Settings(
+            environment="production",
+            ebay_api_base_url="http://127.0.0.1:9099",
+            **common,  # type: ignore[arg-type]
+        )
+    # En local, un serveur d'essai en clair reste permis (parcours navigateur).
+    local = Settings(
+        environment="local",
+        ebay_api_base_url="http://127.0.0.1:9099",
+        **common,  # type: ignore[arg-type]
+    )
+    assert local.ebay_api_base_url == "http://127.0.0.1:9099"

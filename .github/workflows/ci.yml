@@ -185,8 +185,25 @@ jobs:
               await engine.dispose()
           asyncio.run(main())
           PY
+      # Faux serveur eBay sur une vraie prise réseau : le parcours de recherche
+      # autonome s'exécute de bout en bout — API, tâche de fond, base, interface —
+      # sans identifiants. C'est un simulacre de données : il prouve la chaîne,
+      # pas que eBay répond (voir `python -m app.market_search.probe`).
+      - name: Faux serveur eBay
+        working-directory: apps/api
+        run: |
+          python3 tests/fake_ebay_server.py 9099 &
+          for _ in $(seq 1 20); do
+            curl -sf -X POST http://127.0.0.1:9099/identity/v1/oauth2/token && break
+            sleep 0.5
+          done
       - name: API
         working-directory: apps/api
+        env:
+          EBAY_CLIENT_ID: essai
+          EBAY_CLIENT_SECRET: essai
+          EBAY_API_BASE_URL: http://127.0.0.1:9099
+          EBAY_MARKETPLACES: EBAY_FR
         run: |
           uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 &
           for _ in $(seq 1 30); do
@@ -208,6 +225,8 @@ jobs:
       - working-directory: apps/web
         run: pnpm exec playwright install --with-deps chromium
       - working-directory: apps/web
+        env:
+          E2E_FAKE_EBAY: "1"
         run: pnpm exec playwright test
       - if: failure()
         uses: actions/upload-artifact@v4

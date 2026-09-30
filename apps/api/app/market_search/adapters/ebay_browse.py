@@ -174,6 +174,7 @@ class EbayBrowseSource:
         policy: SearchPolicy,
         client: httpx.AsyncClient,
         environment: str = "production",
+        base_url: str | None = None,
         sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
     ) -> None:
@@ -182,7 +183,9 @@ class EbayBrowseSource:
         self._marketplaces = marketplaces
         self._policy = policy
         self._client = client
-        self._base = _BASE_URLS.get(environment, _BASE_URLS["production"])
+        self._base = (
+            base_url or _BASE_URLS.get(environment) or _BASE_URLS["production"]
+        ).rstrip("/")
         self._sleep = sleep
         self._clock = clock
         self._token: str | None = None

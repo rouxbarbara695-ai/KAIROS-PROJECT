@@ -1680,7 +1680,12 @@
           "finished_at",
           "sources",
           "summary",
-          "cache_ttl_hours"
+          "error_code",
+          "error_message",
+          "age_minutes",
+          "stale",
+          "cache_ttl_hours",
+          "next_refresh_allowed_at"
         ],
         "title": "MarketSearchRunResponse",
         "type": "object"
@@ -1857,8 +1862,14 @@
           "finished_at",
           "sources",
           "summary",
+          "error_code",
+          "error_message",
+          "age_minutes",
+          "stale",
           "cache_ttl_hours",
-          "launched"
+          "next_refresh_allowed_at",
+          "launched",
+          "reused"
         ],
         "title": "MarketSearchStartResponse",
         "type": "object"
@@ -3359,6 +3370,18 @@
             "type": "string"
           }
         },
+        "required": [
+          "stage",
+          "elapsed_s",
+          "observed_at",
+          "comparables_recorded",
+          "comparables_known_for_reference",
+          "recorded_by_price_kind",
+          "insufficient_data",
+          "insufficient_data_message",
+          "price_nature_note",
+          "recalculation"
+        ],
         "title": "SearchSummary",
         "type": "object"
       },
@@ -3655,7 +3678,8 @@
         "required": [
           "label",
           "http_status",
-          "elapsed_s"
+          "elapsed_s",
+          "note"
         ],
         "title": "SourceRequestRecord",
         "type": "object"
@@ -3785,7 +3809,22 @@
         },
         "required": [
           "source",
-          "status"
+          "status",
+          "message",
+          "started_at",
+          "finished_at",
+          "elapsed_s",
+          "requests",
+          "requests_count",
+          "read",
+          "accepted",
+          "recorded",
+          "already_known",
+          "duplicates",
+          "fx_unavailable",
+          "rejected",
+          "rejected_examples",
+          "recorded_items"
         ],
         "title": "SourceResult",
         "type": "object"

@@ -152,3 +152,23 @@ Corrigé, avec un test qui construit de vrais en-têtes.
    règle métier : elle relève du jeu de règles, pas du code.
 3. **Clé développeur eBay gratuite**, pour tester le seul mode officiel
    restant. Prix demandés et enchères en cours seulement.
+
+## 9. Suite : le mode officiel eBay est implémenté, pas encore prouvé
+
+Le 30 septembre 2026, le propriétaire a engagé la création d'une clé développeur
+eBay gratuite. Le parcours autonome est développé **pour ce seul mode validé** :
+API Browse officielle, prix demandés et enchères en cours (classe C), jamais des
+ventes.
+
+- Réalisé et testé : port de source, adaptateur, contrôle d'identité par
+  référence exacte, exclusions de configuration, déduplication, cache et
+  fraîcheur, quota, tâche de fond avec résultats par source, provenance, un seul
+  recalcul, écran. Parcours navigateur complet contre un **faux serveur eBay**
+  sur une vraie prise réseau.
+- **Non prouvé** : l'accès réel aux données eBay pour les trois références. Une
+  fixture ne le prouve pas. La preuve se fait avec de vrais identifiants :
+  `python -m app.market_search.probe` (requêtes réelles, statut HTTP, annonces
+  lues, retenues, écartées avec motif, temps total). Vérifié aujourd'hui : le
+  jeton OAuth d'eBay est joignable et refuse de faux identifiants avec le
+  diagnostic exact (HTTP 401).
+- Catawiki et Chrono24 restent **non validés** : aucune lecture automatisée.

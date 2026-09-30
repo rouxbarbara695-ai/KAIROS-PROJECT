@@ -517,6 +517,13 @@ async def _search_one_source(
     started = _utcnow()
     outcome: SourceOutcome = await source.search(query)
 
+    # La même annonce lue par deux requêtes (les deux écritures de la référence)
+    # est une redite, pas deux annonces : elle n'est comptée qu'une fois.
+    distinct: dict[tuple[str, str], Candidate] = {}
+    for candidate in outcome.candidates:
+        distinct.setdefault((candidate.external_id, candidate.price_kind), candidate)
+    read = list(distinct.values())
+
     verdicts: list[tuple[Candidate, Verdict]] = [
         (
             candidate,
@@ -529,7 +536,7 @@ async def _search_one_source(
                 now=started,
             ),
         )
-        for candidate in outcome.candidates
+        for candidate in read
     ]
     rejected: Counter[str] = Counter(v.code for _, v in verdicts if not v.accepted)
     examples = [
@@ -609,7 +616,7 @@ async def _search_one_source(
             for r in outcome.requests
         ],
         "requests_count": len(outcome.requests),
-        "read": len(outcome.candidates),
+        "read": len(read),
         "accepted": len(accepted),
         "recorded": sum(recorded.values()),
         "already_known": already_known,

@@ -56,6 +56,7 @@ async def default_sources(
                 policy=policy,
                 client=client,
                 environment=settings.ebay_environment,
+                base_url=settings.ebay_api_base_url,
             )
         ]
 

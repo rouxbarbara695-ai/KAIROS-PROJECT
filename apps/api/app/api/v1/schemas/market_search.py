@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.api.v1.schemas.comparables import RecalculationResponse
 
@@ -19,6 +19,14 @@ SourceStatus = Literal[
 RunStatus = Literal["queued", "running", "succeeded", "failed", "partial"]
 
 
+class _Response(BaseModel):
+    """Base des réponses : un champ qui a une valeur par défaut est **toujours
+    présent** dans ce que l'API rend. Sans cela, le contrat le déclare
+    facultatif et chaque écran doit se défendre d'une absence qui n'arrive pas."""
+
+    model_config = ConfigDict(json_schema_serialization_defaults_required=True)
+
+
 class MarketSearchStartRequest(BaseModel):
     """`force` demande une actualisation avant l'expiration de la fraîcheur.
 
@@ -29,20 +37,20 @@ class MarketSearchStartRequest(BaseModel):
     force: bool = False
 
 
-class SourceRequestRecord(BaseModel):
+class SourceRequestRecord(_Response):
     label: str
     http_status: int | None
     elapsed_s: float
     note: str | None = None
 
 
-class RejectedExample(BaseModel):
+class RejectedExample(_Response):
     title: str
     code: str
     detail: str
 
 
-class RecordedItem(BaseModel):
+class RecordedItem(_Response):
     comparable_id: uuid.UUID
     title: str
     url: str
@@ -51,7 +59,7 @@ class RecordedItem(BaseModel):
     price_kind: str
 
 
-class SourceResult(BaseModel):
+class SourceResult(_Response):
     """Ce qu'une source a réellement fait : requêtes, lectures, retenues, écartées.
 
     Un échec est un statut, avec son diagnostic exact — jamais une liste vide qui
@@ -77,7 +85,7 @@ class SourceResult(BaseModel):
     recorded_items: list[RecordedItem] = Field(default_factory=list)
 
 
-class SearchSummary(BaseModel):
+class SearchSummary(_Response):
     stage: Literal["queued", "searching", "recalculating", "done"] = "queued"
     elapsed_s: float | None = None
     observed_at: datetime | None = None
@@ -90,7 +98,7 @@ class SearchSummary(BaseModel):
     recalculation: RecalculationResponse | None = None
 
 
-class MarketSearchRunResponse(BaseModel):
+class MarketSearchRunResponse(_Response):
     id: uuid.UUID
     opportunity_id: uuid.UUID
     status: RunStatus
@@ -119,7 +127,7 @@ class MarketSearchStartResponse(MarketSearchRunResponse):
     reused: Literal["running", "fresh", "too_soon"] | None = None
 
 
-class MarketSearchLatestResponse(BaseModel):
+class MarketSearchLatestResponse(_Response):
     run: MarketSearchRunResponse | None
     #: Sources qui peuvent être interrogées. Vide : la recherche automatique est
     #: indisponible, et l'écran doit le dire au lieu de laisser un bouton inerte.

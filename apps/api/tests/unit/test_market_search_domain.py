@@ -222,3 +222,11 @@ def test_amount_formatting_does_not_hide_a_duplicate() -> None:
     a = candidate("Omega 1561.61.00", amount="800", external_id="v1|1|0")
     b = candidate("Omega 1561.61.00", amount="800.00", external_id="v1|2|0")
     assert len(deduplicate([a, b]).kept) == 1
+
+
+def test_spelling_variants_keep_the_given_case_and_never_repeat_by_case() -> None:
+    assert spelling_variants("RC123") == ("RC123", "RC 123", "RC.123")
+    variants = spelling_variants("W1002253")
+    assert variants[0] == "W1002253"
+    assert len({v.lower() for v in variants}) == len(variants)
+    assert "W 1002253" in variants

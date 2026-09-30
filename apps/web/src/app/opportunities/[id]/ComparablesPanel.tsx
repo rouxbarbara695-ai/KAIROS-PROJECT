@@ -15,6 +15,7 @@ import {
   announceMarketChange,
   changedSomething,
   describeRecalculation,
+  MARKET_CHANGED_EVENT,
   type Recalculation,
 } from "@/lib/recalculation";
 
@@ -75,6 +76,11 @@ export function ComparablesPanel({
 
   useEffect(() => {
     void refresh();
+    // Une recherche automatique ajoute des comparables sans qu'aucune action de
+    // ce panneau ne les ait provoqués : il doit relire à son signal.
+    const reload = () => void refresh();
+    window.addEventListener(MARKET_CHANGED_EVENT, reload);
+    return () => window.removeEventListener(MARKET_CHANGED_EVENT, reload);
     // La liste ne dépend que de l'opportunité affichée.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opportunityId]);
@@ -215,6 +221,24 @@ export function ComparablesPanel({
                 >
                   <td className="py-2">
                     {item.source_name}
+                    {item.origin === "automatic_search" && (
+                      <span className="ml-2 text-xs text-fg-muted">
+                        recherche automatique
+                        {typeof item.provenance?.url === "string" && (
+                          <>
+                            {" · "}
+                            <a
+                              href={item.provenance.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="underline-offset-2 hover:underline"
+                            >
+                              annonce
+                            </a>
+                          </>
+                        )}
+                      </span>
+                    )}
                     {item.excluded && item.exclusion_reason && (
                       <span className="ml-2 text-xs text-danger">
                         exclu — {item.exclusion_reason}

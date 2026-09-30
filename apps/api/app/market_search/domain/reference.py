@@ -92,18 +92,20 @@ def spelling_variants(reference: str) -> tuple[str, ...]:
 
     Uniquement des variantes de ponctuation : c'est ce que `match_reference`
     accepte, ni plus ni moins. Une source qui ne trouve que la forme pointée
-    trouvera l'autre avec la forme compacte.
+    trouvera l'autre avec la forme compacte. La casse ne compte pas : les
+    moteurs de recherche l'ignorent, et deux écritures qui ne diffèrent que par
+    elle ne feraient qu'une requête de plus, pour le même résultat.
     """
 
-    groups = _groups(reference)
+    groups = re.findall(r"[A-Za-z]+|\d+", reference)
     if not groups:
         return ()
     raw = reference.strip()
-    variants = [raw, "".join(groups), " ".join(groups), ".".join(groups)]
-    seen: dict[str, None] = {}
-    for variant in variants:
-        seen.setdefault(variant.upper() if variant.isalpha() else variant, None)
-    return tuple(seen)
+    candidates = [raw, "".join(groups), " ".join(groups), ".".join(groups)]
+    seen: dict[str, str] = {}
+    for candidate in candidates:
+        seen.setdefault(candidate.lower(), candidate)
+    return tuple(seen.values())
 
 
 def brand_present(text: str, brand: str) -> bool:

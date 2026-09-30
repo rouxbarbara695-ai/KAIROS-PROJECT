@@ -324,7 +324,10 @@ async def test_a_blocked_source_is_diagnosed_and_erases_nothing(
         source="ebay",
         status="blocked",
         requests=[RequestRecord("EBAY_FR « Tudor 79030N » (page 1)", 403, 0.3)],
-        message="eBay a refusé l'accès (HTTP 403) : source arrêtée, aucune nouvelle tentative.",
+        message=(
+            "eBay a refusé l'accès (HTTP 403) : source arrêtée, "
+            "aucune nouvelle tentative."
+        ),
     )
     install(FakeSource(blocked))
     opportunity = await _opportunity(client, default_portfolio_id, "MS-005")
@@ -405,7 +408,8 @@ async def test_stale_search_is_refreshed_and_known_listings_are_not_duplicated(
 
     await db_session.execute(
         text(
-            "update market_search_runs set created_at = now() - interval '7 hours 2 minutes', "
+            "update market_search_runs set "
+            "created_at = now() - interval '7 hours 2 minutes', "
             "started_at = now() - interval '7 hours 1 minute', "
             "finished_at = now() - interval '7 hours'"
         )
@@ -486,7 +490,8 @@ async def test_interrupted_search_does_not_block_new_ones_forever(
     statuses = (
         await db_session.execute(
             text(
-                "select status::text, error_code from market_search_runs order by created_at"
+                "select status::text, error_code from market_search_runs "
+                "order by created_at"
             )
         )
     ).all()
